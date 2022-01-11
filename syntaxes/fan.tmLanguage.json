@@ -13,9 +13,6 @@
 				"match": "\\b(if|while|for|return|switch)\\b"
 			}]
 		},
-		"identifier": {
-
-		},
 		"strings": {
 			"name": "string.quoted.double.fan",
 			"begin": "\"",
@@ -27,59 +24,67 @@
 				}
 			]
 		},
+		"letter": {
+			"match": "[a-zA-Z]",
+			"name": "keyword.letter"
+		},
 		"expression": {
-
-		},
-		// 下面这个中间应该要有逗号表达式
-		"paren-expression": {
-			"begin": "\\(",
-			"end": "\\)",
-			"beginCaptures": {
-				"0": {
-					"name": "punctuation.paren.open"
-				}
-			},
-			"endCaptures": {
-				"0": {
-					"name": "punctuation.paren.close"
-				}
-			},
-			"name": "expression.group",
-			"patterns": [
-				{
-					"include": "#expression"
-				}
-			]
-		},
-		"brace-body": {
-			"begin": "\\{",
-			"end": "\\}",
-			"beginCaptures": {
-				"0": {
-					"name": "punctuation.brace.open"// todo modify
-				}
-			},
-			"endCaptures": {
-				"0": {
-					"name": "punctuation.brace.close"// todo modify
-				}
-			},
-			"name": "expression.group",
-			"patterns": [
-				{
-					"include": "TODO"
-				}
-			]
+			"patterns": [{ "include": "#letter"	}, { "include": "#paren-expression"	}]
 		},
 		"function": {
 			"patterns": [
 				{
-					"name": "TODO",
+					"name": "storage.type.function.fan",
 					"match": "\\bfunction\\b"
 				},
 				{ "include": "#identifier" },
-				{ "include": "#paren-expression" }
-			]
+				{ "include": "#paren-expression" },
+				{ "include": "#brace-body" }
+			],
+			"repository": {
+				"identifier": {
+					"name": "entity.name.function.fan",
+					"match": "\\b[a-zA-Z]([a-z]|[A-Z]|[0-9]|_)*\\b"
+				},
+				"paren-expression": {
+					"begin": "\\(",
+					"end": "\\)",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.paren.open"
+						}
+					},
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.paren.close"
+						}
+					},
+					"name": "expression.group.fan",
+					"patterns": [
+						{
+							"include": "#expression"
+						}
+					]
+				},
+				"brace-body": {
+					"begin": "\\{",
+					"end": "\\}",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.brace.open"
+						}
+					},
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.brace.close"
+						}
+					},
+					"name": "punctuation.definition.block.fan",
+					"patterns": [
+						
+					]
+				}
+			}
 		}
 	},
 	"scopeName": "source.fan"
