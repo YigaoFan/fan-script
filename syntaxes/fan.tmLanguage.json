@@ -1,0 +1,86 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Fan",
+	"patterns": [
+		{
+			"include": "#function"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.fan",
+				"match": "\\b(if|while|for|return)\\b"
+			}]
+		},
+		"identifier": {
+
+		},
+		"strings": {
+			"name": "string.quoted.double.fan",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.fan",
+					"match": "\\\\."
+				}
+			]
+		},
+		"expression": {
+
+		},
+		// 下面这个中间应该要有逗号表达式
+		"paren-expression": {
+			"begin": "\\(",
+			"end": "\\)",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.paren.open"
+				}
+			},
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.paren.close"
+				}
+			},
+			"name": "expression.group",
+			"patterns": [
+				{
+					"include": "#expression"
+				}
+			]
+		},
+		"brace-expression": {
+			"begin": "\\{",
+			"end": "\\}",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.paren.open"// todo modify
+				}
+			},
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.paren.close"// todo modify
+				}
+			},
+			"name": "expression.group",
+			"patterns": [
+				{
+					"include": "TODO"
+				}
+			]
+		},
+		"function": {
+			"patterns": [
+				{
+					"name": "TODO",
+					"match": "\\bfunction\\b"
+				},
+				{ "include": "#identifier" },
+				{ "include": "#paren-expression" }
+			]
+		}
+	},
+	"scopeName": "source.fan"
+}

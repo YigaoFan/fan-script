@@ -1,0 +1,25 @@
+{
+    "name": "fan-script",
+    "displayName": "Fan Script",
+    "description": "IDE for Fan script",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.63.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "fan",
+            "aliases": ["Fan", "fan"],
+            "extensions": [".fs"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "fan",
+            "scopeName": "source.fan",
+            "path": "./syntaxes/fan.tmLanguage.json"
+        }]
+    }
+}
