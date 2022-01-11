@@ -17,3 +17,5 @@ A match rule has three kinds:
 > Any match rule can contain:
 > * A comment. This is a key-value pair, key is comment.
 > * An off switch. ...key is disabled, with value 1.
+
+scope name 不知道如何取的情况下，可以打开一个 typescript 文件然后用 Developer: Inspect Editor Tokens and Scopes 来抄你需要的 scope 名字。因为已有的 scope 会有设置好的高亮支持。
