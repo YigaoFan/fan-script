@@ -10,7 +10,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.fan",
-				"match": "\\b(if|while|for|return)\\b"
+				"match": "\\b(if|while|for|return|switch)\\b"
 			}]
 		},
 		"identifier": {
@@ -51,17 +51,17 @@
 				}
 			]
 		},
-		"brace-expression": {
+		"brace-body": {
 			"begin": "\\{",
 			"end": "\\}",
 			"beginCaptures": {
 				"0": {
-					"name": "punctuation.paren.open"// todo modify
+					"name": "punctuation.brace.open"// todo modify
 				}
 			},
 			"endCaptures": {
 				"0": {
-					"name": "punctuation.paren.close"// todo modify
+					"name": "punctuation.brace.close"// todo modify
 				}
 			},
 			"name": "expression.group",
