@@ -1,0 +1,30 @@
+{
+    "web": [
+        {
+            "class": "Browser",
+            "members": [
+                {
+                    "class": "Page",
+                    "members": [
+                        {
+                            "class": "WebEdit",
+                            "members": [
+                                {
+                                    "action": "Set"
+                                }
+                            ]
+                        },
+                        {
+                            "class": "WebElement",
+                            "members": [
+                                {
+                                    "action": "Click"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
