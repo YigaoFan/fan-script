@@ -1,0 +1,44 @@
+[
+    {
+        "name": "base",
+        "members": [],
+        "actions": []
+    },
+    {
+        "name": "web",
+        "members": [
+            {
+                "name": "Browser",
+                "members": [
+                    {
+                        "name": "Page",
+                        "members": [
+                            {
+                                "name": "WebEdit",
+                                "members": [],
+                                "actions": [
+                                    {
+                                        "name": "Set",
+                                        "args": ["string"]
+                                    }
+                                ]
+                            },
+                            {
+                                "name": "WebElement",
+                                "members": [],
+                                "actions": [
+                                    {
+                                        "name": "Click",
+                                        "args": []
+                                    }
+                                ]
+                            }
+                        ],
+                        "actions": []
+                    }
+                ],
+                "actions": []
+        }],
+        "actions": []
+    }
+]
