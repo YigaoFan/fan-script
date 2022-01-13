@@ -19,7 +19,13 @@
                                 "actions": [
                                     {
                                         "name": "Set",
-                                        "args": ["string"]
+                                        "args": ["string"],
+                                        "description": "Input string in WebEdit"
+                                    },
+                                    {
+                                        "name": "Click",
+                                        "args": [],
+                                        "description": "Click on this element"
                                     }
                                 ]
                             },
@@ -29,7 +35,8 @@
                                 "actions": [
                                     {
                                         "name": "Click",
-                                        "args": []
+                                        "args": [],
+                                        "description": "Click on this element"
                                     }
                                 ]
                             }
