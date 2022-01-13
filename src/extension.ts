@@ -21,6 +21,9 @@ const completionRoot: IClassNode[] = data;
 class FanCompletionItemProvider implements vscode.CompletionItemProvider {
     // 可以做得更绝一点，一开始刚敲键盘就有补全（Browser 之类的可以选）
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList<vscode.CompletionItem>> {
+        const i = new vscode.CompletionItem('tmp');
+        i.detail = 'sign';
+        i.documentation = 'description';
         switch (context.triggerCharacter) {
             case '.':
                 let current = completionRoot[1]; // use 1 to select web node
