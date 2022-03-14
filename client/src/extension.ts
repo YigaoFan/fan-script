@@ -18,6 +18,8 @@ interface IClassNode extends ICompletionNode {
 
 const completionRoot: IClassNode[] = data;
 
+// LSP client 这边的消息发送方式怎么控制，
+
 class FanCompletionItemProvider implements vscode.CompletionItemProvider {
     // 可以做得更绝一点，一开始刚敲键盘就有补全（Browser 之类的可以选）
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList<vscode.CompletionItem>> {
@@ -31,7 +33,7 @@ class FanCompletionItemProvider implements vscode.CompletionItemProvider {
                 for (let i = 0; i < ts.length; i++) {
                     const t = ts[i];
                     const m = current.members.find(x => x.name == t);
-                    if (m == undefined) {
+                    if (m === undefined) {
                         return [
                             'about',
                             'but'
