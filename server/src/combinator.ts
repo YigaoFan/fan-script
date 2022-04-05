@@ -50,7 +50,7 @@ export function oneOrMore<T, T1>(parser: Parser<T>, resultConverter: (ts: T[]) =
                 return {
                     Result: resultConverter(results),
                     Remain: input,
-                }
+                };
             }
         }
     };
@@ -69,7 +69,7 @@ function zeroOrMore<T, T1>(parser: Parser<T>, resultConverter: (ts: T[]) => T1):
                 return {
                     Result: resultConverter(results),
                     Remain: input,
-                }
+                };
             }
         }
     };
@@ -102,16 +102,26 @@ export const transform = <T, T1>(p: Parser<T>, transformFunc: (t: T | null) => T
             Remain: r.Remain,
         };
     };
-}
+};
+
 
 // 之后想一下，大部分代码都是错的情况下，如何生成补全内容, 也就是说如何尽量匹配到正确语法的内容
 // 最终的结果都会合并到 T 中
-export const from = <T>(p: Parser<T>) => ({
+export type from<T> = {
+    oneOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from<T1>,
+    zeroOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from<T1>,
+    rightWith: <T1, T2>(p1: Parser<T1>, resultCombinator: (r1: T | null, r2: T1 | null) => T2) => from<T2>,
+    leftWith: <T1, T2>(p1: Parser<T1>, resultCombinator: (r1: T1 | null, r2: T | null) => T2) => from<T2>,
+    transform: <T1>(transformFunc: (t: T | null) => T1) => from<T1>,
+    raw: Parser<T>,
+};
+
+export const from: <T>(p: Parser<T>) => from<T> = <T>(p: Parser<T>) => ({
     oneOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from(oneOrMore(p, resultConverter)),
     zeroOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from(zeroOrMore(p, resultConverter)),
     // 下面这两个主要用于加一些重点关注的内容，比如空白
     rightWith: <T1, T2>(p1: Parser<T1>, resultCombinator: (r1: T | null, r2: T1 | null) => T2) => from(combine(p, p1, resultCombinator)),
-    leftWith:  <T1, T2>(p1: Parser<T1>, resultCombinator: (r1: T1 | null, r2: T | null) => T2) => from(combine(p1, p, resultCombinator)),
+    leftWith: <T1, T2>(p1: Parser<T1>, resultCombinator: (r1: T1 | null, r2: T | null) => T2) => from(combine(p1, p, resultCombinator)),
     transform: <T1>(transformFunc: (t: T | null) => T1) => from(transform(p, transformFunc)),
     raw: p,
 });
@@ -122,7 +132,7 @@ export function appendString(s1: string, s2: string): string {
 
 export const combineAsArray = <T>(t: T) => {
 
-}
+};
 
 // 因为下面这个，我终于知道 Haskell 里的同样的函数的作用了
 export const id = <T>(t: T) => (t);
@@ -153,4 +163,4 @@ export const withHandleNull = function<T>(orginalHandler: (t1: T, t2: T)=> T) {
     
         return orginalHandler(t1, t2);
     };
-}
+};
