@@ -1,57 +1,15 @@
 {
-    "name": "fan-script",
+    "name": "fan-script-client",
     "displayName": "Fan Script",
-    "description": "IDE for Fan script",
+    "description": "IDE front end part for Fan script",
     "version": "0.0.1",
     "engines": {
         "vscode": "^1.63.0"
     },
-    "categories": [
-        "Programming Languages"
-    ],
-    "activationEvents": [
-        "onCommand:startComplete"
-    ],
-    "main": "./out/extension.js",
-    "contributes": {
-        "languages": [
-            {
-                "id": "fan",
-                "aliases": [
-                    "Fan",
-                    "fan"
-                ],
-                "extensions": [
-                    ".fs"
-                ],
-                "configuration": "./language-configuration.json"
-            }
-        ],
-        "grammars": [
-            {
-                "language": "fan",
-                "scopeName": "source.fan",
-                "path": "./syntaxes/fan.tmLanguage.json"
-            }
-        ],
-        "commands": [
-            {
-                "command": "startComplete",
-                "title": "Code complete"
-            }
-        ]
-    },
-    "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
-        "pretest": "npm run compile && npm run lint",
-        "lint": "eslint src --ext ts",
-        "test": "node ./out/test/runTest.js"
-    },
     "devDependencies": {
         "@types/glob": "^7.1.4",
         "@types/mocha": "^9.0.0",
+        "@types/module-alias": "^2.0.1",
         "@types/node": "14.x",
         "@types/vscode": "^1.54.0",
         "@typescript-eslint/eslint-plugin": "^5.1.0",
@@ -63,6 +21,10 @@
         "typescript": "^4.4.4"
     },
     "dependencies": {
+        "module-alias": "^2.2.2",
         "vscode-languageclient": "^7.0.0"
+    },
+    "_moduleAliases": {
+        "parser": "../server/out/"
     }
 }
