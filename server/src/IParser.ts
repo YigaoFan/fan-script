@@ -12,8 +12,8 @@ export type ParserResult<T> = ParseFullResult<T, null> | ParseFailResult;
 
 const log = console.log.bind(console);
 enum Indent {
-    Add,
-    Reduce,
+    NextLineAdd,
+    CurrentLineReduce,
 }
 
 /**
@@ -23,10 +23,14 @@ enum Indent {
 var indent = 0;
 const logWith = function (indentSetting: Indent, ...args: any[]) {
     const genSpaces = (count: number) => Array(count).join(' ');
-    log(genSpaces(indent), ...args);
     switch (indentSetting) {
-        case Indent.Add: ++indent;
-        case Indent.Reduce: --indent;
+        case Indent.CurrentLineReduce: --indent;
+    }
+
+    log(genSpaces(indent), ...args);
+    
+    switch (indentSetting) {
+        case Indent.NextLineAdd: ++indent;
     }
 };
 export const enableDebug = true;
@@ -40,13 +44,14 @@ export const debug = function (enable: boolean = enableDebug) {
         }
         var k = propertyKey;
         var v = d.value;
-        d.value = (...args: any[]) => {
-            logWith(Indent.Add, `start process ${k}`);
-            // @ts-expect-error
-            var r = v.apply(this, args); // 这个 this 是哪里来的
-            logWith(Indent.Reduce, `end parse, result ${r}`);
+        d.value = function (this: any, ...args: any[]) {
+            var title = `${this.constructor.name} ${k}`;
+            logWith(Indent.NextLineAdd, `start ${title}`);
+            var r = v.apply(this, args);
+            logWith(Indent.CurrentLineReduce, `end ${title}, result ${r}`);
             return r;
         };
+
         return d;
     };
 };
