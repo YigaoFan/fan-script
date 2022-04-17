@@ -3,21 +3,28 @@
 // input 参数应该在 parser 函数里用过一次，其他地方不再用于 parser 了
 // 写单元测试
 
-// stateful
-export interface IInputStream {
-    get NextChar(): string;
-    Copy(): IInputStream;
-}
-type ParseFullResult<T1, T2> = { Result: T1 | T2, Remain: ParserInput };
-type ParseFailResult = null;
-export type ParserInput = IInputStream;
-// null for optional result
-export type ParserResult<T> = ParseFullResult<T, null> | ParseFailResult;
-export type Parser<T> = (input: ParserInput) => ParserResult<T>; // 感觉这里的返回结果表示，和函数里返回类型表示形式不太统一，那里是冒号，这里是箭头
+import {
+    ParserInput,
+    ParserResult,
+    IParser,
+    debug,
+} from "./IParser";
 
-export function makeWordParser<T>(word: string, resultFactory: (w: string)=> T): Parser<T> {
-    return (input: ParserInput): ParserResult<T> => {
-        for (let i = 0; i < word.length; i++) {
+// export type Parser<T> = (input: ParserInput) => ParserResult<T>; // 感觉这里的返回结果表示，和函数里返回类型表示形式不太统一，那里是冒号，这里是箭头
+
+export class WordParser<T> implements IParser<T> {
+    private mWord: string;
+    private mResultFactory: (w: string) => T;
+
+    constructor(word: string, resultFactory: (w: string) => T) {
+        this.mWord = word;
+        this.mResultFactory = resultFactory;
+    }
+
+    @debug()
+    public parse(input: ParserInput): ParserResult<T> {
+        let word = this.mWord;
+        for(let i = 0; i <word.length; i++) {
             const c = input.NextChar;
             if (c) {
                 if (word[i] == c) {
@@ -28,21 +35,41 @@ export function makeWordParser<T>(word: string, resultFactory: (w: string)=> T):
         }
 
         return {
-            Result: resultFactory(word),
+            Result: this.mResultFactory(this.mWord),
             Remain: input,
         };
-    };
+    }
+}
+export function makeWordParser<T>(word: string, resultFactory: (w: string) => T): IParser<T> {
+    return new WordParser(word, resultFactory);
 }
 
-export function oneOf<T>(chars: string, resultProcessor: (c: string)=> T) {
-    return (input: ParserInput): ParserResult<T> => {
+export class OneOfCharsParser<T> implements IParser<T> {
+    private mChars: string;
+    private mResultFactory: (w: string) => T;
+
+    public static make<T>(chars: string, resultFactory: (w: string) => T): WordParser<T> {
+        return new WordParser(chars, resultFactory);
+    }
+
+    constructor(chars: string, resultFactory: (w: string) => T) {
+        this.mChars = chars;
+        this.mResultFactory = resultFactory;
+    }
+
+    @debug()
+    public parse(input: ParserInput): ParserResult<T> {
         const c = input.NextChar;
+        let chars = this.mChars;
         if (chars.includes(c)) {
             return {
-                Result: resultProcessor(c),
+                Result: this.mResultFactory(c),
                 Remain: input,
             };
         }
         return null;
-    };
+    }
+}
+export function oneOf<T>(chars: string, resultProcessor: (c: string) => T): IParser<T> {
+    return new OneOfCharsParser(chars, resultProcessor);
 }
