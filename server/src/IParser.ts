@@ -1,14 +1,24 @@
 // stateful internal
-export interface IInputStream {
+interface IInputStream {
     get NextChar(): string;
     Copy(): IInputStream;
 }
 
+export class NoOption {
+    public static placeholder() {
+        return new NoOption();
+    }
+
+    public static equal<T>(t: T): boolean {
+        return t instanceof NoOption;
+    }
+}
+
 type ParseFullResult<T1, T2> = { Result: T1 | T2, Remain: ParserInput };
-type ParseFailResult = null;
+type ParseFailResult = null; // 应该推广出去？ TODO
 export type ParserInput = IInputStream;
-// null for optional result
-export type ParserResult<T> = ParseFullResult<T, null> | ParseFailResult;
+// NoOption for optional result
+export type ParserResult<T> = ParseFullResult<T, NoOption> | ParseFailResult;
 
 const log = console.log.bind(console);
 enum Indent {
@@ -21,6 +31,7 @@ enum Indent {
  * @var indent is global variable to store indent count
  */
 var indent = 0;
+// 缩进的第二行好像还是有问题 TODO
 const logWith = function (indentSetting: Indent, ...args: any[]) {
     const genSpaces = (count: number) => Array(count).join(' ');
     switch (indentSetting) {
@@ -46,9 +57,9 @@ export const debug = function (enable: boolean = enableDebug) {
         var v = d.value;
         d.value = function (this: any, ...args: any[]) {
             var title = `${this.constructor.name} ${k}`;
-            logWith(Indent.NextLineAdd, `start ${title}`);
+            logWith(Indent.NextLineAdd, `start ${title} with`, JSON.stringify(args));
             var r = v.apply(this, args);
-            logWith(Indent.CurrentLineReduce, `end ${title}, result ${r}`);
+            logWith(Indent.CurrentLineReduce, `end ${title}, result ${JSON.stringify(r)}`);
             return r;
         };
 

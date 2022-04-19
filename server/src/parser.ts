@@ -24,13 +24,15 @@ export class WordParser<T> implements IParser<T> {
     @debug()
     public parse(input: ParserInput): ParserResult<T> {
         let word = this.mWord;
-        for(let i = 0; i <word.length; i++) {
+        // log(`word parse "${word}"`);
+        for(let i = 0; i < word.length; i++) {
             const c = input.NextChar;
             if (c) {
                 if (word[i] == c) {
                     continue;
                 }
             }
+            // log(`failed on ${i}, expect "${word[i]}", actual: "${c}"`);
             return null;
         }
 

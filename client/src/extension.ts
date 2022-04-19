@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { log } from './util';
 import * as data from './completionData.json';
 
+require('module-alias/register'); // for node runtime module alias
 const langId = 'fan';
 // 可以在 completionData 加个继承功能
 interface ICompletionNode {
@@ -133,7 +134,22 @@ class FanCompletionItemProvider implements vscode.CompletionItemProvider {
     }
 }
 
+import { funcDef } from "parser/testParser";
+// import { funcDef } from "../../server/out/testParser";
+import { StringStream } from './StringStream';
+// 学一下 node.js 利用 package.json 如何进行项目组织
+// 原来 tsconfig.json 是 ts compile 时用到的东西
 export function activate(context: vscode.ExtensionContext) {
+    const inputLines = `
+    func add(a, b) {
+        return a + b;
+    }
+    `;
+    // 看一下 GitHub 上面的仓库是怎么弄的构建输出目录
+    const code = "func add( a, b ,   c ) { }";
+    const s = new StringStream(code);
+    const r = funcDef.parse(s); // parser combinator 的调试是个大问题，把每一步的解析结果打出来，就像对公司的项目一样，我想知道树和运行轨迹
+    log('parser result', r);
 	log('Congratulations, your extension "fan-script" is now active!'); // 这行话出现了，说明是 cmd 没注册的问题
     let provider1 = vscode.languages.registerCompletionItemProvider(langId, new FanCompletionItemProvider(), '.', '"', ' ');
 	const cmd = 'startComplete';
