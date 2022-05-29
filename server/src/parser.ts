@@ -8,15 +8,17 @@ import {
     ParserResult,
     IParser,
     debug,
+    Range,
+    Text,
 } from "./IParser";
 
 // export type Parser<T> = (input: ParserInput) => ParserResult<T>; // 感觉这里的返回结果表示，和函数里返回类型表示形式不太统一，那里是冒号，这里是箭头
 
 export class WordParser<T> implements IParser<T> {
     private mWord: string;
-    private mResultFactory: (w: string) => T;
+    private mResultFactory: (w: Text) => T;
 
-    constructor(word: string, resultFactory: (w: string) => T) {
+    constructor(word: string, resultFactory: (w: Text) => T) {
         this.mWord = word;
         this.mResultFactory = resultFactory;
     }
@@ -24,11 +26,13 @@ export class WordParser<T> implements IParser<T> {
     @debug()
     public parse(input: ParserInput): ParserResult<T> {
         let word = this.mWord;
+        const r = Range.New(input.Filename);
         // log(`word parse "${word}"`);
-        for(let i = 0; i < word.length; i++) {
+        for (let i = 0; i < word.length; i++) {
             const c = input.NextChar;
             if (c) {
-                if (word[i] == c) {
+                if (word[i] == c.Value) {
+                    r.Append(c.Range);
                     continue;
                 }
             }
@@ -37,24 +41,24 @@ export class WordParser<T> implements IParser<T> {
         }
 
         return {
-            Result: this.mResultFactory(this.mWord),
+            Result: this.mResultFactory(Text.New(this.mWord, r)),
             Remain: input,
         };
     }
 }
-export function makeWordParser<T>(word: string, resultFactory: (w: string) => T): IParser<T> {
+export function makeWordParser<T>(word: string, resultFactory: (w: Text) => T): IParser<T> {
     return new WordParser(word, resultFactory);
 }
 
+interface IIncludes {
+    includes(s: string): boolean;
+}
+
 export class OneOfCharsParser<T> implements IParser<T> {
-    private mChars: string;
-    private mResultFactory: (w: string) => T;
+    private mChars: IIncludes;
+    private mResultFactory: (w: Text) => T;
 
-    public static make<T>(chars: string, resultFactory: (w: string) => T): WordParser<T> {
-        return new WordParser(chars, resultFactory);
-    }
-
-    constructor(chars: string, resultFactory: (w: string) => T) {
+    constructor(chars: IIncludes, resultFactory: (w: Text) => T) {
         this.mChars = chars;
         this.mResultFactory = resultFactory;
     }
@@ -63,7 +67,7 @@ export class OneOfCharsParser<T> implements IParser<T> {
     public parse(input: ParserInput): ParserResult<T> {
         const c = input.NextChar;
         let chars = this.mChars;
-        if (chars.includes(c)) {
+        if (chars.includes(c.Value)) {
             return {
                 Result: this.mResultFactory(c),
                 Remain: input,
@@ -72,6 +76,52 @@ export class OneOfCharsParser<T> implements IParser<T> {
         return null;
     }
 }
-export function oneOf<T>(chars: string, resultProcessor: (c: string) => T): IParser<T> {
+export function oneOf<T>(chars: IIncludes, resultProcessor: (c: Text) => T): IParser<T> {
     return new OneOfCharsParser(chars, resultProcessor);
 }
+
+class LazyParser<T> implements IParser<T> {
+    private mActualParserGentor: () => IParser<T>;
+
+    constructor(actualParserGentor: () => IParser<T>) {
+        this.mActualParserGentor = actualParserGentor;
+    }
+
+    @debug()
+    parse(input: ParserInput): ParserResult<T> {
+        const p = this.mActualParserGentor();
+        return p.parse(input);
+    }
+}
+
+export const lazy = <T>(actualParserGentor: () => IParser<T>): LazyParser<T> => {
+    return new LazyParser(actualParserGentor);
+};
+
+class NotParser<T> implements IParser<T> {
+    private mChars: IIncludes;
+    private mResultFactory: (w: Text) => T;
+
+    constructor(chars: IIncludes, resultProcessor: (c: Text) => T) {
+        this.mChars = chars;
+        this.mResultFactory = resultProcessor;
+    }
+
+    @debug()
+    public parse(input: ParserInput): ParserResult<T> {
+        const c = input.NextChar;
+        let chars = this.mChars;
+        if (!chars.includes(c.Value)) {
+            return {
+                Result: this.mResultFactory(c),
+                Remain: input,
+            };
+        } else {
+            return null;
+        }
+    }    
+}
+
+export const not = <T>(chars: IIncludes, resultProcessor: (c: Text) => T): NotParser<T> => {
+    return new NotParser(chars, resultProcessor);
+};

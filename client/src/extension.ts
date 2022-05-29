@@ -146,7 +146,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     `;
     // 看一下 GitHub 上面的仓库是怎么弄的构建输出目录
-    const code = "func add( a, b ,   c ) { }";
+    const code = "func add( a, b ,   c ) { if () {} }";
     const s = new StringStream(code);
     const r = funcDef.parse(s); // parser combinator 的调试是个大问题，把每一步的解析结果打出来，就像对公司的项目一样，我想知道树和运行轨迹
     log('parser result', r);

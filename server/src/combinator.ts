@@ -1,13 +1,13 @@
-import { ParserInput, ParserResult, IParser, debug, NoOption, } from './IParser';
+import { ParserInput, ParserResult, IParser, debug, } from './IParser';
 
 // 一定贯彻一个 input 只能用一次的原则，后面的解析用前面的解析的返回值中的 remain，注意循环会用多次
 
 class Combine<T1, T2, T3> implements IParser<T3> {
     private mParser1: IParser<T1>;
     private mParser2: IParser<T2>;
-    private mResultCombinator: (r1: T1 | NoOption, r2: T2 | NoOption) => T3;
+    private mResultCombinator: (r1: T1, r2: T2) => T3;
 
-    constructor(parser1: IParser<T1>, parser2: IParser<T2>, resultCombinator: (r1: T1 | NoOption, r2: T2 | NoOption) => T3) {
+    constructor(parser1: IParser<T1>, parser2: IParser<T2>, resultCombinator: (r1: T1, r2: T2) => T3) {
         this.mParser1 = parser1;
         this.mParser2 = parser2;
         this.mResultCombinator = resultCombinator;
@@ -33,11 +33,30 @@ class Combine<T1, T2, T3> implements IParser<T3> {
     }
     
 }
-function combine<T1, T2, T3>(parser1: IParser<T1>, parser2: IParser<T2>, resultCombinator: (r1: T1 | NoOption, r2: T2 | NoOption) => T3): IParser<T3> {
+function combine<T1, T2, T3>(parser1: IParser<T1>, parser2: IParser<T2>, resultCombinator: (r1: T1, r2: T2) => T3): IParser<T3> {
     return new Combine(parser1, parser2, resultCombinator);
 }
 
-class Option<T> implements IParser<T> {
+export class Option<T> {
+    private mT: T | undefined;
+
+    public constructor(t: T | undefined = undefined) {
+        this.mT = t;
+    }
+    
+    public hasValue(): boolean {
+        return this.mT == undefined;
+    }
+
+    public get value(): T {
+        if (this.mT) {
+            return this.mT;
+        }
+        throw new Error('get value while no value stored in Option');
+    }
+}
+
+class Optional<T> implements IParser<Option<T>> {
     private mParser: IParser<T>;
 
     constructor(parser: IParser<T>) {
@@ -45,7 +64,7 @@ class Option<T> implements IParser<T> {
     }
 
     @debug()
-    public parse(input: ParserInput): ParserResult<T> {
+    public parse(input: ParserInput): ParserResult<Option<T>> {
         var parser = this.mParser;
         const oldInput = input.Copy();
         const r = parser.parse(input);
@@ -53,20 +72,23 @@ class Option<T> implements IParser<T> {
             // 决定把 null 加入到类型中，因为针对每种 node 类型都构建一个对使用者来说默认值太麻烦了，
             // 因为使用者完全可以拿到一个 parser，不知道里面解析的结果，这时如果想 optional 下怎么办呢
             return {
-                Result: NoOption.placeholder(),
+                Result: new Option(),// 这里蛮神奇的，typescript 如何知道 Option<undefined> 和 Option<T> 是兼容的类型？我这里也没有显式指定类型参数
                 Remain: oldInput,
             };
         }
-        return r;
+        return {
+            Result: new Option(r.Result),
+            Remain: r.Remain,
+        };
     }
 
 }
-export function optional<T>(parser: IParser<T>): IParser<T> {
-    return new Option(parser);
+export function optional<T>(parser: IParser<T>): IParser<Option<T>> {
+    return new Optional(parser);
 }
 
 class OneOrMore<T, T1> implements IParser<T1> {
-    private mOption: IParser<T>;
+    private mOption: IParser<Option<T>>;
     private mResultConverter: (ts: T[]) => T1;
 
     constructor(parser: IParser<T>, resultConverter: (ts: T[]) => T1) {
@@ -82,9 +104,8 @@ class OneOrMore<T, T1> implements IParser<T1> {
         for (; ;) {
             // 因 optional 的原因，这里 r 必不可能是 null
             const r = option.parse(input);
-            if (!NoOption.equal(r!.Result)) {
-                // @ts-expect-error
-                results.push(r!.Result); // 有可能 parse 的处理结果就是 null。。。，这个要想办法禁止，形成信号干扰了，所以引入了 NoOption
+            if (r!.Result.hasValue()) {
+                results.push(r!.Result.value);
                 input = r!.Remain;
             } else {
                 if (results.length == 0) {
@@ -105,7 +126,7 @@ function oneOrMore<T, T1>(parser: IParser<T>, resultConverter: (ts: T[]) => T1):
 }
 
 class ZeroOrMore<T, T1> implements IParser<T1> {
-    private mOption: IParser<T>;
+    private mOption: IParser<Option<T>>;
     private mResultConverter: (ts: T[]) => T1;
 
     constructor(parser: IParser<T>, resultConverter: (ts: T[]) => T1) {
@@ -123,17 +144,17 @@ class ZeroOrMore<T, T1> implements IParser<T1> {
         };
     }
 
-    private iter(input: ParserInput, ts: T[]): { Result: T[], Remain: ParserInput} {
+    // 感觉下面这个修改下设计可以用在好几个地方，安全又卫生
+    private iter(input: ParserInput, ts: T[]): { Result: T[], Remain: ParserInput } {
         const r = this.mOption.parse(input);
-        if (NoOption.equal(r!.Result)) {
+        if (r!.Result.hasValue()) {
+            ts.push(r!.Result.value);
+            return this.iter(r!.Remain, ts);
+        } else {
             return {
                 Result: ts,
                 Remain: r!.Remain,
             };
-        } else {
-            // @ts-expect-error
-            ts.push(r!.Result);
-            return this.iter(r!.Remain, ts);
         }
     }
     
@@ -142,44 +163,57 @@ function zeroOrMore<T, T1>(parser: IParser<T>, resultConverter: (ts: T[]) => T1)
     return new ZeroOrMore(parser, resultConverter);
 }
 
-class EitherOf<T1, T2> {
-    private mOption1: IParser<T1>;
-    private mOption2: IParser<T2>;
+// type RemoveNoOption<Type> = Exclude<Type, NoOption>;
 
-    constructor(parser1: IParser<T1>, parser2: IParser<T2>) {
+class Or<T1, T2, T3> implements IParser<T3> {
+    private mOption1: IParser<Option<T1>>;
+    private mOption2: IParser<Option<T2>>;
+    private mResultProcessor: (t1: T1 | null, t2: T2 | null) => T3;
+
+    constructor(parser1: IParser<T1>, parser2: IParser<T2>, resultProcessor: (t1: T1 | null, t2: T2 | null) => T3) {
         this.mOption1 = optional(parser1);
         this.mOption2 = optional(parser2);
+        this.mResultProcessor = resultProcessor;
     }
 
     @debug()
-    public parse(input: ParserInput): ParserResult<T1> | ParserResult<T2> {
+    public parse(input: ParserInput): ParserResult<T3> {
         var option1 = this.mOption1.parse;
         var option2 = this.mOption2.parse;
 
         // 因 optional 的原因，这里 r 必不可能是 null
         const r1 = option1(input); // input may be changed internal, so not use below
-        if (!NoOption.equal(r1!.Result)) {
-            return r1;
+        if (r1!.Result.hasValue()) {
+            return {
+                Result: this.mResultProcessor(r1!.Result.value, null),
+                Remain: r1!.Remain,
+            };
         }
         const r2 = option2(r1!.Remain);
-        if (!NoOption.equal(r2!.Result)) {
-            return r2;
+        if (r2!.Result.hasValue()) {
+            return {
+                Result: this.mResultProcessor(null, r2!.Result.value),
+                Remain: r2!.Remain,
+            };
         }
         return null;
     }
 }
-function eitherOf<T1, T2>(parser1: IParser<T1>, parser2: IParser<T2>) {
-    return new EitherOf(parser1, parser2);
+/**
+ * results of @argument parser1 and @argument parser2 are not same
+ */
+export function or<T1, T2, T3>(parser1: IParser<T1>, parser2: IParser<T2>, resultProcessor: (t1: T1 | null, t2: T2 | null)=> T3) {
+    return new Or(parser1, parser2, resultProcessor);
 }
 
 class Transform<T, T1> implements IParser<T1> {
     private mParser: IParser<T>;
-    private mTransformFunc: (t: T | NoOption) => T1;
+    private mTransformFunc: (t: T) => T1;
 
     /**
      * @param transformFunc NoOption in T | NoOption is the result in option result, not fail result
      */
-    constructor(parser: IParser<T>, transformFunc: (t: T | NoOption) => T1) {
+    constructor(parser: IParser<T>, transformFunc: (t: T) => T1) {
         this.mParser = parser;
         this.mTransformFunc = transformFunc;
     }
@@ -200,19 +234,63 @@ class Transform<T, T1> implements IParser<T1> {
     }
     
 }
-const transform = <T, T1>(p: IParser<T>, transformFunc: (t: T | NoOption) => T1): IParser<T1> => {
+const transform = <T, T1>(p: IParser<T>, transformFunc: (t: T) => T1): IParser<T1> => {
     return new Transform(p, transformFunc);
 };
 
+class EitherOf<T1, T2> implements IParser<T2> {
+    private mOptionParsers: IParser<Option<T1>>[];
+    private mResultProcessor: (...t1s: (T1 | null)[]) => T2;
+
+    public constructor(resultPrcessor: (...t1s: (T1 | null)[]) => T2, ...parsers: IParser<T1>[]) {
+        this.mOptionParsers = parsers.map(x => optional(x));
+        this.mResultProcessor = resultPrcessor;
+    }
+
+    @debug()
+    parse(input: ParserInput): ParserResult<T2> {
+        const optionNum = this.mOptionParsers.length;
+        for (var i = 0; i < optionNum; i++) {
+            const p = this.mOptionParsers[i];
+            const oldInput = input.Copy();
+            const r = p.parse(input);
+            if (r!.Result.hasValue()) {
+                const result: (T1 | null)[] = Array(optionNum).fill(null);
+                result[i] = r!.Result.value;
+                return {
+                    Result: this.mResultProcessor(...result),
+                    Remain: r!.Remain,
+                };
+            } else {
+                input = oldInput;
+            }
+        }
+        return null;
+    }
+}
+/**
+ * results of @argument parsers are same.
+ */
+export const eitherOf = <T1, T2>(resultPrcessor: (...t1s: (T1 | null)[]) => T2, ...parsers: IParser<T1>[]): IParser<T2> => {
+    return new EitherOf(resultPrcessor, ...parsers);
+};
 
 // 之后想一下，大部分代码都是错的情况下，如何生成补全内容, 也就是说如何尽量匹配到正确语法的内容
 // 最终的结果都会合并到 T 中
 export type from<T> = {
     oneOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from<T1>,
     zeroOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from<T1>,
-    rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T | NoOption, r2: T1 | NoOption) => T2) => from<T2>,
-    leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1 | NoOption, r2: T | NoOption) => T2) => from<T2>,
-    transform: <T1>(transformFunc: (t: T | NoOption) => T1) => from<T1>,
+    /**
+     * if not process NoOption in result type of @param resultCombinator, possibly introduce NoOption to T of next level's IParser<T>.
+     * but you can use @method transform to handle it in a separte way.
+     */
+    rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T, r2: T1) => T2) => from<T2>,
+    /**
+     * if not process NoOption in result type of @param resultCombinator, possibly introduce NoOption to T of next level's IParser<T>.
+     * but you can use @method transform to handle it in a separte way.
+     */
+    leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1, r2: T) => T2) => from<T2>,
+    transform: <T1>(transformFunc: (t: T) => T1) => from<T1>,
     raw: IParser<T>,
 };
 
@@ -220,9 +298,9 @@ export const from: <T>(p: IParser<T>) => from<T> = <T>(p: IParser<T>) => ({
     oneOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from(oneOrMore(p, resultConverter)),
     zeroOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from(zeroOrMore(p, resultConverter)),
     // 下面这两个主要用于加一些重点关注的内容，比如空白
-    rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T | NoOption, r2: T1 | NoOption) => T2) => from(combine(p, p1, resultCombinator)),
-    leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1 | NoOption, r2: T | NoOption) => T2) => from(combine(p1, p, resultCombinator)),
-    transform: <T1>(transformFunc: (t: T | NoOption) => T1) => from(transform(p, transformFunc)),
+    rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T, r2: T1) => T2) => from(combine(p, p1, resultCombinator)),
+    leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1, r2: T) => T2) => from(combine(p1, p, resultCombinator)),
+    transform: <T1>(transformFunc: (t: T) => T1) => from(transform(p, transformFunc)),
     raw: p,
 });
 

@@ -62,15 +62,15 @@ connection.onInitialized(() => {
 
 // ... jump some code
 
-connection.onCompletion((textPosition: TextDocumentPositionParams): CompletionItem[] => {
-    // todo
-    const doc = documents.get(textPosition.textDocument.uri)?.getText();
+// connection.onCompletion((textPosition: TextDocumentPositionParams): CompletionItem[] => {
+//     // todo
+//     const doc = documents.get(textPosition.textDocument.uri)?.getText();
 
-});
+// });
 
-connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
+// connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
 
-});
+// });
 
 documents.listen(connection);
 connection.listen();
