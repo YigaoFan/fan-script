@@ -80,6 +80,48 @@ const parasWithParen = from(leftParen).rightWith(optional(paras), selectRight).r
 const leftBrace = from(makeWordParser('{', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 const rightBrace = from(makeWordParser('}', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 
+class VarStmt implements IStatement {
+    private mVars?: (readonly [Identifier, Expression?])[];
+
+    public static New(): VarStmt {
+        return new VarStmt();
+    }
+
+    public static AddVar(statement: VarStmt, oneVar: readonly [Identifier, Expression?]) {
+        var s = statement;
+        if (s.mVars) {
+            s.mVars = [];
+        }
+        s.mVars!.push(oneVar);
+        return s;
+    }
+
+    public static AddVars(statement: VarStmt, vars: Option<(readonly [Identifier, Expression?])[]>) {
+        if (!vars.hasValue()) {
+            return;
+        }
+        var s = statement;
+        if (s.mVars) {
+            s.mVars = [];
+        }
+        for (const i of vars.value) {
+            s.mVars!.push(i);
+        }
+        return s;
+    }
+
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+}
+
 class IfStmt implements IStatement {
     private mCondExp?: Expression;
     private mBlock?: IStatement[];
@@ -165,11 +207,36 @@ class ForStmt implements IStatement {
 }
 
 const consBlock = function(): IParser<IStatement[]> {
+    const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
+    const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).rightWith(optional(blanks), selectLeft).raw;
+
+    const varItem = from(identifier)
+                        .rightWith(optional(blanks), selectLeft)
+                        .rightWith(
+                            optional(from(makeWordParser('=', nullize))
+                                .rightWith(expWithBlank, selectRight)
+                                .raw),
+                            (n, e) => ([n, e.hasValue() ? e.value : undefined] as const))
+                        .raw;
+    var varStmt = from(makeWordParser('var', VarStmt.New))
+                        .rightWith(varItem, VarStmt.AddVar)
+                        .rightWith(optional(from(makeWordParser(',', nullize))
+                                        .rightWith(varItem, selectRight)
+                                        .zeroOrMore(asArray)
+                                        .raw),
+                                   VarStmt.AddVars)
+                        .rightWith(makeWordParser(';', nullize), selectLeft)
+                        .raw;
+
+    
+    // return statement
+    // expression statement
     // 既然 body、if、for 各个体中互相引用了，那就不能先定义了，只能先声明，然后引用
     // body 里还有普通的语句，作为递归的终点
     // 下面这个里面其实还可以互相嵌套的，其实任何 function body 里可以有的东西都可以在里面，这就递归了
-    // 这里的结果肯定是错的，后面处理 // 肯定要提供一种惰性求值，类似指针的操作，保留一种无限的能力，不然这里的函数会无限递归下去
+    // 肯定要提供一种惰性求值，类似指针的操作，保留一种无限的能力，不然这里的函数会无限递归下去
     const block = from(leftBrace).rightWith(lazy(consBlock), selectRight).rightWith(optional(blanks), selectLeft).rightWith(rightBrace, selectLeft).raw;
+
     const elseBlock = from(makeWordParser('else', id)).rightWith(block, selectRight).raw
     const ifStmt = from(makeWordParser('if', IfStmt.New))
         .rightWith(leftParen, selectLeft)
@@ -178,8 +245,8 @@ const consBlock = function(): IParser<IStatement[]> {
         .rightWith(block, IfStmt.SetBlock)
         .rightWith(optional(elseBlock), IfStmt.SetElseBlock)
         .raw;
-    const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
-    const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).rightWith(optional(blanks), selectLeft).raw;
+    
+    // TODO break and continue
     const forStmt = from(makeWordParser('for', ForStmt.New))
                     .rightWith(leftParen, selectLeft)
                     .rightWith(expWithSemicolon, ForStmt.SetInit)
@@ -192,8 +259,6 @@ const consBlock = function(): IParser<IStatement[]> {
     return body;
 };
 
-// 还是要想一下，transform 的类型的事，向上看，为什么可以这样 as
-// 我也不知道我写出来这东西这么屌...，我自己一下都想不明白
 // parse xxx, start
 //      parse sub part
 // parse xxx, result
