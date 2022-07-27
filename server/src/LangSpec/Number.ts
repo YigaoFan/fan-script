@@ -1,25 +1,18 @@
-import { id, or, from, nullize, selectRight, optional, } from "../combinator";
+import { id, or, from, nullize, selectRight, optional, Option, } from "../combinator";
+import { IParser, Text } from "../IParser";
+import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, oneOf, lazy, } from "../parser";
-import { combine, combine2String } from "./Identifier";
+import { combine, selectNotNull, } from "../util";
 
 const zero = '0';
 const oneToNine = '123456789';
 const zeroToNine = zero + oneToNine;
 
-const selectNotNull = <T1, T2>(t1: T1 | null, t2: T2 | null): T1 | T2 => {
-    if (t1) {
-        return t1;
-    } else if (t2) {
-        return t2;
-    } else {
-        throw new Error('both of t1 and t2 are null');
-    }
-};
 const integer = or(
                 makeWordParser(zero, id), 
                 from(oneOf(oneToNine, id))
                     .rightWith(
-                        from(oneOf(zeroToNine, id)).zeroOrMore(combine).raw, combine2String).raw,
+                        from(oneOf(zeroToNine, id)).zeroOrMore(combine).raw, combine).raw,
                 selectNotNull);
 
 const fraction = from(makeWordParser('.', nullize))
@@ -28,15 +21,27 @@ const fraction = from(makeWordParser('.', nullize))
                     .raw;
 const exponent = from(oneOf('eE', id))
                     .rightWith(optional(oneOf('+-', id)), selectRight)
-                    .rightWith(from(oneOf(zeroToNine, id)).oneOrMore(combine).raw, (l, r) => { // TODO move this function to a separte place
-                        if (l.hasValue()) {
-                            return [l.value, r];
-                        }
-                        return [r];
-                    })
+                    .rightWith(from(oneOf(zeroToNine, id)).oneOrMore(combine).raw, (l, r) => ([l, r] as const))
                     .raw;
 
-export const number = from(integer)
-                        .rightWith(optional(fraction), (l, r) => { return null; }) // TODO set combine result
-                        .rightWith(optional(exponent), (l, r) => { return null; }) // TODO set combine result
+export class Number implements ISyntaxNode {
+    private mInteger: Text;
+    private mFraction: Option<Text>;
+    private mExponent: Option<readonly [Option<Text>, Text]>;
+
+    public static New(data: readonly [Text, Option<Text>, Option<readonly [Option<Text>, Text]>]): Number {
+        return new Number(...data);
+    }
+
+    public constructor(integer: Text, fraction: Option<Text>, exponent: Option<readonly [Option<Text>, Text]>) {
+        this.mInteger = integer;
+        this.mFraction = fraction;
+        this.mExponent = exponent;
+    }
+}
+
+export const number: IParser<Number> = from(integer)
+                        .rightWith(optional(fraction), (l, r) => ([l, r] as const))
+                        .rightWith(optional(exponent), (l, r) => ([...l, r] as const))
+                        .transform(Number.New)
                         .raw;

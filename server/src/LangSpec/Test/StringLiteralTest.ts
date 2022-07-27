@@ -1,11 +1,11 @@
 import { registerTest } from "./TestSuite";
-import { stringLiteral, } from '../StringLiteral';
+import { string, } from '../String';
 import { StringStream } from "../../StringStream";
 
 const testStringLiteral = function() {
     var s = '"Hello World"';
     var ss = StringStream.New(s, 'code.fs');
-    var r = stringLiteral.parse(ss);
+    var r = string.parse(ss);
     // TODO escape char test
 };
 

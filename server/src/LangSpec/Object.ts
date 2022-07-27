@@ -2,6 +2,7 @@ import { id, or, from, nullize, selectRight, optional, eitherOf, selectLeft, } f
 import { Range, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, oneOf, lazy, } from "../parser";
+import { asArray, selectNotNullIn2DifferentType, } from "../util";
 import { expression, Expression } from "./Expression";
 import { Identifier, identifier, } from "./Identifier";
 import { string, } from "./String";
@@ -46,37 +47,26 @@ class KeyValuePair implements ISyntaxNode {
 
 }
 
-const pair = from(or(identifier, string, (a, b): Text => {
-    if (a) {
-        return a;
-    } else if (b) {
-        if (b.Content != null) {
-            return b.Content;
-        }
-    }
-    throw new Error('all results of pair are null');
-})).leftWith(optional(whitespace), selectRight)
+const pair = from(or(identifier, string, selectNotNullIn2DifferentType
+)).leftWith(optional(whitespace), selectRight)
    .rightWith(from(makeWordParser(':', nullize))
                 .leftWith(optional(whitespace), nullize)
                 .rightWith(optional(whitespace), nullize).raw, selectLeft)
    .rightWith(expression, (k, v) => (KeyValuePair.New(Identifier.New(k), v)))
    .rightWith(optional(whitespace), selectLeft)
    .rightWith(makeWordParser(',', nullize), selectLeft);
-/**
- * 强制每个 pair 后面都要打逗号
- */ 
-export const object = from(makeWordParser('{', nullize))
-                        .rightWith(pair.zeroOrMore(id).raw, selectRight)
-                        .rightWith(makeWordParser('}', nullize), selectLeft)
-                        .raw;
 
 export class Obj implements ISyntaxNode {
     private mPairs: KeyValuePair[] | null;
 
+    public static New(pairs: KeyValuePair[]): Obj {
+        return new Obj(pairs);
+    }
+
     public constructor(pairs: KeyValuePair[] | null = null) {
         this.mPairs = pairs;
     }
-    
+
     get Range(): Range | null {
         throw new Error("Method not implemented.");
     }
@@ -87,3 +77,12 @@ export class Obj implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
 }
+/**
+ * 强制每个 pair 后面都要打逗号
+ */ 
+export const object = from(makeWordParser('{', nullize))
+                        .rightWith(pair.zeroOrMore(asArray).raw, selectRight)
+                        .rightWith(makeWordParser('}', nullize), selectLeft)
+                        .transform(Obj.New)
+                        .raw;
+

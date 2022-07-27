@@ -89,9 +89,9 @@ export function optional<T>(parser: IParser<T>): IParser<Option<T>> {
 
 class OneOrMore<T, T1> implements IParser<T1> {
     private mOption: IParser<Option<T>>;
-    private mResultConverter: (ts: T[]) => T1;
+    private mResultConverter: (...ts: T[]) => T1;
 
-    constructor(parser: IParser<T>, resultConverter: (ts: T[]) => T1) {
+    constructor(parser: IParser<T>, resultConverter: (...ts: T[]) => T1) {
         this.mOption = optional(parser);
         this.mResultConverter = resultConverter;
     }
@@ -112,7 +112,7 @@ class OneOrMore<T, T1> implements IParser<T1> {
                     return null;
                 }
                 return {
-                    Result: this.mResultConverter(results),
+                    Result: this.mResultConverter(...results),
                     Remain: r!.Remain,
                 };
             }
@@ -121,15 +121,15 @@ class OneOrMore<T, T1> implements IParser<T1> {
 
 }
 // oneOrmore(Optional()) 这种情况能处理吗，这是使用者的责任
-function oneOrMore<T, T1>(parser: IParser<T>, resultConverter: (ts: T[]) => T1): IParser<T1> {
+function oneOrMore<T, T1>(parser: IParser<T>, resultConverter: (...ts: T[]) => T1): IParser<T1> {
     return new OneOrMore(parser, resultConverter);
 }
 
 class ZeroOrMore<T, T1> implements IParser<T1> {
     private mOption: IParser<Option<T>>;
-    private mResultConverter: (ts: T[]) => T1;
+    private mResultConverter: (...ts: T[]) => T1;
 
-    constructor(parser: IParser<T>, resultConverter: (ts: T[]) => T1) {
+    constructor(parser: IParser<T>, resultConverter: (...ts: T[]) => T1) {
         this.mOption = optional(parser);
         this.mResultConverter = resultConverter;
     }
@@ -139,7 +139,7 @@ class ZeroOrMore<T, T1> implements IParser<T1> {
         // 因 optional 的原因，这里 r 必不可能是 null
         var r = this.iter(input, []);
         return {
-            Result: this.mResultConverter(r.Result),
+            Result: this.mResultConverter(...r.Result),
             Remain: r.Remain,
         };
     }
@@ -159,7 +159,7 @@ class ZeroOrMore<T, T1> implements IParser<T1> {
     }
     
 }
-function zeroOrMore<T, T1>(parser: IParser<T>, resultConverter: (ts: T[]) => T1): IParser<T1> {
+function zeroOrMore<T, T1>(parser: IParser<T>, resultConverter: (...ts: T[]) => T1): IParser<T1> {
     return new ZeroOrMore(parser, resultConverter);
 }
 
@@ -278,25 +278,17 @@ export const eitherOf = <T1, T2>(resultPrcessor: (...t1s: (T1 | null)[]) => T2, 
 // 之后想一下，大部分代码都是错的情况下，如何生成补全内容, 也就是说如何尽量匹配到正确语法的内容
 // 最终的结果都会合并到 T 中
 export type from<T> = {
-    oneOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from<T1>,
-    zeroOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from<T1>,
-    /**
-     * if not process NoOption in result type of @param resultCombinator, possibly introduce NoOption to T of next level's IParser<T>.
-     * but you can use @method transform to handle it in a separte way.
-     */
+    oneOrMore: <T1>(resultConverter: (...ts: T[]) => T1) => from<T1>,
+    zeroOrMore: <T1>(resultConverter: (...ts: T[]) => T1) => from<T1>,
     rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T, r2: T1) => T2) => from<T2>,
-    /**
-     * if not process NoOption in result type of @param resultCombinator, possibly introduce NoOption to T of next level's IParser<T>.
-     * but you can use @method transform to handle it in a separte way.
-     */
     leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1, r2: T) => T2) => from<T2>,
     transform: <T1>(transformFunc: (t: T) => T1) => from<T1>,
     raw: IParser<T>,
 };
 
 export const from: <T>(p: IParser<T>) => from<T> = <T>(p: IParser<T>) => ({
-    oneOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from(oneOrMore(p, resultConverter)),
-    zeroOrMore: <T1>(resultConverter: (ts: T[]) => T1) => from(zeroOrMore(p, resultConverter)),
+    oneOrMore: <T1>(resultConverter: (...ts: T[]) => T1) => from(oneOrMore(p, resultConverter)),
+    zeroOrMore: <T1>(resultConverter: (...ts: T[]) => T1) => from(zeroOrMore(p, resultConverter)),
     // 下面这两个主要用于加一些重点关注的内容，比如空白
     rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T, r2: T1) => T2) => from(combine(p, p1, resultCombinator)),
     leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1, r2: T) => T2) => from(combine(p1, p, resultCombinator)),
@@ -304,6 +296,7 @@ export const from: <T>(p: IParser<T>) => from<T> = <T>(p: IParser<T>) => ({
     raw: p,
 });
 
+// https://www.baidu.com
 export function appendString(s1: string, s2: string): string {
     return s1 + s2;
 }
