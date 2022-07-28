@@ -12,6 +12,7 @@ import {
     selectRight,
     or,
     Option,
+    eitherOf,
 } from "../combinator";
 import { lazy, makeWordParser, oneOf } from "../parser";
 import { asArray, combine, selectNotNull } from "../util";
@@ -80,6 +81,27 @@ const parasWithParen = from(leftParen).rightWith(optional(paras), selectRight).r
 const leftBrace = from(makeWordParser('{', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 const rightBrace = from(makeWordParser('}', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 
+class ReturnStmt implements IStatement {
+    private mExp?: Expression;
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public static New() {
+        return new ReturnStmt();
+    }
+
+    public static SetExp(statement: ReturnStmt, result: Expression) {
+        const s = statement;
+        s.mExp = result;
+        return s;
+    }
+}
 class VarStmt implements IStatement {
     private mVars?: (readonly [Identifier, Expression?])[];
 
@@ -97,10 +119,10 @@ class VarStmt implements IStatement {
     }
 
     public static AddVars(statement: VarStmt, vars: Option<(readonly [Identifier, Expression?])[]>) {
-        if (!vars.hasValue()) {
-            return;
-        }
         var s = statement;
+        if (!vars.hasValue()) {
+            return s;
+        }
         if (s.mVars) {
             s.mVars = [];
         }
@@ -206,6 +228,7 @@ class ForStmt implements IStatement {
     }
 }
 
+// 要不要语法解析过程也搞成一个语法结点内，可以有哪些子结点，而不止是解析结果
 const consBlock = function(): IParser<IStatement[]> {
     const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
     const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).rightWith(optional(blanks), selectLeft).raw;
@@ -218,7 +241,7 @@ const consBlock = function(): IParser<IStatement[]> {
                                 .raw),
                             (n, e) => ([n, e.hasValue() ? e.value : undefined] as const))
                         .raw;
-    var varStmt = from(makeWordParser('var', VarStmt.New))
+    const varStmt = from(makeWordParser('var', VarStmt.New))
                         .rightWith(varItem, VarStmt.AddVar)
                         .rightWith(optional(from(makeWordParser(',', nullize))
                                         .rightWith(varItem, selectRight)
@@ -228,8 +251,7 @@ const consBlock = function(): IParser<IStatement[]> {
                         .rightWith(makeWordParser(';', nullize), selectLeft)
                         .raw;
 
-    
-    // return statement
+    const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(expWithBlank, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).raw;
     // expression statement
     // 既然 body、if、for 各个体中互相引用了，那就不能先定义了，只能先声明，然后引用
     // body 里还有普通的语句，作为递归的终点
@@ -246,7 +268,7 @@ const consBlock = function(): IParser<IStatement[]> {
         .rightWith(optional(elseBlock), IfStmt.SetElseBlock)
         .raw;
     
-    // TODO break and continue
+    // TODO handle break and continue
     const forStmt = from(makeWordParser('for', ForStmt.New))
                     .rightWith(leftParen, selectLeft)
                     .rightWith(expWithSemicolon, ForStmt.SetInit)
@@ -255,7 +277,7 @@ const consBlock = function(): IParser<IStatement[]> {
                     .rightWith(rightParen, selectLeft)
                     .rightWith(block, ForStmt.SetBlock)
                     .raw;
-    const body = from(or(ifStmt, forStmt, (a, b) => (selectNotNull<IStatement>(a, b)))).zeroOrMore(asArray).raw;
+    const body = from(eitherOf<IStatement, IStatement>(selectNotNull, ifStmt, forStmt, retStmt, varStmt)).zeroOrMore(asArray).raw;
     return body;
 };
 
