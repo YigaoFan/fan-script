@@ -121,6 +121,7 @@ class FuncLiteral implements ILiteral {
 }
 
 const consLiteral = function(): IParser<ILiteral> {
+    // undefined 和 null 没弄吧？ TODO
     const num = from(number).transform(NumberLiteral.New).raw;
     const str = from(string).transform(StringLiteral.New).raw;
     const obj = from(object).transform(ObjectLiteral.New).raw;

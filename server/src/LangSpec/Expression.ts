@@ -242,8 +242,7 @@ class RefinementExpression implements IExpression {
 
     public get Key() : IExpression | undefined {
         return this.mKey;
-    }
-    
+    }    
 }
 
 class NewExpression implements IExpression {
@@ -274,7 +273,7 @@ class NewExpression implements IExpression {
     }
 }
 
-class DeleteExpression implements IExpression {
+export class DeleteExpression implements IExpression {
     get Range(): Range | null {
         throw new Error("Method not implemented.");
     }
@@ -301,10 +300,20 @@ class DeleteExpression implements IExpression {
         return expression;
     }
 }
-const refine1 = from(makeWordParser('[', RefinementExpression.New)).rightWith(expression, RefinementExpression.SetKey).rightWith(makeWordParser(']', nullize), selectLeft).raw;
-const refine2 = from(makeWordParser('.', RefinementExpression.New)).rightWith(expression, RefinementExpression.SetKey).raw;
-export const refinement = or(refine1, refine2, selectNotNull) as IParser<RefinementExpression>;
-export const invocation = from(makeWordParser('(', InvocationExpression.New)).rightWith(from(expression).rightWith(makeWordParser(',', nullize), selectLeft).zeroOrMore(asArray).raw, InvocationExpression.SetArgs).rightWith(makeWordParser(')', nullize), selectLeft).raw;
+
+export const genRefinement = <T>(nodeCtor: () => T, keySetter: (t: T, k: IExpression) => T) => {
+    const refine1 = from(makeWordParser('[', nodeCtor)).rightWith(expression, keySetter).rightWith(makeWordParser(']', nullize), selectLeft).raw;
+    const refine2 = from(makeWordParser('.', nodeCtor)).rightWith(expression, keySetter).raw;
+    const refinement = or(refine1, refine2, selectNotNull) as IParser<T>;
+    return refinement;
+};
+const refinement = genRefinement(RefinementExpression.New, RefinementExpression.SetKey);
+export const genInvocation = <T>(nodeCtor: () => T, argsSetter: (t: T, k: IExpression[]) => T) => {
+    // add space TODO
+    const invocation = from(makeWordParser('(', nodeCtor)).rightWith(from(expression).rightWith(makeWordParser(',', nullize), selectLeft).zeroOrMore(asArray).raw, argsSetter).rightWith(makeWordParser(')', nullize), selectLeft).raw;
+    return invocation;
+};
+const invocation = genInvocation(InvocationExpression.New, InvocationExpression.SetArgs);
 export const deleteExp = from(makeWordParser('delete', DeleteExpression.New)).rightWith(whitespace, selectLeft).rightWith(expression, DeleteExpression.SetObject).rightWith(from(refinement).transform(x => x.Key!).raw, DeleteExpression.SetKey).raw;
 
 export type Expression = IExpression;

@@ -15,11 +15,11 @@ import {
     eitherOf,
 } from "../combinator";
 import { lazy, makeWordParser, oneOf } from "../parser";
-import { asArray, combine, selectNotNull } from "../util";
+import { asArray, combine, selectNotNull, selectNotNullIn2DifferentType } from "../util";
 import { whitespace } from "./Whitespace";
 import { Identifier, identifier } from "./Identifier";
 import { Statement } from "./Statement";
-import { deleteExp, Expression, expression, invocation, refinement } from "./Expression";
+import { deleteExp, DeleteExpression, Expression, expression, genInvocation, genRefinement } from "./Expression";
 
 export class Func implements ISyntaxNode {
     private mName?: Identifier;
@@ -228,7 +228,205 @@ class ForStmt implements Statement {
     }
 }
 
+// 每个结点只表示自己有的信息，不携带前后结点的信息
+abstract class ExpStmtSubNode implements ISyntaxNode  {
+    abstract get Range(): Range | null;
+    abstract set Range(range: Range | null);
+    abstract get Valid(): boolean;
+    private mRightNode?: ExpStmtSubNode;
+
+    /**
+     * Set right node, return current work node.
+     * @returns current work node. 
+     * If right node set successful(right is not undefined), current work node will move forward to this right node.
+     */
+    public static SetRightReturnCurrent(node: ExpStmtSubNode, right?: ExpStmtSubNode) {
+        if (right) {
+            node.mRightNode = right;
+            return right;
+        }
+        return node;
+    }
+}
+
+/**
+ * For place start with Option parser(not sure parse result), and we need a head, so this class
+ */
+class Empty_ExpStmtSubNode extends ExpStmtSubNode {
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public static New() {
+        const n = new Empty_ExpStmtSubNode();
+        return n;
+    }
+}
+
+class Name_ExpStmtSubNode extends ExpStmtSubNode {
+    private mName?: Identifier;
+
+    public static New(name: Identifier): Name_ExpStmtSubNode {
+        return new Name_ExpStmtSubNode(name);
+    }
+
+    public constructor(name: Identifier) {
+        super();
+        this.mName = name;
+    }
+    
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+}
+
+class Expression_ExpStmtSubNode extends ExpStmtSubNode {
+    private mExp?: Expression;
+
+    public static New(expression: Expression): Expression_ExpStmtSubNode {
+        return new Expression_ExpStmtSubNode(expression);
+    }
+
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public constructor(expression: Expression) {
+        super();
+        this.mExp = expression;
+    }
+}
+
+class Assign_ExpStmtSubNode extends ExpStmtSubNode {
+    public static New(): Assign_ExpStmtSubNode {
+        return new Assign_ExpStmtSubNode();
+    }
+
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }    
+}
+
+class AddAssign_ExpStmtSubNode extends ExpStmtSubNode {
+    public static New() {
+        return new AddAssign_ExpStmtSubNode();
+    }
+
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+}
+
+class MinusAssign_ExpStmtSubNode extends ExpStmtSubNode {
+    public static New() {
+        return new MinusAssign_ExpStmtSubNode();
+    }
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }    
+}
+
+class Invoke_ExpStmtSubNode extends ExpStmtSubNode {
+    private mArgs?: Expression[];
+
+    public static New() {
+        return new Invoke_ExpStmtSubNode();
+    }
+
+    public static SetArgs(node: Invoke_ExpStmtSubNode, args: Expression[]) {
+        node.mArgs = args;
+        return node;
+    }
+
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }    
+}
+
+class Refine_ExpStmtSubNode extends ExpStmtSubNode {
+    private mKey?: Expression;
+
+    public static New() {
+        return new Refine_ExpStmtSubNode();
+    }
+
+    public static SetKey(node: Refine_ExpStmtSubNode, key: Expression) {
+        node.mKey = key;
+        return node;
+    }
+
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }    
+}
+
 class ExpStmt implements Statement {
+    private mRoot?: ExpStmtSubNode | DeleteExpression;
+
+    public static New(root: ExpStmtSubNode | DeleteExpression) {
+        return new ExpStmt(root);
+    }
+
+    public constructor(root: ExpStmtSubNode | DeleteExpression) {
+        this.mRoot = root;
+    }
+
+    get Range(): Range | null {
+        throw new Error("Method not implemented.");
+    }
+    set Range(range: Range | null) {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
 }
 
 // 要不要语法解析过程也搞成一个语法结点内，可以有哪些子结点，而不止是解析结果有结构
@@ -256,21 +454,37 @@ const consBlock = function(): IParser<Statement[]> {
 
     const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(expWithBlank, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).raw;
     // expression statement
-    // 有环就定义一个下面个这样的函数，确实是这样一个惯用法，环其实就是递归
-    const consExpStmt = function(): IParser<Statement> {
-        const firstBranch = from(makeWordParser('=', nullize)).rightWith(optional(lazy(consExpStmt)), selectRight);
-        const secondBranch = from(makeWordParser('+=', nullize));
-        const thirdBranch = from(makeWordParser('-=', nullize));
-        const toWithExpressions = [firstBranch, secondBranch, thirdBranch, ];
-        for (const i of toWithExpressions) {
-            i.rightWith(expression, selectRight);
-        }
-        const consForInvokeCircle = function() {
-            const fourthBranch = from(invocation).oneOrMore(asArray).rightWith(optional(lazy(consForInvokeCircle)));
-            const oneWay = from(optional(refinement)).rightWith(eitherOf(selectNotNull, firstBranch.raw, secondBranch.raw, thirdBranch.raw, fourthBranch.raw)).raw;
-            return oneWay;
+    // 有环就定义一个下面consAfterName这样的函数，确实是这样一个惯用法，环其实就是递归；之前说的跳到某一点也是这样做(AfterName 就代表一个点)
+    // 也就是说可以有算法可以将语法图固定地转换为解析器代码
+    // consXXX 代表函数生成的解析器内部有递归
+    // getXXX 只是简单的封装，让代码不那么乱
+    const getExpStmt = function(): IParser<ExpStmt> {
+        const secondBranch = from(makeWordParser('+=', AddAssign_ExpStmtSubNode.New));
+        const thirdBranch = from(makeWordParser('-=', MinusAssign_ExpStmtSubNode.New));
+        const refinement = genRefinement(Refine_ExpStmtSubNode.New, Refine_ExpStmtSubNode.SetKey);
+        const consAfterName = function(): IParser<ExpStmtSubNode> {
+            const firstBranch = from(makeWordParser('=', Assign_ExpStmtSubNode.New)).rightWith(optional(lazy(consAfterName)), (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, r.ToUndefined()));
+            const toWithExpressions = [firstBranch, secondBranch, thirdBranch, ];// ts 的类型系统真是厉害呀，这个数组项的类型的模板参数可以归到基类
+            const branches = toWithExpressions.map(x => x.rightWith(expression, (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, Expression_ExpStmtSubNode.New(r))));
+
+            const invocation = genInvocation(Invoke_ExpStmtSubNode.New, Invoke_ExpStmtSubNode.SetArgs);
+            // invoke 完如果想环，必须先 refine 一下
+            // 同一种图，可能有多种代码表示，比如下面这个两个分支，可以用 eitherof，也可以用 optional
+            const fourthBranch = from(invocation)
+                                    .oneOrMore(asArray)
+                                    .rightWith(optional(from(refinement).rightWith(lazy(consAfterName), ExpStmtSubNode.SetRightReturnCurrent).raw), 
+                                               (nodes, r) => ExpStmtSubNode.SetRightReturnCurrent(nodes.reduce((previous, current) => ExpStmtSubNode.SetRightReturnCurrent(previous, current)), r.ToUndefined()));
+            branches.push(fourthBranch);
+            const start = from(optional(refinement))
+                                .transform(x => ExpStmtSubNode.SetRightReturnCurrent(Empty_ExpStmtSubNode.New(), x.ToUndefined()))
+                                .rightWith(eitherOf(selectNotNull, ...toWithExpressions.map(x => x.raw)),
+                                           ExpStmtSubNode.SetRightReturnCurrent)
+                                .raw;
+            return start;
         };
-        return eitherOf(selectNotNull, consForInvokeCircle(), deleteExp);
+        const oneWay = from(identifier).transform(Name_ExpStmtSubNode.New).rightWith(consAfterName(), ExpStmtSubNode.SetRightReturnCurrent).raw;
+        const exp = or(oneWay, deleteExp, (a, b) => ExpStmt.New(selectNotNullIn2DifferentType(a, b)));
+        return exp;
     };
 
     // 既然 body、if、for 各个体中互相引用了，那就不能先定义了，只能先声明，然后引用
@@ -297,7 +511,7 @@ const consBlock = function(): IParser<Statement[]> {
                     .rightWith(rightParen, selectLeft)
                     .rightWith(block, ForStmt.SetBlock)
                     .raw;
-    const body = from(eitherOf<Statement, Statement>(selectNotNull, ifStmt, forStmt, retStmt, varStmt)).zeroOrMore(asArray).raw;
+    const body = from(eitherOf<Statement, Statement>(selectNotNull, ifStmt, forStmt, retStmt, varStmt, getExpStmt())).zeroOrMore(asArray).raw;
     return body;
 };
 

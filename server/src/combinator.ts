@@ -54,6 +54,10 @@ export class Option<T> {
         }
         throw new Error('get value while no value stored in Option');
     }
+
+    public ToUndefined(): T | undefined {
+        return this.mT;
+    }
 }
 
 class Optional<T> implements IParser<Option<T>> {
@@ -313,6 +317,7 @@ export const nullize = <T>(...ts: T[]) => (null);
 export const selectLeft = <T1, T2>(t1: T1, t2: T2) => (t1);
 export const selectRight = <T1, T2>(t1: T1, t2: T2) => (t2);
 // caller 需要保证两个中必有一空白
+// TODO due to unused, delete this method
 export const selectNonblank = (s1: string, s2: string): string => {
     s1 = s1.trim();
     s2 = s2.trim();
