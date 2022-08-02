@@ -8,7 +8,7 @@ import { array, Array, } from "./Array";
 import { Func, func } from "./Func";
 import { selectNotNull } from "../util";
 
-export interface ILiteral extends ISyntaxNode {
+interface ILiteral extends ISyntaxNode {
     // ['constructor']: new (...args: ConstructorParameters<typeof ILiteral>) => this;
 }
 
@@ -131,6 +131,7 @@ const consLiteral = function(): IParser<ILiteral> {
     return lit;
 };
 export const literal: IParser<ILiteral> = consLiteral();
+export type Literal = ILiteral;// 不要直接暴露接口出去
 
 // 原来是忘了 npm install
 // 有时候一些编译错误，需要重新开始编译才能不提示，增量编译还是会错误地提示有问题

@@ -18,13 +18,13 @@ import { lazy, makeWordParser, oneOf } from "../parser";
 import { asArray, combine, selectNotNull } from "../util";
 import { whitespace } from "./Whitespace";
 import { Identifier, identifier } from "./Identifier";
-import { IStatement } from "./Statement";
-import { Expression, expression } from "./Expression";
+import { Statement } from "./Statement";
+import { deleteExp, Expression, expression, invocation, refinement } from "./Expression";
 
 export class Func implements ISyntaxNode {
     private mName?: Identifier;
     private mParas?: Identifier[];
-    private mBlock?: IStatement[];
+    private mBlock?: Statement[];
 
     public static New() {
         return new Func();
@@ -42,7 +42,7 @@ export class Func implements ISyntaxNode {
         return func;
     }
 
-    public static SetBlock(func: Func, block: IStatement[]) {
+    public static SetBlock(func: Func, block: Statement[]) {
         func.mBlock = block;
         return func;
     }
@@ -81,7 +81,7 @@ const parasWithParen = from(leftParen).rightWith(optional(paras), selectRight).r
 const leftBrace = from(makeWordParser('{', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 const rightBrace = from(makeWordParser('}', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 
-class ReturnStmt implements IStatement {
+class ReturnStmt implements Statement {
     private mExp?: Expression;
     get Range(): Range | null {
         throw new Error("Method not implemented.");
@@ -102,7 +102,7 @@ class ReturnStmt implements IStatement {
         return s;
     }
 }
-class VarStmt implements IStatement {
+class VarStmt implements Statement {
     private mVars?: (readonly [Identifier, Expression?])[];
 
     public static New(): VarStmt {
@@ -144,10 +144,10 @@ class VarStmt implements IStatement {
 
 }
 
-class IfStmt implements IStatement {
+class IfStmt implements Statement {
     private mCondExp?: Expression;
-    private mBlock?: IStatement[];
-    private mElseBlock?: IStatement[];
+    private mBlock?: Statement[];
+    private mElseBlock?: Statement[];
     // 每个节点都该有个准入条件，方便补全时判断是否已经进入节点，或者有个判断当前节点是否进入的方法
     // 目前是创造了节点都已经进入了
     public static New() {
@@ -159,12 +159,12 @@ class IfStmt implements IStatement {
         return statement;
     }
 
-    public static SetBlock(statement: IfStmt, block: IStatement[]) {
+    public static SetBlock(statement: IfStmt, block: Statement[]) {
         statement.mElseBlock = block;
         return statement;
     }
 
-    public static SetElseBlock(statement: IfStmt, elseBlock: Option<IStatement[]>) {
+    public static SetElseBlock(statement: IfStmt, elseBlock: Option<Statement[]>) {
         if (elseBlock.hasValue()) {
             statement.mElseBlock = elseBlock.value;
         }
@@ -184,11 +184,11 @@ class IfStmt implements IStatement {
     }
 }
 
-class ForStmt implements IStatement {
+class ForStmt implements Statement {
     private mInitExp?: Expression;
     private mCondExp?: Expression;
     private mUpdateExp?: Expression;
-    private mBlock?: IStatement[];
+    private mBlock?: Statement[];
 
     public static New(): ForStmt {
         return new ForStmt();
@@ -209,7 +209,7 @@ class ForStmt implements IStatement {
         return statement;
     }
 
-    public static SetBlock(statement: ForStmt, block: IStatement[]) {
+    public static SetBlock(statement: ForStmt, block: Statement[]) {
         statement.mBlock = block;
         return statement;
     }
@@ -228,8 +228,11 @@ class ForStmt implements IStatement {
     }
 }
 
-// 要不要语法解析过程也搞成一个语法结点内，可以有哪些子结点，而不止是解析结果
-const consBlock = function(): IParser<IStatement[]> {
+class ExpStmt implements Statement {
+}
+
+// 要不要语法解析过程也搞成一个语法结点内，可以有哪些子结点，而不止是解析结果有结构
+const consBlock = function(): IParser<Statement[]> {
     const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
     const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).rightWith(optional(blanks), selectLeft).raw;
 
@@ -253,6 +256,23 @@ const consBlock = function(): IParser<IStatement[]> {
 
     const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(expWithBlank, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).raw;
     // expression statement
+    // 有环就定义一个下面个这样的函数，确实是这样一个惯用法，环其实就是递归
+    const consExpStmt = function(): IParser<Statement> {
+        const firstBranch = from(makeWordParser('=', nullize)).rightWith(optional(lazy(consExpStmt)), selectRight);
+        const secondBranch = from(makeWordParser('+=', nullize));
+        const thirdBranch = from(makeWordParser('-=', nullize));
+        const toWithExpressions = [firstBranch, secondBranch, thirdBranch, ];
+        for (const i of toWithExpressions) {
+            i.rightWith(expression, selectRight);
+        }
+        const consForInvokeCircle = function() {
+            const fourthBranch = from(invocation).oneOrMore(asArray).rightWith(optional(lazy(consForInvokeCircle)));
+            const oneWay = from(optional(refinement)).rightWith(eitherOf(selectNotNull, firstBranch.raw, secondBranch.raw, thirdBranch.raw, fourthBranch.raw)).raw;
+            return oneWay;
+        };
+        return eitherOf(selectNotNull, consForInvokeCircle(), deleteExp);
+    };
+
     // 既然 body、if、for 各个体中互相引用了，那就不能先定义了，只能先声明，然后引用
     // body 里还有普通的语句，作为递归的终点
     // 下面这个里面其实还可以互相嵌套的，其实任何 function body 里可以有的东西都可以在里面，这就递归了
@@ -277,7 +297,7 @@ const consBlock = function(): IParser<IStatement[]> {
                     .rightWith(rightParen, selectLeft)
                     .rightWith(block, ForStmt.SetBlock)
                     .raw;
-    const body = from(eitherOf<IStatement, IStatement>(selectNotNull, ifStmt, forStmt, retStmt, varStmt)).zeroOrMore(asArray).raw;
+    const body = from(eitherOf<Statement, Statement>(selectNotNull, ifStmt, forStmt, retStmt, varStmt)).zeroOrMore(asArray).raw;
     return body;
 };
 

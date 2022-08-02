@@ -283,6 +283,7 @@ export type from<T> = {
     rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T, r2: T1) => T2) => from<T2>,
     leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1, r2: T) => T2) => from<T2>,
     transform: <T1>(transformFunc: (t: T) => T1) => from<T1>,
+    // surround: <T1, T2, T3> (left: IParser<T1>, right: IParser<T2>, resultCombinator: (r1: T1, r: T, r2: T) => T3) => from<T3>,
     raw: IParser<T>,
 };
 
@@ -293,6 +294,7 @@ export const from: <T>(p: IParser<T>) => from<T> = <T>(p: IParser<T>) => ({
     rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T, r2: T1) => T2) => from(combine(p, p1, resultCombinator)),
     leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1, r2: T) => T2) => from(combine(p1, p, resultCombinator)),
     transform: <T1>(transformFunc: (t: T) => T1) => from(transform(p, transformFunc)),
+    // surround: <T1, T2, T3>(left: IParser<T1>, right: IParser<T2>, resultCombinator: (r1: T1, r: T, r2: T) => T3) => from()
     raw: p,
 });
 

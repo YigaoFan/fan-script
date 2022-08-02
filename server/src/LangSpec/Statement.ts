@@ -9,9 +9,7 @@ class StatementManager {
     
 }
 
-export interface IStatement extends ISyntaxNode {
+interface IStatement extends ISyntaxNode {
 }
 
-export class Statement implements ISyntaxNode {
-
-}
+export type Statement = IStatement;

@@ -25,4 +25,9 @@ export const selectNotNullIn2DifferentType = <T1, T2>(t1: T1 | null, t2: T2 | nu
 };
 
 export const asArray = <T>(...ts: T[]) => (ts);
+export const exchangeParas = <T1, T2, T3>(func: (t1: T1, t2: T2)=> T3) => {
+    return (t2: T2, t1: T1): T3 => {
+        return func(t1, t2);
+    };
+};
 
