@@ -78,8 +78,8 @@ const varWithBlanks = from(varName).leftWith(optional(blanks), selectRight).righ
 const remainParas = from(makeWordParser(',', nullize)).rightWith(varWithBlanks, selectRight).zeroOrMore(asArray).raw;
 const paras = from(varWithBlanks).rightWith(optional(remainParas), rightCombineOption).raw;
 const parasWithParen = from(leftParen).rightWith(optional(paras), selectRight).rightWith(rightParen, selectLeft).raw;
-const leftBrace = from(makeWordParser('{', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
-const rightBrace = from(makeWordParser('}', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
+export const leftBrace = from(makeWordParser('{', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
+export const rightBrace = from(makeWordParser('}', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 
 class ReturnStmt implements Statement {
     private mExp?: Expression;
@@ -102,7 +102,7 @@ class ReturnStmt implements Statement {
         return s;
     }
 }
-class VarStmt implements Statement {
+export class VarStmt implements Statement {
     private mVars?: (readonly [Identifier, Expression?])[];
 
     public static New(): VarStmt {
@@ -141,7 +141,6 @@ class VarStmt implements Statement {
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
-
 }
 
 class IfStmt implements Statement {
@@ -429,28 +428,10 @@ class ExpStmt implements Statement {
     }
 }
 
+const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 // 要不要语法解析过程也搞成一个语法结点内，可以有哪些子结点，而不止是解析结果有结构
-const consBlock = function(): IParser<Statement[]> {
-    const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
+const consBody = function(): IParser<Statement[]> {
     const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).rightWith(optional(blanks), selectLeft).raw;
-
-    const varItem = from(identifier)
-                        .rightWith(optional(blanks), selectLeft)
-                        .rightWith(
-                            optional(from(makeWordParser('=', nullize))
-                                .rightWith(expWithBlank, selectRight)
-                                .raw),
-                            (n, e) => ([n, e.hasValue() ? e.value : undefined] as const))
-                        .raw;
-    const varStmt = from(makeWordParser('var', VarStmt.New))
-                        .rightWith(varItem, VarStmt.AddVar)
-                        .rightWith(optional(from(makeWordParser(',', nullize))
-                                        .rightWith(varItem, selectRight)
-                                        .zeroOrMore(asArray)
-                                        .raw),
-                                   VarStmt.AddVars)
-                        .rightWith(makeWordParser(';', nullize), selectLeft)
-                        .raw;
 
     const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(expWithBlank, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).raw;
     // expression statement
@@ -491,7 +472,7 @@ const consBlock = function(): IParser<Statement[]> {
     // body 里还有普通的语句，作为递归的终点
     // 下面这个里面其实还可以互相嵌套的，其实任何 function body 里可以有的东西都可以在里面，这就递归了
     // 肯定要提供一种惰性求值，类似指针的操作，保留一种无限的能力，不然这里的函数会无限递归下去
-    const block = from(leftBrace).rightWith(lazy(consBlock), selectRight).rightWith(optional(blanks), selectLeft).rightWith(rightBrace, selectLeft).raw;
+    const block = from(leftBrace).rightWith(lazy(consBody), selectRight).rightWith(optional(blanks), selectLeft).rightWith(rightBrace, selectLeft).raw;
 
     const elseBlock = from(makeWordParser('else', id)).rightWith(block, selectRight).raw
     const ifStmt = from(makeWordParser('if', IfStmt.New))
@@ -515,6 +496,23 @@ const consBlock = function(): IParser<Statement[]> {
     return body;
 };
 
+const varItem = from(identifier)
+                        .rightWith(optional(blanks), selectLeft)
+                        .rightWith(
+                            optional(from(makeWordParser('=', nullize))
+                                .rightWith(expWithBlank, selectRight)
+                                .raw),
+                            (n, e) => ([n, e.ToUndefined()] as const))
+                        .raw;
+export const varStmt = from(makeWordParser('var', VarStmt.New))
+                        .rightWith(varItem, VarStmt.AddVar)
+                        .rightWith(optional(from(makeWordParser(',', nullize))
+                                        .rightWith(varItem, selectRight)
+                                        .zeroOrMore(asArray)
+                                        .raw),
+                                   VarStmt.AddVars)
+                        .rightWith(makeWordParser(';', nullize), selectLeft)
+                        .raw;
 // parse xxx, start
 //      parse sub part
 // parse xxx, result
@@ -525,6 +523,6 @@ export const func = from(makeWordParser('func', Func.New))
                     .rightWith(optional(blanks), selectLeft)
                     .rightWith(parasWithParen, Func.SetParameters)
                     .rightWith(leftBrace, selectLeft)
-                    .rightWith(lazy(consBlock), Func.SetBlock)
+                    .rightWith(lazy(consBody), Func.SetBlock)
                     .rightWith(rightBrace, selectLeft)
                     .raw;
