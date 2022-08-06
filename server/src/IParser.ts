@@ -1,4 +1,5 @@
 import { log, } from './util';
+import { HtmlLogger, } from './HtmlLogger';
 
 // stateful internal
 export interface IInputStream {
@@ -101,6 +102,10 @@ export class Text {
     get Filename(): string {
         return this.mFilename;
     }
+
+    public toString(): string {
+        return this.Value;
+    }
 }
 // export class NoOption {
 //     public static new() {
@@ -126,6 +131,7 @@ enum Indent {
     CurrentLineReduce,
 }
 
+export const htmlLogger = new HtmlLogger('parse.html');
 /**
  * @param indentSetting is set for the next log statement
  * @var indent is global variable to store indent count
@@ -138,7 +144,8 @@ const logWith = function (indentSetting: Indent, ...args: any[]) {
         case Indent.CurrentLineReduce: --indent;
     }
 
-    log(genSpaces(indent), ...args);
+    htmlLogger.Log(indent, ...args);
+    // log(genSpaces(indent), ...args);
 
     switch (indentSetting) {
         case Indent.NextLineAdd: ++indent;
@@ -157,9 +164,10 @@ export const debug = function (enable: boolean = enableDebug) {
         var v = d.value;
         d.value = function (this: any, ...args: any[]) {
             var title = `${this.constructor.name} ${k}`;
-            logWith(Indent.NextLineAdd, `start ${title} with`, JSON.stringify(args));
+            // summary
+            logWith(Indent.NextLineAdd, `start ${title} with ${args}`);// ${} will call class.toString to get better string
             var r = v.apply(this, args);
-            logWith(Indent.CurrentLineReduce, `end ${title}, result ${JSON.stringify(r)}`);
+            logWith(Indent.CurrentLineReduce, `end ${title}, result ${r}`);
             return r;
         };
 
