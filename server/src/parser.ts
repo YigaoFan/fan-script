@@ -8,7 +8,6 @@ import {
     ParserResult,
     IParser,
     debug,
-    Range,
     Text,
 } from "./IParser";
 
@@ -26,22 +25,20 @@ export class WordParser<T> implements IParser<T> {
     @debug()
     public parse(input: ParserInput): ParserResult<T> {
         let word = this.mWord;
-        const r = Range.New(input.Filename);
+        const t = Text.New(input.Filename);
         // log(`word parse "${word}"`);
         for (let i = 0; i < word.length; i++) {
             const c = input.NextChar;
-            if (c) {
-                if (word[i] == c.Value) {
-                    r.Append(c.Range);
-                    continue;
-                }
+            if (c.Equal(word[i])) {
+                t.Append(c);
+                continue;
             }
             // log(`failed on ${i}, expect "${word[i]}", actual: "${c}"`);
             return null;
         }
 
         return {
-            Result: this.mResultFactory(Text.New(this.mWord, r)),
+            Result: this.mResultFactory(t),
             Remain: input,
         };
     }

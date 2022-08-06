@@ -1,5 +1,5 @@
 import { id, or, from, nullize, selectRight, optional, Option, } from "../combinator";
-import { IParser, Text } from "../IParser";
+import { IParser, Text, Position, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, oneOf, lazy, } from "../parser";
 import { combine, selectNotNull, } from "../util";
@@ -37,6 +37,12 @@ export class Number implements ISyntaxNode {
         this.mInteger = integer;
         this.mFraction = fraction;
         this.mExponent = exponent;
+    }
+    Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
     }
 }
 

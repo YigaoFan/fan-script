@@ -1,5 +1,5 @@
 import { id, or, from, nullize, selectRight, optional, eitherOf, selectLeft, } from "../combinator";
-import { IParser, Range, Text } from "../IParser";
+import { IParser, Text, Position, } from "../IParser";
 import { makeWordParser, oneOf, lazy, } from "../parser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { Identifier, identifier } from "./Identifier";
@@ -53,10 +53,7 @@ class LiteralExpression implements IExpression {
         this.mLiteral = literal;
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -75,10 +72,7 @@ class IdentifierExpression implements IExpression {
         this.mIdentifier = identifier;
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -87,10 +81,7 @@ class IdentifierExpression implements IExpression {
 }
 
 class PrefixOperatorExpression implements IExpression {
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -135,10 +126,7 @@ class InfixOperatorExpression implements IExpression {
     public constructor(operator: Text) {
         this.mOperator = operator;
     }
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -147,10 +135,7 @@ class InfixOperatorExpression implements IExpression {
 }
 
 class TernaryExpression implements IExpression {
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -181,10 +166,7 @@ class TernaryExpression implements IExpression {
 }
 
 class InvocationExpression implements IExpression {
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -214,10 +196,7 @@ class InvocationExpression implements IExpression {
 }
 
 class RefinementExpression implements IExpression {
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -246,10 +225,7 @@ class RefinementExpression implements IExpression {
 }
 
 class NewExpression implements IExpression {
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -274,10 +250,7 @@ class NewExpression implements IExpression {
 }
 
 export class DeleteExpression implements IExpression {
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {

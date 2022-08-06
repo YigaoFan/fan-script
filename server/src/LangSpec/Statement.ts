@@ -3,12 +3,6 @@
 
 import { ISyntaxNode } from "../ISyntaxNode";
 
-class StatementManager {
-    public get Statments() : IStatement[] {
-    }
-    
-}
-
 interface IStatement extends ISyntaxNode {
 }
 

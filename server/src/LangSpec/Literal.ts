@@ -1,4 +1,4 @@
-import { IParser, Range } from "../IParser";
+import { IParser, Position, } from "../IParser";
 import { id, or, from, nullize, selectRight, optional, Option, eitherOf, } from "../combinator";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { number, Number, } from "./Number";
@@ -24,10 +24,7 @@ class NumberLiteral implements ILiteral {
         this.mNum = num;
     }
     
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -46,10 +43,7 @@ class StringLiteral implements ILiteral {
     public constructor(str: String) {
         this.mStr = str;
     }
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -67,10 +61,7 @@ class ObjectLiteral implements ILiteral {
     public constructor(obj: Obj) {
         this.mObj = obj;
     }
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -88,10 +79,7 @@ class ArrayLiteral implements ILiteral {
     public constructor(array: Array) {
         this.mArray = array;
     }
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -109,10 +97,7 @@ class FuncLiteral implements ILiteral {
     public constructor(func: Func) {
         this.mFunc = func;
     }
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {

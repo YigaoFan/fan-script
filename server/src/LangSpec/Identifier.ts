@@ -11,7 +11,7 @@ import {
     selectRight,
     or,
 } from "../combinator";
-import { IParser, Range, Text } from "../IParser";
+import { IParser, Text, Position, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { combine, } from "../util";
 
@@ -29,10 +29,7 @@ export class Identifier implements ISyntaxNode {
     public static New(value: Text): Identifier {
         throw new Error("Method not implemented.");
     }
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {

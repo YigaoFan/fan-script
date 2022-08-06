@@ -1,4 +1,4 @@
-import { IParser, Range } from "../IParser";
+import { IParser, Position, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import {
     from,
@@ -44,10 +44,7 @@ export class Class implements ISyntaxNode {
         return cls;
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {

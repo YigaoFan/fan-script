@@ -11,7 +11,7 @@ import {
     selectRight,
     or,
 } from "../combinator";
-import { IParser, ParserResult, Text, Range, } from "../IParser";
+import { IParser, ParserResult, Position, Text, } from "../IParser";
 import { ISyntaxNode, } from '../ISyntaxNode';
 import { combine, selectNotNull, } from '../util';
 
@@ -47,22 +47,13 @@ export class String implements ISyntaxNode {
     public constructor(text: Text) {
         this.mText = text;
     }
+    
+    Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
 
     get Valid(): boolean {
         return this.mText != null;
-    }
-
-    public get Range(): Range | null {
-        if (this.mText) {
-            return this.mText.Range;
-        }
-        return null;        
-    }
-
-    public set Range(range: Range | null) { // 这里和接口类型不一样也行嘛
-        if (this.mText && range) {
-            this.mText.Range = range;
-        }
     }
 
     public get Content(): Text | null {

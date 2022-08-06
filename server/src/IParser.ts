@@ -15,7 +15,7 @@ export class Position {
         return new Position(line, row);
     }
 
-    public constructor(line: number, row: number) {
+    private constructor(line: number, row: number) {
         this.mLine = line;
         this.mRow = row;
     }
@@ -33,131 +33,75 @@ export class Position {
     }
 }
 
-// 这里代表的就是连续的范围，不允许跨行，因为不知道一行有多少个字符
-export class Range {
-    private mFilename: string;
-    // 最好这里的项和 string 中的 char 是一一对应的
-    private mStart: Position;
-    /**
-     * not included
-     */
-    private mEnd: Position;
+export class Char {
+    private mChar: string;
+    private mPosition: Position;
 
-    public static New(file: string, start: Position, end: Position) {
-        var r = new Range(file, start, end);
-        return r;
+    public static New(c: string, pos: Position) {
+        return new Char(c, pos);
     }
 
-    public static Combine(r1: Range, r2: Range): Range {
-        if (r1.mFilename == r2.mFilename) {
-            if (r1.mStart.Line == r2.mStart.Line) {
-                if (r1.mEnd.Row == r2.mStart.Row) {
-                    return Range.New(r1.mFilename, r1.mStart, r2.mEnd);
-                }
-            }
-        }
-        throw new Error(`invalid combination of ${r1} and ${r2}`);
+    public constructor(c: string, pos: Position) {
+        this.mChar = c;
+        this.mPosition = pos;
     }
 
-    private constructor(file: string, start: Position, end: Position) {
-        this.mFilename = file;
-        this.mStart = start;
-        this.mEnd = end;
-    }
-
-    public Contains(line: number, row: number): boolean {
-        if (this.mStart.Line == this.mEnd.Line) {
-            return line == this.mStart.Line
-                    && row >= this.mStart.Row
-                    && row <= this.mEnd.Row;
-        }
-        if (line == this.mStart.Line) {
-            return row >= this.mStart.Row;
-        } else if (line == this.mEnd.Line) {
-            return row < this.mEnd.Row;
-        } else {
-            return line > this.mStart.Line && line < this.mEnd.Line; 
-        }
-    }
-
-    public Append(that: Position | Range): void {
-        if (that instanceof Position) {
-            if (that.Line == this.mEnd.Line && that.Row == this.mEnd.Row) {
-                this.mEnd = Position.From(that.Line + 1, that.Row + 1);
-            }
-        } else {
-            if (that.mStart.Line == this.mEnd.Line && that.mStart.Row == this.mEnd.Row) {
-                this.mEnd = that.mEnd;
-            }
-        }
-    }
-
-    public get Filename(): string {
-        return this.mFilename;
-    }
-
-    public SubRange(start: number, end?: number): Range {
-        var s = Position.From(this.mStart.Line, this.mStart.Row + start);
-        let e: Position;
-        if (end) {
-            e = Position.From(this.mStart.Line, this.mStart.Row + end);
-        } else {
-            e = this.mEnd;
-        }
-        return Range.New(this.mFilename, s, e);
-    }
-
-    public At(i: number): Range {
-        var l = this.mStart.Line;
-        var r = this.mStart.Row;
-        return Range.New(this.mFilename, Position.From(l, r + i), Position.From(l, r + i + 1));
+    public get Value(): string {
+        return this.mChar;
     }
 }
 
 export class Text {
-    private mValue: string;
-    private mRange: Range;
+    private mChars: Char[];
+    private mFilename: string;
 
-    // 说实话这个工厂为什么要有我也不太清楚
-    // 默认 value 都是同一行的，这个可能之后要去掉这个限制
-    public static New(filename: string, value: string, start: Position) {
-        var end = Position.From(start.Line, start.Row + value.length);
-        return new Text(value, Range.New(filename, start, end));
+    public static New(filename: string, chars: Char[] = []) {
+        return new Text(filename, []);
     }
 
     public static Combine(t1: Text, t2: Text) {
-        return new Text(t1.Value + t2.Value, Range.Combine(t1.Range, t2.Range));
+        if (t1.mFilename != t2.mFilename) {
+            throw new Error('cannot combine texts in different file');
+        }
+        return new Text(t1.mFilename, t1.mChars.concat(t2.mChars));
     }
 
-    private constructor(value: string, range: Range) {
-        this.mValue = value;
-        this.mRange = range;
-    }
-
-    public get Value(): string {
-        return this.mValue;
-    }
-
-    public get Range(): Range {
-        return this.mRange;
-    }
-
-    public set Range(range: Range) {
-        this.mRange = range;
+    private constructor(filename: string, chars: Char[]) {
+        this.mChars = chars;
+        this.mFilename = filename;
     }
 
     public SubText(start: number, end?: number): Text {
-        return new Text(this.mValue.substring(start, end), this.mRange.SubRange(start, end));
+        return new Text(this.mFilename, this.mChars.slice(start, end));
     }
 
     public At(i: number): Text {
-        return new Text(this.mValue[i], this.mRange.At(i));
+        return new Text(this.mFilename, [this.mChars[i]]);
+    }
+
+    public Equal(s: string): boolean {
+        const v = this.mChars.map(x => x.Value).join('');
+        return v == s;
+    }
+
+    public get Value() {
+        const v = this.mChars.map(x => x.Value).join('');
+        return v;
+    }
+    /**
+     * attention: will change text internal state
+     */
+    public Append(t: Text) {
+        if (this.mFilename != t.mFilename) {
+            throw new Error('cannot combine texts in different file');
+        }
+        this.mChars.push(...t.mChars);
+    }
+
+    get Filename(): string {
+        return this.mFilename;
     }
 }
-// interface IOutputStream {
-//     get NextToken(): string;
-//     set NextToken(value: string);
-// }
 // export class NoOption {
 //     public static new() {
 //         return new NoOption();

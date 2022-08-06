@@ -1,4 +1,4 @@
-import { IParser, Range } from "../IParser";
+import { IParser, Position, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import {
     from,
@@ -47,10 +47,7 @@ export class Func implements ISyntaxNode {
         return func;
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -83,10 +80,7 @@ export const rightBrace = from(makeWordParser('}', id)).leftWith(optional(blanks
 
 class ReturnStmt implements Statement {
     private mExp?: Expression;
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -132,10 +126,7 @@ export class VarStmt implements Statement {
         return s;
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -172,10 +163,7 @@ class IfStmt implements Statement {
 
     public constructor() {
     } 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -216,10 +204,7 @@ class ForStmt implements Statement {
     public constructor() {
 
     }    
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -229,8 +214,7 @@ class ForStmt implements Statement {
 
 // 每个结点只表示自己有的信息，不携带前后结点的信息
 abstract class ExpStmtSubNode implements ISyntaxNode  {
-    abstract get Range(): Range | null;
-    abstract set Range(range: Range | null);
+    abstract Contains(p: Position): boolean;
     abstract get Valid(): boolean;
     private mRightNode?: ExpStmtSubNode;
 
@@ -252,10 +236,7 @@ abstract class ExpStmtSubNode implements ISyntaxNode  {
  * For place start with Option parser(not sure parse result), and we need a head, so this class
  */
 class Empty_ExpStmtSubNode extends ExpStmtSubNode {
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -279,10 +260,7 @@ class Name_ExpStmtSubNode extends ExpStmtSubNode {
         this.mName = name;
     }
     
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -297,10 +275,7 @@ class Expression_ExpStmtSubNode extends ExpStmtSubNode {
         return new Expression_ExpStmtSubNode(expression);
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -318,10 +293,7 @@ class Assign_ExpStmtSubNode extends ExpStmtSubNode {
         return new Assign_ExpStmtSubNode();
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -334,10 +306,7 @@ class AddAssign_ExpStmtSubNode extends ExpStmtSubNode {
         return new AddAssign_ExpStmtSubNode();
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -349,10 +318,7 @@ class MinusAssign_ExpStmtSubNode extends ExpStmtSubNode {
     public static New() {
         return new MinusAssign_ExpStmtSubNode();
     }
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -372,10 +338,7 @@ class Invoke_ExpStmtSubNode extends ExpStmtSubNode {
         return node;
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -395,10 +358,7 @@ class Refine_ExpStmtSubNode extends ExpStmtSubNode {
         return node;
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
@@ -417,10 +377,7 @@ class ExpStmt implements Statement {
         this.mRoot = root;
     }
 
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {

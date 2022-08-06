@@ -1,4 +1,4 @@
-import { IParser, Range } from "../IParser";
+import { IParser, Position, } from "../IParser";
 import { Expression, expression, } from "./Expression";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { from, nullize, optional, selectLeft, selectRight } from "../combinator";
@@ -19,10 +19,7 @@ export class Array implements ISyntaxNode {
 
     public constructor() {
     }
-    get Range(): Range | null {
-        throw new Error("Method not implemented.");
-    }
-    set Range(range: Range | null) {
+    Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
