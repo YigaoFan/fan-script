@@ -11,8 +11,8 @@ const split40PerArray = <T>(ts: T[]) : T[][] => {
     splited.push(ts.slice(0, 40));
     var remain = split40PerArray(ts.slice(40));
     return splited.concat(remain);
-}
-// TODO 自动换行
+};
+
 export const GenerateParserInputTable = (filename: string, input: IInputStream) => {
     const items: string[] = [];
     for (;;) {
