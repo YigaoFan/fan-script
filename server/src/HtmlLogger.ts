@@ -1,28 +1,66 @@
 import { writeFileSync } from "fs";
+import { Indent } from "./IParser";
+
+class HtmlDetail {
+    private mSummary: string;
+    private mDescription?: string;
+    private mSubDetails: HtmlDetail[];
+
+    public constructor(summary: string) {
+        this.mSummary = summary;
+        this.mSubDetails = [];
+    }
+
+    public static New(summary: string) {
+        return new HtmlDetail(summary);
+    }
+
+    public set Description(description: string) {
+        this.mDescription = description;
+    }
+
+    public AddSubDetail(detail: HtmlDetail) {
+        this.mSubDetails.push(detail);
+    }
+
+    public ToHtml(): string {
+        return `<details><summary>${this.mSummary}</summary>${this.mDescription}${this.mSubDetails.map(x => x.ToHtml()).join('')}</details>`;
+    }
+}
 
 export class HtmlLogger {
     private mFilename: string;
-    private mDetails: ([string, string?])[];
+    private mDetailStack: HtmlDetail[];
+    private mDetailRoot?: HtmlDetail;
 
     public constructor(filename: string) {
         this.mFilename = filename;
-        this.mDetails = [];
+        this.mDetailStack = [];
     }
 
-    public Log(level: number, ...args: any[]) {
-        const len = this.mDetails.length;
+    public Log(indentSetting: Indent, ...args: any[]) {
         const s = args.join(' ');
-        if (level == len) {
-            this.mDetails.push([s]);
-            return;
+        const len = this.mDetailStack.length;
+        switch (indentSetting) {
+            case Indent.NextLineAdd:
+                var d = HtmlDetail.New(s);
+                if (len == 0) {
+                    this.mDetailRoot = d;
+                } else {
+                    this.mDetailStack[len - 1].AddSubDetail(d);
+                }
+                this.mDetailStack.push(d);
+                break;
+            case Indent.CurrentLineReduce:
+                this.mDetailStack[len - 1].Description = s;
+                this.mDetailStack.pop();
+                break;
         }
-
-        this.mDetails[level][1] = s;
     }
 
     Close() {
-        var details = this.mDetails.map(x => `<details><summary>${x[0]}</summary>${x[1]}</details>`);
-        var body = details.reduce((total, current) => total.replace('</details>', `${current}</details>`));
+        // var details = this.mDetailStack.map(x => `<details><summary>${x[0]}</summary>${x[1]}</details>`);
+        var body = this.mDetailRoot?.ToHtml();
         var s = `<!DOCTYPE html>
 <html lang="en">
 <head>
