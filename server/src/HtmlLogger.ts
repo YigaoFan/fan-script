@@ -1,5 +1,6 @@
 import { writeFileSync } from "fs";
 import { Indent } from "./IParser";
+import { log } from "./util";
 
 class HtmlDetail {
     private mSummary: string;
@@ -15,7 +16,11 @@ class HtmlDetail {
         return new HtmlDetail(summary);
     }
 
-    public set Description(description: string) {
+    public AddDescription(description: string) {
+        if (this.mDescription) {
+            this.mDescription += description;
+            return;
+        }
         this.mDescription = description;
     }
 
@@ -52,8 +57,11 @@ export class HtmlLogger {
                 this.mDetailStack.push(d);
                 break;
             case Indent.CurrentLineReduce:
-                this.mDetailStack[len - 1].Description = s;
+                this.mDetailStack[this.mDetailStack.length - 1].AddDescription(s);
                 this.mDetailStack.pop();
+                break;
+            case Indent.KeepSame:
+                this.mDetailStack[len - 1].AddDescription(s);
                 break;
         }
     }
