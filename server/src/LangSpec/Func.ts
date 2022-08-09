@@ -15,7 +15,7 @@ import {
     eitherOf,
 } from "../combinator";
 import { lazy, makeWordParser, oneOf } from "../parser";
-import { asArray, combine, selectNotNull, selectNotNullIn2DifferentType } from "../util";
+import { asArray, combine, selectNotNull, selectNotNullIn2DifferentType, stringify } from "../util";
 import { whitespace } from "./Whitespace";
 import { Identifier, identifier } from "./Identifier";
 import { Statement } from "./Statement";
@@ -105,7 +105,7 @@ export class VarStmt implements Statement {
 
     public static AddVar(statement: VarStmt, oneVar: readonly [Identifier, Expression?]) {
         var s = statement;
-        if (s.mVars) {
+        if (!s.mVars) {
             s.mVars = [];
         }
         s.mVars!.push(oneVar);
@@ -124,6 +124,12 @@ export class VarStmt implements Statement {
             s.mVars!.push(i);
         }
         return s;
+    }
+    public toString(): string {
+        return stringify(this.mVars?.map(x => stringify({
+            name: x[0].toString(),
+            exp: x[1]?.toString(),
+        })));
     }
 
     Contains(p: Position): boolean {
@@ -431,7 +437,7 @@ const consBody = function(): IParser<Statement[]> {
     // 肯定要提供一种惰性求值，类似指针的操作，保留一种无限的能力，不然这里的函数会无限递归下去
     const block = from(leftBrace).rightWith(lazy(consBody), selectRight).rightWith(optional(blanks), selectLeft).rightWith(rightBrace, selectLeft).raw;
 
-    const elseBlock = from(makeWordParser('else', id)).rightWith(block, selectRight).raw
+    const elseBlock = from(makeWordParser('else', id)).rightWith(block, selectRight).raw;
     const ifStmt = from(makeWordParser('if', IfStmt.New))
         .rightWith(leftParen, selectLeft)
         .rightWith(expression, IfStmt.SetCond)
@@ -462,6 +468,7 @@ const varItem = from(identifier)
                             (n, e) => ([n, e.ToUndefined()] as const))
                         .raw;
 export const varStmt = from(makeWordParser('var', VarStmt.New))
+                        .rightWith(blanks, selectLeft)
                         .rightWith(varItem, VarStmt.AddVar)
                         .rightWith(optional(from(makeWordParser(',', nullize))
                                         .rightWith(varItem, selectRight)
@@ -469,12 +476,14 @@ export const varStmt = from(makeWordParser('var', VarStmt.New))
                                         .raw),
                                    VarStmt.AddVars)
                         .rightWith(makeWordParser(';', nullize), selectLeft)
+                        .prefixComment('parse var stmt')
                         .raw;
 // parse xxx, start
 //      parse sub part
 // parse xxx, result
 // parse yyy, result
 export const func = from(makeWordParser('func', Func.New))
+                    .prefixComment('parse func keyword')
                     .rightWith(blanks, selectLeft)
                     .rightWith(varName, Func.SetName)
                     .rightWith(optional(blanks), selectLeft)
@@ -482,4 +491,5 @@ export const func = from(makeWordParser('func', Func.New))
                     .rightWith(leftBrace, selectLeft)
                     .rightWith(lazy(consBody), Func.SetBlock)
                     .rightWith(rightBrace, selectLeft)
+                    .prefixComment('parse func')
                     .raw;

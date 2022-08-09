@@ -13,7 +13,7 @@ import {
 } from "../combinator";
 import { IParser, ParserResult, Position, Text, } from "../IParser";
 import { ISyntaxNode, } from '../ISyntaxNode';
-import { combine, selectNotNull, } from '../util';
+import { combine, selectNotNull, stringify, } from '../util';
 
 // leftWith 和 rightWith 容易在 IParser<T> 的 T 中引入 NoOption
 // 有没有 NoOption 只有业务层知道
@@ -47,7 +47,7 @@ export class String implements ISyntaxNode {
     public constructor(text: Text) {
         this.mText = text;
     }
-    
+
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -59,9 +59,14 @@ export class String implements ISyntaxNode {
     public get Content(): Text | null {
         return this.mText;
     }
+
+    public toString(): string {
+        return stringify(this.mText?.toString());
+    }
 }
 
 // 检查各处 IParser<T> 中的 T 的类型是否正确
 export const string = from(or(genString('"'), genString("'"), selectNotNull))
     .transform(String.New)
+    .prefixComment('parse string')
     .raw;

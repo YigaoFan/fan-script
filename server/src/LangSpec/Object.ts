@@ -23,7 +23,7 @@ class KeyValuePair implements ISyntaxNode {
     }
 
     // 然后构造函数可以的话，都是可以不用参数构造的
-    public constructor(key: Identifier) {
+    public constructor(key: Identifier | String) {
         this.mKey = key;
     }
     Contains(p: Position): boolean {
@@ -66,13 +66,19 @@ export class Obj implements ISyntaxNode {
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+
+    public toString(): string {
+        
+    }
 }
 /**
  * 强制每个 pair 后面都要打逗号
  */ 
+// TODO Obj.New on '{'
 export const object = from(makeWordParser('{', nullize))
                         .rightWith(pair.zeroOrMore(asArray).raw, selectRight)
                         .rightWith(makeWordParser('}', nullize), selectLeft)
                         .transform(Obj.New)
+                        .prefixComment('parse object')
                         .raw;
 

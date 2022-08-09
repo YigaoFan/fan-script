@@ -1,5 +1,5 @@
 import { Text } from "./IParser";
-
+import { ParserResult, } from "./IParser";
 export const log = console.log.bind(console);
 
 export const combine = function(...texts: Text[]) {
@@ -31,3 +31,16 @@ export const exchangeParas = <T1, T2, T3>(func: (t1: T1, t2: T2)=> T3) => {
     };
 };
 
+export const formatParserResult = <T>(result: ParserResult<T>): string => {
+    if (result === null) {
+        return 'null';
+    }
+
+    // @ts-expect-error
+    return `result: ${result.Result ? result.Result.constructor.name : ''} ${/*JSON.stringify(*/result.Result/*)*/} \n remain: ${result.Remain}`;
+    // 建议给每个 ISyntaxNode 加个 toString() 接口来方便调试格式化
+};
+
+export const stringify = (obj: any): string => {
+    return JSON.stringify(obj);
+};

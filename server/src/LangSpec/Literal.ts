@@ -6,7 +6,7 @@ import { string, String, } from "./String";
 import { object, Obj, } from "./Object";
 import { array, Array, } from "./Array";
 import { Func, func } from "./Func";
-import { selectNotNull } from "../util";
+import { selectNotNull, stringify } from "../util";
 
 interface ILiteral extends ISyntaxNode {
     // ['constructor']: new (...args: ConstructorParameters<typeof ILiteral>) => this;
@@ -24,6 +24,10 @@ class NumberLiteral implements ILiteral {
         this.mNum = num;
     }
     
+    public toString(): string {
+        return stringify(this.mNum);
+    }
+
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -49,6 +53,10 @@ class StringLiteral implements ILiteral {
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+
+    public toString(): string {
+        return this.mStr.toString();
+    }
 }
 
 class ObjectLiteral implements ILiteral {
@@ -66,6 +74,10 @@ class ObjectLiteral implements ILiteral {
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
+    }
+
+    public toString(): string {
+        return this.mObj.toString();
     }
 }
 
@@ -116,7 +128,7 @@ const consLiteral = function(): IParser<ILiteral> {
     const lit = eitherOf<ILiteral, ILiteral>(selectNotNull, num, str, obj, arr, fun);
     return lit;
 };
-export const literal: IParser<ILiteral> = consLiteral();
+export const literal: IParser<ILiteral> = from(consLiteral()).prefixComment('parse literal').raw;
 export type Literal = ILiteral;// 不要直接暴露接口出去
 
 // 原来是忘了 npm install

@@ -15,7 +15,7 @@ import {
     eitherOf,
 } from "../combinator";
 import { lazy, makeWordParser, oneOf } from "../parser";
-import { asArray, combine, selectNotNull, selectNotNullIn2DifferentType } from "../util";
+import { asArray, combine, selectNotNull, selectNotNullIn2DifferentType, stringify } from "../util";
 import { identifier, Identifier } from "./Identifier";
 import { func, Func, leftBrace, rightBrace, VarStmt, varStmt } from "./Func";
 import { whitespace } from "./Whitespace";
@@ -44,6 +44,24 @@ export class Class implements ISyntaxNode {
         return cls;
     }
 
+    public static SetMembers(cls: Class, members: (Func | VarStmt | null)[]) {
+        for (const i of members) {
+            if (i === null) {
+                continue;
+            }
+            Class.SetMember(cls, i);
+        }
+        return cls;
+    }
+
+    public toString() {
+        return stringify({
+            name: this.mName?.toString(),
+            varStmt: 'todo',
+            methods: 'todo',
+        });
+    }
+
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -56,11 +74,14 @@ export class Class implements ISyntaxNode {
 // 感觉之前想的：做一个将其他 parser 传进来的 parser 挺好的，像这里 block 里可以允许不同的 parser
 // 不过感觉也简化不了太多，下面用 or 来做代码也很少呀
 export const classs = from(makeWordParser('class', Class.New))
+                        .prefixComment('parse class keyword')
                         .rightWith(whitespace, selectLeft)
                         .rightWith(identifier, Class.SetName)
                         .rightWith(optional(whitespace), selectLeft)
                         .rightWith(leftBrace, selectLeft)
-                        .rightWith(or(func, varStmt, selectNotNullIn2DifferentType), Class.SetMember)
+                        // add whitespace below todo
+                        .rightWith(from(or(func, varStmt, selectNotNullIn2DifferentType)).zeroOrMore(asArray).raw, Class.SetMembers)
                         .rightWith(rightBrace, selectLeft)
+                        .prefixComment('parse class')
                         .raw
                         ;

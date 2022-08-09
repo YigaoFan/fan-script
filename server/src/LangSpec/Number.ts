@@ -50,4 +50,5 @@ export const number: IParser<Number> = from(integer)
                         .rightWith(optional(fraction), (l, r) => ([l, r] as const))
                         .rightWith(optional(exponent), (l, r) => ([...l, r] as const))
                         .transform(Number.New)
+                        .prefixComment('parse number')
                         .raw;

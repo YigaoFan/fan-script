@@ -1,4 +1,4 @@
-import { log, } from './util';
+import { formatParserResult, log, } from './util';
 import { HtmlLogger, } from './HtmlLogger';
 
 // stateful internal
@@ -57,7 +57,7 @@ export class Text {
     private mFilename: string;
 
     public static New(filename: string, chars: Char[] = []) {
-        return new Text(filename, []);
+        return new Text(filename, chars);
     }
 
     public static Combine(t1: Text, t2: Text) {
@@ -106,6 +106,10 @@ export class Text {
     public toString(): string {
         return this.Value;
     }
+
+    public get Empty(): boolean {
+        return this.mChars.length == 0;
+    }
 }
 // export class NoOption {
 //     public static new() {
@@ -126,9 +130,10 @@ export type ParserInput = IInputStream;
 // 相当于缩小影响范围
 export type ParserResult<T> = ParseSuccessResult<T> | ParseFailResult;
 
-enum Indent {
+export enum Indent {
     NextLineAdd,
     CurrentLineReduce,
+    KeepSame,
 }
 
 export const htmlLogger = new HtmlLogger('parse.html');
@@ -138,19 +143,21 @@ export const htmlLogger = new HtmlLogger('parse.html');
  */
 var indent = 0;
 // 缩进的第二行好像还是有问题 TODO
-const logWith = function (indentSetting: Indent, ...args: any[]) {
-    const genSpaces = (count: number) => Array(count).join(' ');
-    switch (indentSetting) {
-        case Indent.CurrentLineReduce: --indent;
-    }
+// const logWith = function (indentSetting: Indent, ...args: any[]) {
+//     const genSpaces = (count: number) => Array(count).join(' ');
+//     switch (indentSetting) {
+//         case Indent.CurrentLineReduce: --indent;
+//     }
 
-    htmlLogger.Log(indent, ...args);
-    // log(genSpaces(indent), ...args);
+//     log(genSpaces(indent), ...args);
 
-    switch (indentSetting) {
-        case Indent.NextLineAdd: ++indent;
-    }
-};
+//     switch (indentSetting) {
+//         case Indent.NextLineAdd: ++indent;
+//     }
+// };
+
+
+export const logWith = htmlLogger.Log.bind(htmlLogger);
 export var enableDebug = true;
 
 // 下面这个是一个方法，更好的方法，是可以通过反射，反射到某个包下所有的 parser 类型，然后动态地给 parser.parse 做代理
@@ -167,7 +174,8 @@ export const debug = function (enable: boolean = enableDebug) {
             // summary
             logWith(Indent.NextLineAdd, `start ${title} with ${args}`);// ${} will call class.toString to get better string
             var r = v.apply(this, args);
-            logWith(Indent.CurrentLineReduce, `end ${title}, result ${r}`);
+            // TODO handle r to better print
+            logWith(Indent.CurrentLineReduce, `end ${title} \n result ${formatParserResult(r)}`);
             return r;
         };
 

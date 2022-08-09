@@ -10,6 +10,7 @@ import {
     debug,
     Text,
 } from "./IParser";
+import { log } from "./util";
 
 // export type Parser<T> = (input: ParserInput) => ParserResult<T>; // 感觉这里的返回结果表示，和函数里返回类型表示形式不太统一，那里是冒号，这里是箭头
 
@@ -33,7 +34,7 @@ export class WordParser<T> implements IParser<T> {
                 t.Append(c);
                 continue;
             }
-            // log(`failed on ${i}, expect "${word[i]}", actual: "${c}"`);
+            log(`failed on ${i}, expect "${word[i]}", actual: "${JSON.stringify(c)}"`);
             return null;
         }
 

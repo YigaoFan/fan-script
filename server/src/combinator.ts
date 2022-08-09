@@ -1,4 +1,5 @@
-import { ParserInput, ParserResult, IParser, debug, } from './IParser';
+import { ParserInput, ParserResult, IParser, debug, IInputStream, logWith, Indent, } from './IParser';
+import { log } from './util';
 
 // 一定贯彻一个 input 只能用一次的原则，后面的解析用前面的解析的返回值中的 remain，注意循环会用多次
 
@@ -37,6 +38,10 @@ function combine<T1, T2, T3>(parser1: IParser<T1>, parser2: IParser<T2>, resultC
     return new Combine(parser1, parser2, resultCombinator);
 }
 
+/**
+ * not use undefined as @template arg T.
+ * Option use undefined to judge if exist value internal.
+ */
 export class Option<T> {
     private mT: T | undefined;
 
@@ -45,12 +50,12 @@ export class Option<T> {
     }
     
     public hasValue(): boolean {
-        return this.mT == undefined;
+        return this.mT !== undefined;  // null == undefined is true
     }
 
     public get value(): T {
-        if (this.mT) {
-            return this.mT;
+        if (this.hasValue()) {
+            return this.mT!;
         }
         throw new Error('get value while no value stored in Option');
     }
@@ -182,8 +187,8 @@ class Or<T1, T2, T3> implements IParser<T3> {
 
     @debug()
     public parse(input: ParserInput): ParserResult<T3> {
-        var option1 = this.mOption1.parse;
-        var option2 = this.mOption2.parse;
+        var option1 = this.mOption1.parse.bind(this.mOption1);
+        var option2 = this.mOption2.parse.bind(this.mOption2);
 
         // 因 optional 的原因，这里 r 必不可能是 null
         const r1 = option1(input); // input may be changed internal, so not use below
@@ -279,6 +284,26 @@ export const eitherOf = <T1, T2>(resultPrcessor: (...t1s: (T1 | null)[]) => T2, 
     return new EitherOf(resultPrcessor, ...parsers);
 };
 
+class PrefixComment<T> implements IParser<T> {
+    private mComment: string;
+    private mParser: IParser<T>;
+
+    public constructor(parser: IParser<T>, comment: string) {
+        this.mComment = comment;
+        this.mParser = parser;
+    }
+
+    public parse(input: ParserInput): ParserResult<T> {
+        logWith(Indent.KeepSame, this.mComment);
+        const r = this.mParser.parse(input);
+        return r;
+    }    
+}
+
+const prefixComment = <T>(parser: IParser<T>, comment: string): PrefixComment<T> => {
+    return new PrefixComment(parser, comment);
+};
+
 // 之后想一下，大部分代码都是错的情况下，如何生成补全内容, 也就是说如何尽量匹配到正确语法的内容
 // 最终的结果都会合并到 T 中
 export type from<T> = {
@@ -287,18 +312,17 @@ export type from<T> = {
     rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T, r2: T1) => T2) => from<T2>,
     leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1, r2: T) => T2) => from<T2>,
     transform: <T1>(transformFunc: (t: T) => T1) => from<T1>,
-    // surround: <T1, T2, T3> (left: IParser<T1>, right: IParser<T2>, resultCombinator: (r1: T1, r: T, r2: T) => T3) => from<T3>,
+    prefixComment: (comment: string) => from<T>,
     raw: IParser<T>,
 };
 
 export const from: <T>(p: IParser<T>) => from<T> = <T>(p: IParser<T>) => ({
     oneOrMore: <T1>(resultConverter: (...ts: T[]) => T1) => from(oneOrMore(p, resultConverter)),
     zeroOrMore: <T1>(resultConverter: (...ts: T[]) => T1) => from(zeroOrMore(p, resultConverter)),
-    // 下面这两个主要用于加一些重点关注的内容，比如空白
     rightWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T, r2: T1) => T2) => from(combine(p, p1, resultCombinator)),
     leftWith: <T1, T2>(p1: IParser<T1>, resultCombinator: (r1: T1, r2: T) => T2) => from(combine(p1, p, resultCombinator)),
     transform: <T1>(transformFunc: (t: T) => T1) => from(transform(p, transformFunc)),
-    // surround: <T1, T2, T3>(left: IParser<T1>, right: IParser<T2>, resultCombinator: (r1: T1, r: T, r2: T) => T3) => from()
+    prefixComment: (comment: string) => from(prefixComment(p, comment)),
     raw: p,
 });
 

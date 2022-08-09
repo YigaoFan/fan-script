@@ -3,4 +3,4 @@ import { from, nullize, } from "../combinator";
 
 const spaces = [' ', '\t', '\n'];
 
-export const whitespace = from(oneOf(spaces, nullize)).oneOrMore(nullize).raw;
+export const whitespace = from(oneOf(spaces, nullize)).oneOrMore(nullize).prefixComment('parse whitespace').raw;

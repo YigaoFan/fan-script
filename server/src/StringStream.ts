@@ -1,5 +1,5 @@
 import { Char, IInputStream, Position, Text, } from './IParser';
-import { combine } from './util';
+import { log } from './util';
 
 export class StringStream implements IInputStream {
     private mChars: Char[];
@@ -17,6 +17,7 @@ export class StringStream implements IInputStream {
                 nowPos = Position.From(nowPos.Line, nowPos.Row + 1);
             }
         }
+
         return new StringStream(filename, chars);
     }
     
@@ -27,7 +28,11 @@ export class StringStream implements IInputStream {
     }
 
     public get NextChar(): Text {
+        if (this.mCurrentIndex >= this.mChars.length) {
+            return Text.New(this.mFilename);
+        }
         var c = this.mChars[this.mCurrentIndex++];
+        log(`get char of ${this.mCurrentIndex - 1}: ${c.Value}`);
         var t = Text.New(this.mFilename, [c]);
         return t;
     }
@@ -38,7 +43,11 @@ export class StringStream implements IInputStream {
         return c;
     }
 
-    get Filename(): string {
+    public get Filename(): string {
         return this.mFilename;
+    }
+
+    public toString(): string {
+        return `pos ${this.mCurrentIndex} content ` + this.mChars.map(x => x.Value).join('');
     }
 }

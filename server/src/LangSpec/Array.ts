@@ -35,4 +35,5 @@ const item = from(expression)
 export const array: IParser<Array> = from(makeWordParser('[', Array.New))
                                         .rightWith(item.zeroOrMore(asArray).raw, Array.SetItems)
                                         .rightWith(makeWordParser(']', nullize), selectLeft)
+                                        .prefixComment('parse array')
                                         .raw;

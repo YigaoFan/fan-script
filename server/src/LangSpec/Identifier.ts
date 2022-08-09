@@ -13,7 +13,7 @@ import {
 } from "../combinator";
 import { IParser, Text, Position, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { combine, } from "../util";
+import { combine, stringify, } from "../util";
 
 // TODO 把下面这个函数整理到 util 里去
 // export const combine2String = (s1: string, s2: string): string => {
@@ -26,9 +26,21 @@ const possibleFirstChars = alphabets.concat(capAlphabets).concat(['_']);
 const possibleLaterChars = possibleFirstChars.concat(nums);
 
 export class Identifier implements ISyntaxNode {
-    public static New(value: Text): Identifier {
-        throw new Error("Method not implemented.");
+    private mText?: Text;
+    public static New(text: Text): Identifier {
+        return new Identifier(text);
     }
+    
+    public constructor(text: Text) {
+        this.mText = text;
+    }
+
+    public toString(): string {
+        return stringify({
+            text: this.mText?.toString(), 
+        });
+    }
+
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -39,8 +51,8 @@ export class Identifier implements ISyntaxNode {
 
 export const identifier: IParser<Identifier> = from(oneOf(possibleFirstChars, id))
                     .rightWith(from(oneOf(possibleLaterChars, id))
-                                .oneOrMore(combine).raw, combine)
+                                .zeroOrMore(combine).raw, combine)
                     .transform(Identifier.New)
-                    // .oneOrMore(combine)
+                    .prefixComment('parse identifier')
                     .raw;
 
