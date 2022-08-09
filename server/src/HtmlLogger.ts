@@ -37,6 +37,7 @@ export class HtmlLogger {
     private mFilename: string;
     private mDetailStack: HtmlDetail[];
     private mDetailRoot?: HtmlDetail;
+    private mNextStepComment?: string;
 
     public constructor(filename: string) {
         this.mFilename = filename;
@@ -44,10 +45,15 @@ export class HtmlLogger {
     }
 
     public Log(indentSetting: Indent, ...args: any[]) {
-        const s = args.join(' ');
+        var s = args.join(' ');
+        s = s.replace('\n', '<br>');
         const len = this.mDetailStack.length;
         switch (indentSetting) {
             case Indent.NextLineAdd:
+                if (this.mNextStepComment) {
+                    s = this.mNextStepComment + ' ' + s;
+                    this.mNextStepComment = undefined;
+                }
                 var d = HtmlDetail.New(s);
                 if (len == 0) {
                     this.mDetailRoot = d;
@@ -61,7 +67,7 @@ export class HtmlLogger {
                 this.mDetailStack.pop();
                 break;
             case Indent.KeepSame:
-                this.mDetailStack[len - 1].AddDescription(s);
+                this.mNextStepComment = s;
                 break;
         }
     }
