@@ -197,7 +197,10 @@ class InvocationExpression implements IExpression {
     }
 
     public toString(): string {
-        
+        return stringify({
+            func: this.mFunc?.toString(),
+            args: this.mArgs?.toString(),
+        });
     }
 }
 

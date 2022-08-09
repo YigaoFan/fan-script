@@ -4,7 +4,7 @@ import { ISyntaxNode } from "../ISyntaxNode";
 import { from, nullize, optional, selectLeft, selectRight } from "../combinator";
 import { makeWordParser } from "../parser";
 import { whitespace, } from "./Whitespace";
-import { asArray } from "../util";
+import { asArray, stringify } from "../util";
 
 export class Array implements ISyntaxNode {
     private mExps?: Expression[];
@@ -24,6 +24,12 @@ export class Array implements ISyntaxNode {
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
+    }
+
+    public toString(): string {
+        return stringify({
+            exps: this.mExps?.toString(),
+        });
     }
 }
 

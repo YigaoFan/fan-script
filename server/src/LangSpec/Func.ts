@@ -54,6 +54,13 @@ export class Func implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
 
+    public toString(): string {
+        return stringify({
+            name: this.mName?.toString(),
+            parars: this.mParas?.map(x => x.toString()),
+            block: this.mBlock?.map(x => x.toString()),
+        });
+    }
 }
 
 const blanks = whitespace;
@@ -86,6 +93,7 @@ class ReturnStmt implements Statement {
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+
     public static New() {
         return new ReturnStmt();
     }
@@ -94,6 +102,12 @@ class ReturnStmt implements Statement {
         const s = statement;
         s.mExp = result;
         return s;
+    }
+
+    public toString(): string {
+        return stringify({
+            exp: this.mExp?.toString(),
+        });
     }
 }
 export class VarStmt implements Statement {
@@ -175,6 +189,14 @@ class IfStmt implements Statement {
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+
+    public toString(): string {
+        return stringify({
+            cond: this.mCondExp?.toString(),
+            block: this.mBlock?.toString(),
+            elseBlock: this.mElseBlock?.toString(),
+        });
+    }
 }
 
 class ForStmt implements Statement {
@@ -216,13 +238,33 @@ class ForStmt implements Statement {
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+
+    public toString(): string {
+        return stringify({
+            init: this.mInitExp?.toString(),
+            cond: this.mCondExp?.toString(),
+            update: this.mUpdateExp?.toString(),
+            block: this.mBlock?.toString(),
+        });
+    }
 }
 
 // 每个结点只表示自己有的信息，不携带前后结点的信息
 abstract class ExpStmtSubNode implements ISyntaxNode  {
     abstract Contains(p: Position): boolean;
     abstract get Valid(): boolean;
-    private mRightNode?: ExpStmtSubNode;
+    /** default implementation */
+    public toString(): string {
+        var subObj = this.CrawlSubClassStruct();
+        return stringify({
+            ...subObj,
+            rightNode: this.mRightNode?.toString(),
+        });
+    }
+    protected mRightNode?: ExpStmtSubNode;
+    protected CrawlSubClassStruct(): Object {
+        return {};
+    }
 
     /**
      * Set right node, return current work node.
@@ -256,7 +298,7 @@ class Empty_ExpStmtSubNode extends ExpStmtSubNode {
 
 class Name_ExpStmtSubNode extends ExpStmtSubNode {
     private mName?: Identifier;
-
+    
     public static New(name: Identifier): Name_ExpStmtSubNode {
         return new Name_ExpStmtSubNode(name);
     }
@@ -271,6 +313,11 @@ class Name_ExpStmtSubNode extends ExpStmtSubNode {
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
+    }
+    protected CrawlSubClassStruct(): Object {
+        return {
+            name: this.mName?.toString(),
+        };
     }
 }
 
@@ -292,6 +339,12 @@ class Expression_ExpStmtSubNode extends ExpStmtSubNode {
         super();
         this.mExp = expression;
     }
+
+    protected CrawlSubClassStruct(): Object {
+        return {
+            exp: this.mExp?.toString(),
+        };
+    }
 }
 
 class Assign_ExpStmtSubNode extends ExpStmtSubNode {
@@ -304,7 +357,7 @@ class Assign_ExpStmtSubNode extends ExpStmtSubNode {
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
-    }    
+    }
 }
 
 class AddAssign_ExpStmtSubNode extends ExpStmtSubNode {
@@ -349,7 +402,13 @@ class Invoke_ExpStmtSubNode extends ExpStmtSubNode {
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
-    }    
+    }
+
+    protected CrawlSubClassStruct(): Object {
+        return {
+            args: this.mArgs?.map(x => x.toString()),
+        };
+    }
 }
 
 class Refine_ExpStmtSubNode extends ExpStmtSubNode {
@@ -369,7 +428,13 @@ class Refine_ExpStmtSubNode extends ExpStmtSubNode {
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
-    }    
+    }
+    
+    protected CrawlSubClassStruct(): Object {
+        return {
+            key: this.mKey?.toString(),
+        };
+    }
 }
 
 class ExpStmt implements Statement {

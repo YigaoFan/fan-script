@@ -2,7 +2,7 @@ import { id, or, from, nullize, selectRight, optional, eitherOf, selectLeft, } f
 import { Position, Text, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, oneOf, lazy, } from "../parser";
-import { asArray, selectNotNullIn2DifferentType, } from "../util";
+import { asArray, selectNotNullIn2DifferentType, stringify, } from "../util";
 import { expression, Expression } from "./Expression";
 import { Identifier, identifier, } from "./Identifier";
 import { String, string, } from "./String";
@@ -37,6 +37,13 @@ class KeyValuePair implements ISyntaxNode {
     public get Valid(): boolean {
         return this.mKey != null || this.mValue != null;
     }
+
+    public toString(): string {
+        return stringify({
+            key: this.mKey?.toString(),
+            value: this.mValue?.toString(),
+        });
+    }
 }
 
 const pair = from(or(identifier, string, selectNotNullIn2DifferentType))
@@ -50,13 +57,13 @@ const pair = from(or(identifier, string, selectNotNullIn2DifferentType))
                 .rightWith(makeWordParser(',', nullize), selectLeft);
 
 export class Obj implements ISyntaxNode {
-    private mPairs: KeyValuePair[] | null;
+    private mPairs?: KeyValuePair[];
 
     public static New(pairs: KeyValuePair[]): Obj {
         return new Obj(pairs);
     }
 
-    public constructor(pairs: KeyValuePair[] | null = null) {
+    private constructor(pairs: KeyValuePair[]) {
         this.mPairs = pairs;
     }
 
@@ -68,7 +75,7 @@ export class Obj implements ISyntaxNode {
     }
 
     public toString(): string {
-        
+        return stringify(this.mPairs?.map(x => x.toString()));
     }
 }
 /**
