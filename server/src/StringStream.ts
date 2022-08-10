@@ -12,6 +12,8 @@ export class StringStream implements IInputStream {
         for (const c of str) {
             if (c == '\n') {
                 nowPos = Position.From(nowPos.Line + 1, 0);
+            } else if (c == '\r') {
+                continue;
             } else {
                 chars.push(Char.New(c, nowPos));
                 nowPos = Position.From(nowPos.Line, nowPos.Row + 1);

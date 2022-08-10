@@ -1,9 +1,10 @@
 import { id, or, from, nullize, selectRight, optional, eitherOf, selectLeft, } from "../combinator";
-import { Position, Text, } from "../IParser";
+import { IParser, Position, Text, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, oneOf, lazy, } from "../parser";
 import { asArray, selectNotNullIn2DifferentType, stringify, } from "../util";
-import { expression, Expression } from "./Expression";
+import { consExp, ExpKind, Expression } from "./Expression";
+import { Func } from "./Func";
 import { Identifier, identifier, } from "./Identifier";
 import { String, string, } from "./String";
 import { whitespace } from "./Whitespace";
@@ -46,25 +47,22 @@ class KeyValuePair implements ISyntaxNode {
     }
 }
 
-const pair = from(or(identifier, string, selectNotNullIn2DifferentType))
-                .transform(KeyValuePair.New)
-                .leftWith(optional(whitespace), selectRight)
-                .rightWith(from(makeWordParser(':', nullize))
-                    .leftWith(optional(whitespace), nullize)
-                    .rightWith(optional(whitespace), nullize).raw, selectLeft)
-                .rightWith(expression, KeyValuePair.SetValue)
-                .rightWith(optional(whitespace), selectLeft)
-                .rightWith(makeWordParser(',', nullize), selectLeft);
+
 
 export class Obj implements ISyntaxNode {
     private mPairs?: KeyValuePair[];
 
-    public static New(pairs: KeyValuePair[]): Obj {
-        return new Obj(pairs);
+    public static New(): Obj {
+        return new Obj();
     }
 
-    private constructor(pairs: KeyValuePair[]) {
-        this.mPairs = pairs;
+    public static SetPairs(obj: Obj, pairs: KeyValuePair[]) {
+        obj.mPairs = pairs;
+        return obj;
+    }
+
+    private constructor() {
+        this.mPairs = [];
     }
 
     Contains(p: Position): boolean {
@@ -78,14 +76,22 @@ export class Obj implements ISyntaxNode {
         return stringify(this.mPairs?.map(x => x.toString()));
     }
 }
+
+const consPair = (func: IParser<Func>) => (from(or(identifier, string, selectNotNullIn2DifferentType))
+                .transform(KeyValuePair.New)
+                .leftWith(optional(whitespace), selectRight)
+                .rightWith(from(makeWordParser(':', nullize))
+                    .leftWith(optional(whitespace), nullize)
+                    .rightWith(optional(whitespace), nullize).raw, selectLeft)
+                .rightWith(lazy(consExp.bind(null, func, ExpKind.All)), KeyValuePair.SetValue)// 这里讲道理要把这个 lazy 的 consExp 参数化
+                .rightWith(optional(whitespace), selectLeft)
+                .rightWith(makeWordParser(',', nullize), selectLeft));
 /**
  * 强制每个 pair 后面都要打逗号
  */ 
-// TODO Obj.New on '{'
-export const object = from(makeWordParser('{', nullize))
-                        .rightWith(pair.zeroOrMore(asArray).raw, selectRight)
-                        .rightWith(makeWordParser('}', nullize), selectLeft)
-                        .transform(Obj.New)
-                        .prefixComment('parse object')
-                        .raw;
+export const consObject = (func: IParser<Func>) => (from(makeWordParser('{', Obj.New))
+                                                    .rightWith(consPair(func).zeroOrMore(asArray).raw, Obj.SetPairs)
+                                                    .rightWith(makeWordParser('}', nullize), selectLeft)
+                                                    .prefixComment('parse object')
+                                                    .raw);
 

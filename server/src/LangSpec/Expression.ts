@@ -3,9 +3,10 @@ import { IParser, Text, Position, } from "../IParser";
 import { makeWordParser, oneOf, lazy, } from "../parser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { Identifier, identifier } from "./Identifier";
-import { Literal, literal } from "./Literal";
-import { asArray, exchangeParas, selectNotNull, stringify } from "../util";
+import { consLiteral, Literal, } from "./Literal";
+import { asArray, exchangeParas, log, selectNotNull, stringify } from "../util";
 import { whitespace } from "./Whitespace";
+import { Func } from "./Func";
 
 interface IExpression extends ISyntaxNode {
 
@@ -304,21 +305,19 @@ export class DeleteExpression implements IExpression {
     }
 }
 
-export const genRefinement = <T>(nodeCtor: () => T, keySetter: (t: T, k: IExpression) => T) => {
-    const refine1 = from(makeWordParser('[', nodeCtor)).rightWith(expression, keySetter).rightWith(makeWordParser(']', nullize), selectLeft).raw;
-    const refine2 = from(makeWordParser('.', nodeCtor)).rightWith(expression, keySetter).raw;
+export const genRefinement = <T>(func: IParser<Func>, nodeCtor: () => T, keySetter: (t: T, k: IExpression) => T) => {
+    const refine1 = from(makeWordParser('[', nodeCtor)).rightWith(lazy(consExp.bind(null, func, ExpKind.All)), keySetter).rightWith(makeWordParser(']', nullize), selectLeft).raw;
+    const refine2 = from(makeWordParser('.', nodeCtor)).rightWith(lazy(consExp.bind(null, func, ExpKind.All)), keySetter).raw;
     const refinement = or(refine1, refine2, selectNotNull) as IParser<T>;
     return refinement;
 };
-const refinement = genRefinement(RefinementExpression.New, RefinementExpression.SetKey);
-export const genInvocation = <T>(nodeCtor: () => T, argsSetter: (t: T, k: IExpression[]) => T) => {
+export const genInvocation = <T>(func: IParser<Func>, nodeCtor: () => T, argsSetter: (t: T, k: IExpression[]) => T) => {
     // add space TODO
-    const invocation = from(makeWordParser('(', nodeCtor)).rightWith(from(expression).rightWith(makeWordParser(',', nullize), selectLeft).zeroOrMore(asArray).raw, argsSetter).rightWith(makeWordParser(')', nullize), selectLeft).raw;
+    const invocation = from(makeWordParser('(', nodeCtor)).rightWith(from(lazy(consExp.bind(null, func, ExpKind.All))).rightWith(makeWordParser(',', nullize), selectLeft).zeroOrMore(asArray).raw, argsSetter).rightWith(makeWordParser(')', nullize), selectLeft).raw;
     return invocation;
 };
-const invocation = genInvocation(InvocationExpression.New, InvocationExpression.SetArgs);
 // 注意变量定义及其引用位置，定义在引用后，会出 undefined 的问题
-enum ExpKind {
+export enum ExpKind {
     All,
     DeleteExp,
 }
@@ -326,43 +325,52 @@ enum ExpKind {
 // 之后做补全会碰到一个问题：什么时候算进入到某个语法节点的范围，在这个范围内进行补全，在这个范围内，某些东西可能是不完整的
 // 建立 ast 相关 node 的类型的事要提上日程了
 // 这里面有些地方是可以放任意多的空格，这个要想一下在哪加上
-const consExp = function (kind: ExpKind = ExpKind.All): IParser<IExpression> {
+export const consExp = function (func: IParser<Func>, kind: ExpKind, postfix: IParser<null> | null = null): IParser<IExpression> {
     // handle blank TODO
-    const lit = from(literal).transform(LiteralExpression.New).raw;
-    const name = from(identifier).transform(IdentifierExpression.New).raw;
-    const parenExp = from(lazy(consExp))
+    const argsBindedConsExp = consExp.bind(null, func, ExpKind.All);// sub expression has full function
+    const lit = from(consLiteral(func)).transform(LiteralExpression.New).prefixComment('parse literal expression').raw;
+    const name = from(identifier).transform(IdentifierExpression.New).prefixComment('parse identifier expression').raw;
+    const parenExp = from(lazy(argsBindedConsExp))
                         // TODO handle blank
                         .leftWith(makeWordParser('(', nullize), selectRight)
                         .rightWith(makeWordParser(')', nullize), selectLeft)
+                        .prefixComment('parse paren expression')
                         .raw;
     const preExp = from(oneOf(['typeof', '+', '-', '!'], PrefixOperatorExpression.New))
-                        .rightWith(lazy(consExp), PrefixOperatorExpression.SetSubExpression)
+                        .rightWith(lazy(argsBindedConsExp), PrefixOperatorExpression.SetSubExpression)
+                        .prefixComment('parse prefix expression')
                         .raw;
     const infixOp = ['*', '/', '%', '+', '-', '>=', '<=', '>', '<', '==', '!=', '||', '&&'];
     // 要不要给 combinator 那里加个 surround 方法来处理左右加括号和空白
     // 有些地方忘加空白了
-    const inExp = from(lazy(consExp)).rightWith(oneOf(infixOp, InfixOperatorExpression.New), exchangeParas(InfixOperatorExpression.SetLeftExpression)).rightWith(lazy(consExp), InfixOperatorExpression.SetRightExpression).raw;
-    const ternaryExp = from(lazy(consExp)).rightWith(makeWordParser('?', TernaryExpression.New), exchangeParas(TernaryExpression.SetCondition)).rightWith(lazy(consExp), TernaryExpression.SetTrueResult).rightWith(makeWordParser(':', nullize), selectLeft).rightWith(lazy(consExp), TernaryExpression.SetFalseResult).raw;
-    const invokeExp = from(lazy(consExp)).rightWith(invocation, exchangeParas(InvocationExpression.SetFunc)).raw;
-    const refineExp = from(lazy(consExp)).rightWith(refinement, exchangeParas(RefinementExpression.SetObject)).raw;
+    const inExp = from(lazy(argsBindedConsExp)).leftWith(optional(whitespace), selectRight).rightWith(optional(whitespace), selectLeft).rightWith(oneOf(infixOp, InfixOperatorExpression.New), exchangeParas(InfixOperatorExpression.SetLeftExpression)).rightWith(lazy(argsBindedConsExp), InfixOperatorExpression.SetRightExpression).prefixComment('parse infix expression').raw;
+    const ternaryExp = from(lazy(argsBindedConsExp)).rightWith(makeWordParser('?', TernaryExpression.New), exchangeParas(TernaryExpression.SetCondition)).rightWith(lazy(argsBindedConsExp), TernaryExpression.SetTrueResult).rightWith(makeWordParser(':', nullize), selectLeft).rightWith(lazy(argsBindedConsExp), TernaryExpression.SetFalseResult).prefixComment('parse ternary expression').raw;
+    const invocation = genInvocation(func, InvocationExpression.New, InvocationExpression.SetArgs);
+    const invokeExp = from(lazy(argsBindedConsExp)).rightWith(invocation, exchangeParas(InvocationExpression.SetFunc)).prefixComment('parse invocation expression').raw;
+    const refinement = genRefinement(func, RefinementExpression.New, RefinementExpression.SetKey);
+    const refineExp = from(lazy(argsBindedConsExp)).rightWith(refinement, exchangeParas(RefinementExpression.SetObject)).prefixComment('parse refinement expression').raw;
     // ! 还能像下面这样用
-    const newExp = from(makeWordParser('new', NewExpression.New)).rightWith(whitespace, selectLeft).rightWith(expression, NewExpression.SetType).rightWith(from(invocation).transform(x => x.Args!).raw, NewExpression.SetArgs).raw;
+    const newExp = from(makeWordParser('new', NewExpression.New)).rightWith(whitespace, selectLeft).rightWith(lazy(argsBindedConsExp), NewExpression.SetType).rightWith(from(invocation).transform(x => x.Args!).raw, NewExpression.SetArgs).prefixComment('parse new expression').raw;
     const deleteExp = from(makeWordParser('delete', DeleteExpression.New))
                             .rightWith(whitespace, selectLeft)
-                            .rightWith(expression, DeleteExpression.SetObject)
+                            .rightWith(lazy(argsBindedConsExp), DeleteExpression.SetObject)
                             .rightWith(from(refinement).transform(x => x.Key!).raw, DeleteExpression.SetKey)
-                            .prefixComment('parse expression')
+                            .prefixComment('parse delete expression')
                             .raw;
     if (kind === ExpKind.DeleteExp) {
         return deleteExp;
     }
-    const exp = eitherOf(selectNotNull, lit, name, parenExp, preExp, inExp, ternaryExp, invokeExp, refineExp, newExp, deleteExp);
+    var exps = [lit, name, newExp, deleteExp, parenExp, preExp, inExp, ternaryExp, invokeExp, refineExp];
+    if (postfix) {
+        exps = exps.map(x => from(x).rightWith(postfix, selectLeft).raw);
+    }
+    const exp = eitherOf(selectNotNull, ...exps);
     // 我现在感觉，做补全的时候会将这些语法规则重新写一遍，以另一种方式
     return exp;
 };
-
-export const expression: IParser<Expression> = consExp();
+log('evaluate expression');
+// export const expression: IParser<Expression> = consExp();
 // typescript 里 IParser<IExpression> 可以赋给 IParser<SyntaxNode> 吗 可以
-export const deleteExp = consExp(ExpKind.DeleteExp);
+export const consDeleteExp = function (func: IParser<Func>) { return consExp(func, ExpKind.DeleteExp); };
 
 export type Expression = IExpression;

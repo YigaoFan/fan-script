@@ -65,6 +65,7 @@ export class OneOfCharsParser<T> implements IParser<T> {
     public parse(input: ParserInput): ParserResult<T> {
         const c = input.NextChar;
         let chars = this.mChars;
+        log('chars', chars, 'c', c.Value);
         if (chars.includes(c.Value)) {
             return {
                 Result: this.mResultFactory(c),

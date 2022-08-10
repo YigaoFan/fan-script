@@ -18,7 +18,7 @@ import { lazy, makeWordParser, oneOf } from "../parser";
 import { asArray, combine, selectNotNull, selectNotNullIn2DifferentType, stringify } from "../util";
 import { identifier, Identifier } from "./Identifier";
 import { func, Func, leftBrace, rightBrace, VarStmt, varStmt } from "./Func";
-import { whitespace } from "./Whitespace";
+import { Whitespace, whitespace } from "./Whitespace";
 
 // property 默认是 private，method 默认是 public，目前更改不了权限
 export class Class implements ISyntaxNode {
@@ -44,9 +44,9 @@ export class Class implements ISyntaxNode {
         return cls;
     }
 
-    public static SetMembers(cls: Class, members: (Func | VarStmt | null)[]) {
+    public static SetMembers(cls: Class, members: (Func | VarStmt | Whitespace)[]) { // 这里外面传来的参数由 null 变成了 Whitespace, 这里还是 null, ts 的类型检查没有检查出来 
         for (const i of members) {
-            if (i === null) {
+            if (i instanceof Whitespace) {
                 continue;
             }
             Class.SetMember(cls, i);

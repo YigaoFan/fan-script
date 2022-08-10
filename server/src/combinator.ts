@@ -1,5 +1,6 @@
 import { ParserInput, ParserResult, IParser, debug, IInputStream, logWith, Indent, } from './IParser';
-import { log } from './util';
+import { ISyntaxNode } from './ISyntaxNode';
+import { log, stringify } from './util';
 
 // 一定贯彻一个 input 只能用一次的原则，后面的解析用前面的解析的返回值中的 remain，注意循环会用多次
 
@@ -42,7 +43,7 @@ function combine<T1, T2, T3>(parser1: IParser<T1>, parser2: IParser<T2>, resultC
  * not use undefined as @template arg T.
  * Option use undefined to judge if exist value internal.
  */
-export class Option<T> {
+export class Option<T extends { toString(): string; }> {
     private mT: T | undefined;
 
     public constructor(t: T | undefined = undefined) {
@@ -62,6 +63,12 @@ export class Option<T> {
 
     public ToUndefined(): T | undefined {
         return this.mT;
+    }
+
+    public toString(): string {
+        return stringify({
+            value: this.mT?.toString(),
+        });
     }
 }
 

@@ -15,11 +15,11 @@ import {
     eitherOf,
 } from "../combinator";
 import { lazy, makeWordParser, oneOf } from "../parser";
-import { asArray, combine, selectNotNull, selectNotNullIn2DifferentType, stringify } from "../util";
+import { asArray, combine, log, selectNotNull, selectNotNullIn2DifferentType, stringify } from "../util";
 import { whitespace } from "./Whitespace";
 import { Identifier, identifier } from "./Identifier";
 import { Statement } from "./Statement";
-import { deleteExp, DeleteExpression, Expression, expression, genInvocation, genRefinement } from "./Expression";
+import { consExp, consDeleteExp, DeleteExpression, Expression, genInvocation, genRefinement, ExpKind } from "./Expression";
 
 export class Func implements ISyntaxNode {
     private mName?: Identifier;
@@ -462,27 +462,37 @@ class ExpStmt implements Statement {
     }
 }
 
-const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
-// 要不要语法解析过程也搞成一个语法结点内，可以有哪些子结点，而不止是解析结果有结构
-const consBody = function(): IParser<Statement[]> {
-    const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).rightWith(optional(blanks), selectLeft).raw;
+const consBlock = function(stmt: IParser<Statement>): IParser<Statement[]> {
+    return from(stmt).zeroOrMore(asArray).raw;
+};
 
-    const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(blanks, selectLeft).rightWith(expWithBlank, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).raw;
-    // expression statement
+enum StmtKind {
+    All,
+    VarStmt,
+}
+
+// 要不要语法解析过程也搞成一个语法结点内，可以有哪些子结点，而不止是解析结果有结构
+export const consStmt = function(lazyFunc: IParser<Func>, kind: StmtKind): IParser<Statement> {
+    const expWithBlank = from(consExp(lazyFunc, ExpKind.All)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
+    const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).raw;
+
+    // 要让 ; 参与到 expression 的解析中，这样就可以排除其他可能性解析
+    const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(blanks, selectLeft).rightWith(from(consExp(lazyFunc, ExpKind.All, makeWordParser(';', nullize))).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).prefixComment('parse return stmt').raw;
     // 有环就定义一个下面consAfterName这样的函数，确实是这样一个惯用法，环其实就是递归；之前说的跳到某一点也是这样做(AfterName 就代表一个点)
     // 也就是说可以有算法可以将语法图固定地转换为解析器代码
     // consXXX 代表函数生成的解析器内部有递归
     // getXXX 只是简单的封装，让代码不那么乱
+    // expression statement
     const getExpStmt = function(): IParser<ExpStmt> {
         const secondBranch = from(makeWordParser('+=', AddAssign_ExpStmtSubNode.New));
         const thirdBranch = from(makeWordParser('-=', MinusAssign_ExpStmtSubNode.New));
-        const refinement = genRefinement(Refine_ExpStmtSubNode.New, Refine_ExpStmtSubNode.SetKey);
+        const refinement = genRefinement(lazyFunc, Refine_ExpStmtSubNode.New, Refine_ExpStmtSubNode.SetKey);
         const consAfterName = function(): IParser<ExpStmtSubNode> {
             const firstBranch = from(makeWordParser('=', Assign_ExpStmtSubNode.New)).rightWith(optional(lazy(consAfterName)), (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, r.ToUndefined()));
             const toWithExpressions = [firstBranch, secondBranch, thirdBranch, ];// ts 的类型系统真是厉害呀，这个数组项的类型的模板参数可以归到基类
-            const branches = toWithExpressions.map(x => x.rightWith(expression, (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, Expression_ExpStmtSubNode.New(r))));
+            const branches = toWithExpressions.map(x => x.rightWith(expWithBlank, (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, Expression_ExpStmtSubNode.New(r))));
 
-            const invocation = genInvocation(Invoke_ExpStmtSubNode.New, Invoke_ExpStmtSubNode.SetArgs);
+            const invocation = genInvocation(lazyFunc, Invoke_ExpStmtSubNode.New, Invoke_ExpStmtSubNode.SetArgs);
             // invoke 完如果想环，必须先 refine 一下
             // 同一种图，可能有多种代码表示，比如下面这个两个分支，可以用 eitherof，也可以用 optional
             const fourthBranch = from(invocation)
@@ -498,7 +508,7 @@ const consBody = function(): IParser<Statement[]> {
             return start;
         };
         const oneWay = from(identifier).transform(Name_ExpStmtSubNode.New).rightWith(consAfterName(), ExpStmtSubNode.SetRightReturnCurrent).raw;
-        const exp = or(oneWay, deleteExp, (a, b) => ExpStmt.New(selectNotNullIn2DifferentType(a, b)));
+        const exp = from(or(oneWay, consDeleteExp(lazyFunc), (a, b) => ExpStmt.New(selectNotNullIn2DifferentType(a, b)))).rightWith(optional(blanks), selectLeft).rightWith(makeWordParser(';', nullize), selectLeft).raw;
         return exp;
     };
 
@@ -506,12 +516,12 @@ const consBody = function(): IParser<Statement[]> {
     // body 里还有普通的语句，作为递归的终点
     // 下面这个里面其实还可以互相嵌套的，其实任何 function body 里可以有的东西都可以在里面，这就递归了
     // 肯定要提供一种惰性求值，类似指针的操作，保留一种无限的能力，不然这里的函数会无限递归下去
-    const block = from(leftBrace).rightWith(lazy(consBody), selectRight).rightWith(optional(blanks), selectLeft).rightWith(rightBrace, selectLeft).raw;
+    const block = from(leftBrace).rightWith(consBlock(lazy(consStmt.bind(null, lazyFunc, StmtKind.All))), selectRight).rightWith(optional(blanks), selectLeft).rightWith(rightBrace, selectLeft).raw;
 
     const elseBlock = from(makeWordParser('else', id)).rightWith(block, selectRight).raw;
     const ifStmt = from(makeWordParser('if', IfStmt.New))
         .rightWith(leftParen, selectLeft)
-        .rightWith(expression, IfStmt.SetCond)
+        .rightWith(consExp(lazyFunc, ExpKind.All), IfStmt.SetCond)
         .rightWith(rightParen, selectLeft)
         .rightWith(block, IfStmt.SetBlock)
         .rightWith(optional(elseBlock), IfStmt.SetElseBlock)
@@ -526,33 +536,37 @@ const consBody = function(): IParser<Statement[]> {
                     .rightWith(rightParen, selectLeft)
                     .rightWith(block, ForStmt.SetBlock)
                     .raw;
-    const body = from(eitherOf<Statement, Statement>(selectNotNull, ifStmt, forStmt, retStmt, varStmt, getExpStmt())).zeroOrMore(asArray).raw;
-    return body;
+    const varItem = from(identifier)
+                    .rightWith(optional(blanks), selectLeft)
+                    .rightWith(
+                        optional(from(makeWordParser('=', nullize))
+                            .rightWith(expWithBlank, selectRight)
+                            .raw),
+                        (n, e) => ([n, e.ToUndefined()] as const))
+                    .raw;
+    const varStmt = from(makeWordParser('var', VarStmt.New))
+                    .rightWith(blanks, selectLeft)
+                    .rightWith(varItem, VarStmt.AddVar)
+                    .rightWith(optional(from(makeWordParser(',', nullize))
+                        .rightWith(varItem, selectRight)
+                        .zeroOrMore(asArray)
+                        .raw),
+                        VarStmt.AddVars)
+                    .rightWith(makeWordParser(';', nullize), selectLeft)
+                    .prefixComment('parse var stmt')
+                    .raw;
+    if (kind === StmtKind.VarStmt) {
+        return varStmt;
+    }
+    const stmt = from(eitherOf<Statement, Statement>(selectNotNull, ifStmt, forStmt, retStmt, varStmt, getExpStmt())).raw; // add ; after getExpStmt() 
+    return stmt;
 };
 
-const varItem = from(identifier)
-                        .rightWith(optional(blanks), selectLeft)
-                        .rightWith(
-                            optional(from(makeWordParser('=', nullize))
-                                .rightWith(expWithBlank, selectRight)
-                                .raw),
-                            (n, e) => ([n, e.ToUndefined()] as const))
-                        .raw;
-export const varStmt = from(makeWordParser('var', VarStmt.New))
-                        .rightWith(blanks, selectLeft)
-                        .rightWith(varItem, VarStmt.AddVar)
-                        .rightWith(optional(from(makeWordParser(',', nullize))
-                                        .rightWith(varItem, selectRight)
-                                        .zeroOrMore(asArray)
-                                        .raw),
-                                   VarStmt.AddVars)
-                        .rightWith(makeWordParser(';', nullize), selectLeft)
-                        .prefixComment('parse var stmt')
-                        .raw;
 // parse xxx, start
 //      parse sub part
 // parse xxx, result
 // parse yyy, result
+log('evaluate consFunc and func');
 export const consFunc = function() : IParser<Func> { 
     return from(makeWordParser('func', Func.New))
                     .prefixComment('parse func keyword')
@@ -561,9 +575,10 @@ export const consFunc = function() : IParser<Func> {
                     .rightWith(optional(blanks), selectLeft)
                     .rightWith(parasWithParen, Func.SetParameters)
                     .rightWith(leftBrace, selectLeft)
-                    .rightWith(lazy(consBody), Func.SetBlock)
+                    .rightWith(consBlock(consStmt(lazy(consFunc), StmtKind.All)), Func.SetBlock)
                     .rightWith(rightBrace, selectLeft)
                     .prefixComment('parse func')
                     .raw;
 };
 export const func = consFunc();
+export const varStmt = consStmt(func, StmtKind.VarStmt) as IParser<Statement>;

@@ -1,10 +1,11 @@
 import { IParser, Position, } from "../IParser";
-import { Expression, expression, } from "./Expression";
+import { consExp, ExpKind, Expression, } from "./Expression";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { from, nullize, optional, selectLeft, selectRight } from "../combinator";
-import { makeWordParser } from "../parser";
+import { lazy, makeWordParser } from "../parser";
 import { whitespace, } from "./Whitespace";
 import { asArray, stringify } from "../util";
+import { Func } from "./Func";
 
 export class Array implements ISyntaxNode {
     private mExps?: Expression[];
@@ -33,13 +34,15 @@ export class Array implements ISyntaxNode {
     }
 }
 
-const item = from(expression)
-        .leftWith(optional(whitespace), selectRight)
-        .rightWith(optional(whitespace), selectLeft)
-        .rightWith(makeWordParser(',', nullize), selectLeft);
+const consItem = (func: IParser<Func>) => (from(lazy(consExp.bind(null, func, ExpKind.All))) // 这里讲道理要把这个 lazy 的 consExp 参数化
+                                            .leftWith(optional(whitespace), selectRight)
+                                            .rightWith(optional(whitespace), selectLeft)
+                                            .rightWith(makeWordParser(',', nullize), selectLeft));
 
-export const array: IParser<Array> = from(makeWordParser('[', Array.New))
-                                        .rightWith(item.zeroOrMore(asArray).raw, Array.SetItems)
-                                        .rightWith(makeWordParser(']', nullize), selectLeft)
-                                        .prefixComment('parse array')
-                                        .raw;
+export const consArray = (func: IParser<Func>): IParser<Array> =>  {
+    return from(makeWordParser('[', Array.New))
+                .rightWith(consItem(func).zeroOrMore(asArray).raw, Array.SetItems)
+                .rightWith(makeWordParser(']', nullize), selectLeft)
+                .prefixComment('parse array')
+                .raw;
+};

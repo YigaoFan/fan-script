@@ -3,10 +3,10 @@ import { id, or, from, nullize, selectRight, optional, Option, eitherOf, } from 
 import { ISyntaxNode } from "../ISyntaxNode";
 import { number, Number, } from "./Number";
 import { string, String, } from "./String";
-import { object, Obj, } from "./Object";
-import { array, Array, } from "./Array";
-import { consFunc, Func, func } from "./Func";
-import { selectNotNull, stringify } from "../util";
+import { consObject, Obj, } from "./Object";
+import { Array, consArray, } from "./Array";
+import { consFunc, Func, } from "./Func";
+import { log, selectNotNull, stringify } from "../util";
 import { lazy } from "../parser";
 
 interface ILiteral extends ISyntaxNode {
@@ -118,18 +118,19 @@ class FuncLiteral implements ILiteral {
     }
 }
 
-const consLiteral = function(): IParser<ILiteral> {
+export const consLiteral = function(func: IParser<Func>): IParser<ILiteral> {
     // undefined 和 null 没弄吧？ TODO
     const num = from(number).transform(NumberLiteral.New).raw;
     const str = from(string).transform(StringLiteral.New).raw;
-    const obj = from(object).transform(ObjectLiteral.New).raw;
-    const arr = from(array).transform(ArrayLiteral.New).raw;
-    const fun = from(lazy(consFunc)).transform(FuncLiteral.New).raw; // func 这里是 undefined TODO 说到底可能还是引用顺序的问题
+    const obj = from(consObject(func)).transform(ObjectLiteral.New).raw;
+    const arr = from(consArray(func)).transform(ArrayLiteral.New).raw;
+    const fun = from(func).transform(FuncLiteral.New).raw; // func 这里是 undefined 说到底可能还是引用顺序的问题, 已显式化此依赖为一个参数
     // IParser<StringLiteral> 为什么可以赋值给 IParser<ILiteral>
-    const lit = eitherOf<ILiteral, ILiteral>(selectNotNull, num, str, obj, arr, fun);
+    const lit = from(eitherOf<ILiteral, ILiteral>(selectNotNull, num, str, obj, arr, fun)).prefixComment('parse literal').raw;
     return lit;
 };
-export const literal: IParser<Literal> = from(consLiteral()).prefixComment('parse literal').raw;
+log('evaluate literal');
+// export const literal: IParser<Literal> = from(consLiteral());
 export type Literal = ILiteral;// 不要直接暴露接口出去
 
 // 原来是忘了 npm install

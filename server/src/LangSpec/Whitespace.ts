@@ -2,6 +2,7 @@ import { makeWordParser, oneOf, lazy, } from "../parser";
 import { from, } from "../combinator";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { Position } from "../IParser";
+import { log } from "../util";
 
 const spaces = [' ', '\t', '\n'];
 export class Whitespace implements ISyntaxNode {

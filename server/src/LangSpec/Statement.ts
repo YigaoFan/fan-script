@@ -3,7 +3,7 @@
 
 import { ISyntaxNode } from "../ISyntaxNode";
 
-interface IStatement extends ISyntaxNode {
+export interface IStatement extends ISyntaxNode {
 }
 
 export type Statement = IStatement;
