@@ -56,15 +56,19 @@ export class Text {
     private mChars: Char[];
     private mFilename: string;
 
+    public static Empty(): Text {
+        return Text.New('');
+    }
+
     public static New(filename: string, chars: Char[] = []) {
         return new Text(filename, chars);
     }
 
     public static Combine(t1: Text, t2: Text) {
-        if (t1.mFilename != t2.mFilename) {
+        if (t2.mFilename !== '' && t1.mFilename !== '' && t1.mFilename != t2.mFilename) {
             throw new Error('cannot combine texts in different file');
         }
-        return new Text(t1.mFilename, t1.mChars.concat(t2.mChars));
+        return new Text(t1.mFilename === '' ? t2.mFilename : t1.mFilename, t1.mChars.concat(t2.mChars));
     }
 
     private constructor(filename: string, chars: Char[]) {
@@ -93,9 +97,14 @@ export class Text {
      * attention: will change text internal state
      */
     public Append(t: Text) {
-        if (this.mFilename != t.mFilename) {
+        if (t.Empty) {
+            return;
+        }
+
+        if (this.mFilename !== '' && t.mFilename !== '' && this.mFilename != t.mFilename) {
             throw new Error('cannot combine texts in different file');
         }
+        this.mFilename = this.mFilename === '' ? t.Filename : this.mFilename;
         this.mChars.push(...t.mChars);
     }
 
@@ -173,8 +182,8 @@ export const debug = function (enable: boolean = enableDebug) {
             var title = `${this.constructor.name} ${k}`;
             // summary
             logWith(Indent.NextLineAdd, `start ${title} with ${args}`);// ${} will call class.toString to get better string
+            // log('this arg', this === undefined);
             var r = v.apply(this, args);
-            // TODO handle r to better print
             logWith(Indent.CurrentLineReduce, `end ${title} \n result ${formatParserResult(r)}`);
             return r;
         };

@@ -3,7 +3,7 @@ import { ParserResult, } from "./IParser";
 export const log = console.log.bind(console);
 
 export const combine = function(...texts: Text[]) {
-    return texts.reduce(Text.Combine);
+    return texts.reduce(Text.Combine, Text.Empty());
 };
 
 export const selectNotNull = <T>(...ts: (T | null)[]): T => {

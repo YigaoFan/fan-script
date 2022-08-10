@@ -56,9 +56,9 @@ export class Class implements ISyntaxNode {
 
     public toString() {
         return stringify({
-            name: this.mName?.toString(),
-            varStmt: 'todo',
-            methods: 'todo',
+            name: this.mName?.toString(), // 为什么有的情况下，这一项不在？是因为 undefined stringify 就直接没了吗？是的
+            varStmts: this.mProperties.map(x => x.toString()),
+            methods: this.mMethods.map(x => x.toString()),
         });
     }
 
@@ -80,7 +80,7 @@ export const classs = from(makeWordParser('class', Class.New))
                         .rightWith(optional(whitespace), selectLeft)
                         .rightWith(leftBrace, selectLeft)
                         // add whitespace below todo
-                        .rightWith(from(or(func, varStmt, selectNotNullIn2DifferentType)).zeroOrMore(asArray).raw, Class.SetMembers)
+                        .rightWith(from(or(func, or(varStmt, whitespace, selectNotNullIn2DifferentType), selectNotNullIn2DifferentType)).zeroOrMore(asArray).raw, Class.SetMembers)
                         .rightWith(rightBrace, selectLeft)
                         .prefixComment('parse class')
                         .raw

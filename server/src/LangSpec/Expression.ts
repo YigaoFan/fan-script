@@ -199,7 +199,7 @@ class InvocationExpression implements IExpression {
     public toString(): string {
         return stringify({
             func: this.mFunc?.toString(),
-            args: this.mArgs?.toString(),
+            args: this.mArgs?.map(x => x.toString()),
         });
     }
 }
@@ -231,6 +231,13 @@ class RefinementExpression implements IExpression {
     public get Key(): IExpression | undefined {
         return this.mKey;
     }
+
+    public toString(): string {
+        return stringify({
+            object: this.mObject?.toString(),
+            key: this.mKey?.toString(),
+        });
+    }
 }
 
 class NewExpression implements IExpression {
@@ -255,6 +262,13 @@ class NewExpression implements IExpression {
     public static SetArgs(expression: NewExpression, args: IExpression[]) {
         expression.mArgs = args;
         return expression;
+    }
+
+    public toString(): string {
+        return stringify({
+            type: this.mType?.toString(),
+            args: this.mArgs?.map(x => x.toString()),
+        });
     }
 }
 
@@ -281,6 +295,13 @@ export class DeleteExpression implements IExpression {
         expression.mKey = key;
         return expression;
     }
+
+    public toString(): string {
+        return stringify({
+            object: this.mObject?.toString(),
+            key: this.mKey?.toString(),
+        });
+    }
 }
 
 export const genRefinement = <T>(nodeCtor: () => T, keySetter: (t: T, k: IExpression) => T) => {
@@ -296,11 +317,16 @@ export const genInvocation = <T>(nodeCtor: () => T, argsSetter: (t: T, k: IExpre
     return invocation;
 };
 const invocation = genInvocation(InvocationExpression.New, InvocationExpression.SetArgs);
+// 注意变量定义及其引用位置，定义在引用后，会出 undefined 的问题
+enum ExpKind {
+    All,
+    DeleteExp,
+}
 
 // 之后做补全会碰到一个问题：什么时候算进入到某个语法节点的范围，在这个范围内进行补全，在这个范围内，某些东西可能是不完整的
 // 建立 ast 相关 node 的类型的事要提上日程了
 // 这里面有些地方是可以放任意多的空格，这个要想一下在哪加上
-const consExp = function(): IParser<IExpression> {
+const consExp = function (kind: ExpKind = ExpKind.All): IParser<IExpression> {
     // handle blank TODO
     const lit = from(literal).transform(LiteralExpression.New).raw;
     const name = from(identifier).transform(IdentifierExpression.New).raw;
@@ -321,21 +347,22 @@ const consExp = function(): IParser<IExpression> {
     const refineExp = from(lazy(consExp)).rightWith(refinement, exchangeParas(RefinementExpression.SetObject)).raw;
     // ! 还能像下面这样用
     const newExp = from(makeWordParser('new', NewExpression.New)).rightWith(whitespace, selectLeft).rightWith(expression, NewExpression.SetType).rightWith(from(invocation).transform(x => x.Args!).raw, NewExpression.SetArgs).raw;
+    const deleteExp = from(makeWordParser('delete', DeleteExpression.New))
+                            .rightWith(whitespace, selectLeft)
+                            .rightWith(expression, DeleteExpression.SetObject)
+                            .rightWith(from(refinement).transform(x => x.Key!).raw, DeleteExpression.SetKey)
+                            .prefixComment('parse expression')
+                            .raw;
+    if (kind === ExpKind.DeleteExp) {
+        return deleteExp;
+    }
     const exp = eitherOf(selectNotNull, lit, name, parenExp, preExp, inExp, ternaryExp, invokeExp, refineExp, newExp, deleteExp);
     // 我现在感觉，做补全的时候会将这些语法规则重新写一遍，以另一种方式
     return exp;
 };
 
 export const expression: IParser<Expression> = consExp();
-// typescript 里 IParser<IExpression> 可以赋给 IParser<SyntaxNode> 吗
-
-
-
-export const deleteExp = from(makeWordParser('delete', DeleteExpression.New))
-                            .rightWith(whitespace, selectLeft)
-                            .rightWith(expression, DeleteExpression.SetObject)
-                            .rightWith(from(refinement).transform(x => x.Key!).raw, DeleteExpression.SetKey)
-                            .prefixComment('parse expression')
-                            .raw;
+// typescript 里 IParser<IExpression> 可以赋给 IParser<SyntaxNode> 吗 可以
+export const deleteExp = consExp(ExpKind.DeleteExp);
 
 export type Expression = IExpression;

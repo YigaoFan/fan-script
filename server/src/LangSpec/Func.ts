@@ -131,7 +131,7 @@ export class VarStmt implements Statement {
         if (!vars.hasValue()) {
             return s;
         }
-        if (s.mVars) {
+        if (!s.mVars) {
             s.mVars = [];
         }
         for (const i of vars.value) {
@@ -193,8 +193,8 @@ class IfStmt implements Statement {
     public toString(): string {
         return stringify({
             cond: this.mCondExp?.toString(),
-            block: this.mBlock?.toString(),
-            elseBlock: this.mElseBlock?.toString(),
+            block: this.mBlock?.map(x => x.toString()),
+            elseBlock: this.mElseBlock?.map(x => x.toString()),
         });
     }
 }
@@ -244,7 +244,7 @@ class ForStmt implements Statement {
             init: this.mInitExp?.toString(),
             cond: this.mCondExp?.toString(),
             update: this.mUpdateExp?.toString(),
-            block: this.mBlock?.toString(),
+            block: this.mBlock?.map(x => x.toString()),
         });
     }
 }
@@ -454,6 +454,12 @@ class ExpStmt implements Statement {
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+
+    public toString(): string {
+        return stringify({
+            root: this.mRoot?.toString(),
+        });
+    }
 }
 
 const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
@@ -461,7 +467,7 @@ const expWithBlank = from(expression).leftWith(optional(blanks), selectRight).ri
 const consBody = function(): IParser<Statement[]> {
     const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).rightWith(optional(blanks), selectLeft).raw;
 
-    const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(expWithBlank, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).raw;
+    const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(blanks, selectLeft).rightWith(expWithBlank, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).raw;
     // expression statement
     // 有环就定义一个下面consAfterName这样的函数，确实是这样一个惯用法，环其实就是递归；之前说的跳到某一点也是这样做(AfterName 就代表一个点)
     // 也就是说可以有算法可以将语法图固定地转换为解析器代码
@@ -482,7 +488,7 @@ const consBody = function(): IParser<Statement[]> {
             const fourthBranch = from(invocation)
                                     .oneOrMore(asArray)
                                     .rightWith(optional(from(refinement).rightWith(lazy(consAfterName), ExpStmtSubNode.SetRightReturnCurrent).raw), 
-                                               (nodes, r) => ExpStmtSubNode.SetRightReturnCurrent(nodes.reduce((previous, current) => ExpStmtSubNode.SetRightReturnCurrent(previous, current)), r.ToUndefined()));
+                                        (nodes, r) => ExpStmtSubNode.SetRightReturnCurrent(nodes.reduce((previous, current) => ExpStmtSubNode.SetRightReturnCurrent(previous, current) as Invoke_ExpStmtSubNode), r.ToUndefined()));
             branches.push(fourthBranch);
             const start = from(optional(refinement))
                                 .transform(x => ExpStmtSubNode.SetRightReturnCurrent(Empty_ExpStmtSubNode.New(), x.ToUndefined()))
@@ -547,7 +553,8 @@ export const varStmt = from(makeWordParser('var', VarStmt.New))
 //      parse sub part
 // parse xxx, result
 // parse yyy, result
-export const func = from(makeWordParser('func', Func.New))
+export const consFunc = function() : IParser<Func> { 
+    return from(makeWordParser('func', Func.New))
                     .prefixComment('parse func keyword')
                     .rightWith(blanks, selectLeft)
                     .rightWith(varName, Func.SetName)
@@ -558,3 +565,5 @@ export const func = from(makeWordParser('func', Func.New))
                     .rightWith(rightBrace, selectLeft)
                     .prefixComment('parse func')
                     .raw;
+};
+export const func = consFunc();

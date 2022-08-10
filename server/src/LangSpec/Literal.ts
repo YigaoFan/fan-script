@@ -5,8 +5,9 @@ import { number, Number, } from "./Number";
 import { string, String, } from "./String";
 import { object, Obj, } from "./Object";
 import { array, Array, } from "./Array";
-import { Func, func } from "./Func";
+import { consFunc, Func, func } from "./Func";
 import { selectNotNull, stringify } from "../util";
+import { lazy } from "../parser";
 
 interface ILiteral extends ISyntaxNode {
     // ['constructor']: new (...args: ConstructorParameters<typeof ILiteral>) => this;
@@ -123,12 +124,12 @@ const consLiteral = function(): IParser<ILiteral> {
     const str = from(string).transform(StringLiteral.New).raw;
     const obj = from(object).transform(ObjectLiteral.New).raw;
     const arr = from(array).transform(ArrayLiteral.New).raw;
-    const fun = from(func).transform(FuncLiteral.New).raw;
+    const fun = from(lazy(consFunc)).transform(FuncLiteral.New).raw; // func 这里是 undefined TODO 说到底可能还是引用顺序的问题
     // IParser<StringLiteral> 为什么可以赋值给 IParser<ILiteral>
     const lit = eitherOf<ILiteral, ILiteral>(selectNotNull, num, str, obj, arr, fun);
     return lit;
 };
-export const literal: IParser<ILiteral> = from(consLiteral()).prefixComment('parse literal').raw;
+export const literal: IParser<Literal> = from(consLiteral()).prefixComment('parse literal').raw;
 export type Literal = ILiteral;// 不要直接暴露接口出去
 
 // 原来是忘了 npm install

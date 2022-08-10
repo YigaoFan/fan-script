@@ -87,6 +87,7 @@ class LazyParser<T> implements IParser<T> {
 
     @debug()
     parse(input: ParserInput): ParserResult<T> {
+        log('lazy', this.mActualParserGentor);
         const p = this.mActualParserGentor();
         return p.parse(input);
     }
