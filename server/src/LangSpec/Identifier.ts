@@ -41,6 +41,14 @@ export class Identifier implements ISyntaxNode {
         });
     }
 
+    // For test, may delete future
+    public get Value(): string {
+        if (this.mText) {
+            return this.mText.toString();
+        }
+        throw new Error('text not exist in Identifier');
+    }
+
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }

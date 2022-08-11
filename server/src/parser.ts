@@ -34,7 +34,7 @@ export class WordParser<T> implements IParser<T> {
                 t.Append(c);
                 continue;
             }
-            log(`failed on ${i}, expect "${word[i]}", actual: "${JSON.stringify(c)}"`);
+            // log(`failed on ${i}, expect "${word[i]}", actual: "${JSON.stringify(c)}"`);
             return null;
         }
 
@@ -65,7 +65,7 @@ export class OneOfCharsParser<T> implements IParser<T> {
     public parse(input: ParserInput): ParserResult<T> {
         const c = input.NextChar;
         let chars = this.mChars;
-        log('chars', chars, 'c', c.Value);
+        // log('chars', chars, 'c', c.Value);
         if (chars.includes(c.Value)) {
             return {
                 Result: this.mResultFactory(c),
@@ -88,7 +88,7 @@ class LazyParser<T> implements IParser<T> {
 
     @debug()
     parse(input: ParserInput): ParserResult<T> {
-        log('lazy', this.mActualParserGentor);
+        // log('lazy', this.mActualParserGentor);
         const p = this.mActualParserGentor();
         return p.parse(input);
     }

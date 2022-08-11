@@ -34,7 +34,7 @@ export class StringStream implements IInputStream {
             return Text.New(this.mFilename);
         }
         var c = this.mChars[this.mCurrentIndex++];
-        log(`get char of ${this.mCurrentIndex - 1}: ${c.Value}`);
+        // log(`get char of ${this.mCurrentIndex - 1}: ${c.Value}`);
         var t = Text.New(this.mFilename, [c]);
         return t;
     }

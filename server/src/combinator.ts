@@ -245,7 +245,7 @@ class Transform<T, T1> implements IParser<T1> {
     public parse(input: ParserInput): ParserResult<T1> {
         // var p = this.mParser.parse; // 这样赋值会影响函数绑定到 this 啊，类似 C++ 直接保存成员函数地址！本来下面是调用 p 的，然后报了个 this undefine 的错
         // var transformFunc = this.mTransformFunc;
-        log('this.mParser', this.mParser === undefined);
+        // log('this.mParser', this.mParser === undefined);
         const r = this.mParser.parse(input);
         if (r == null) {
             return null;

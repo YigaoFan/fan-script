@@ -16,7 +16,7 @@ import {
 } from "../combinator";
 import { lazy, makeWordParser, oneOf } from "../parser";
 import { asArray, combine, log, selectNotNull, selectNotNullIn2DifferentType, stringify } from "../util";
-import { whitespace } from "./Whitespace";
+import { Whitespace, whitespace } from "./Whitespace";
 import { Identifier, identifier } from "./Identifier";
 import { Statement } from "./Statement";
 import { consExp, consDeleteExp, DeleteExpression, Expression, genInvocation, genRefinement, ExpKind } from "./Expression";
@@ -463,7 +463,16 @@ class ExpStmt implements Statement {
 }
 
 const consBlock = function(stmt: IParser<Statement>): IParser<Statement[]> {
-    return from(stmt).zeroOrMore(asArray).raw;
+    function notWhiteSpace(value: Statement | Whitespace): value is Statement {
+        if (value instanceof Whitespace) { 
+            return false;
+        }
+        return true;
+    }
+    return from(or(stmt, whitespace, selectNotNullIn2DifferentType))
+                .zeroOrMore(asArray)
+                .transform(xs => xs.filter(notWhiteSpace))
+                .raw;
 };
 
 enum StmtKind {
@@ -477,7 +486,7 @@ export const consStmt = function(lazyFunc: IParser<Func>, kind: StmtKind): IPars
     const expWithSemicolon = from(expWithBlank).rightWith(makeWordParser(';', id), selectLeft).raw;
 
     // 要让 ; 参与到 expression 的解析中，这样就可以排除其他可能性解析
-    const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(blanks, selectLeft).rightWith(from(consExp(lazyFunc, ExpKind.All, makeWordParser(';', nullize))).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw, ReturnStmt.SetExp).rightWith(makeWordParser(';', nullize), selectLeft).prefixComment('parse return stmt').raw;
+    const retStmt = from(makeWordParser('return', ReturnStmt.New)).rightWith(blanks, selectLeft).rightWith(from(consExp(lazyFunc, ExpKind.All, makeWordParser(';', nullize))).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw, ReturnStmt.SetExp).prefixComment('parse return stmt').raw;
     // 有环就定义一个下面consAfterName这样的函数，确实是这样一个惯用法，环其实就是递归；之前说的跳到某一点也是这样做(AfterName 就代表一个点)
     // 也就是说可以有算法可以将语法图固定地转换为解析器代码
     // consXXX 代表函数生成的解析器内部有递归

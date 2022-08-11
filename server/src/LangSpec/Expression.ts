@@ -368,7 +368,7 @@ export const consExp = function (func: IParser<Func>, kind: ExpKind, postfix: IP
     // 我现在感觉，做补全的时候会将这些语法规则重新写一遍，以另一种方式
     return exp;
 };
-log('evaluate expression');
+// log('evaluate expression');
 // export const expression: IParser<Expression> = consExp();
 // typescript 里 IParser<IExpression> 可以赋给 IParser<SyntaxNode> 吗 可以
 export const consDeleteExp = function (func: IParser<Func>) { return consExp(func, ExpKind.DeleteExp); };

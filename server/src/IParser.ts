@@ -152,7 +152,7 @@ export const htmlLogger = new HtmlLogger('parse.html');
  */
 var indent = 0;
 // 缩进的第二行好像还是有问题 TODO
-// const logWith = function (indentSetting: Indent, ...args: any[]) {
+// export const logWith = function (indentSetting: Indent, ...args: any[]) {
 //     const genSpaces = (count: number) => Array(count).join(' ');
 //     switch (indentSetting) {
 //         case Indent.CurrentLineReduce: --indent;

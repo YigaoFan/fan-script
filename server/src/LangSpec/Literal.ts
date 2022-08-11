@@ -129,7 +129,7 @@ export const consLiteral = function(func: IParser<Func>): IParser<ILiteral> {
     const lit = from(eitherOf<ILiteral, ILiteral>(selectNotNull, num, str, obj, arr, fun)).prefixComment('parse literal').raw;
     return lit;
 };
-log('evaluate literal');
+// log('evaluate literal');
 // export const literal: IParser<Literal> = from(consLiteral());
 export type Literal = ILiteral;// 不要直接暴露接口出去
 

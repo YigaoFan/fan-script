@@ -1,3 +1,4 @@
+import { assert } from 'console';
 import { readFileSync } from 'fs';
 import path = require('path');
 import { htmlLogger } from '../../IParser';
@@ -5,6 +6,8 @@ import { GenerateParserInputTable } from '../../ParserInputTable';
 import { StringStream } from '../../StringStream';
 import { log } from '../../util';
 import { classs } from '../Class';
+import { func } from '../Func';
+import { identifier } from '../Identifier';
 
 const tests: (() => void)[] = [];
 
@@ -16,7 +19,7 @@ const readCodeFrom = (path: string) => {
     return readFileSync(path, 'utf-8');
 };
 
-export const test = function() {
+const testClass = () => {
     var c = readCodeFrom(path.resolve(__dirname, 'CodeSample/class.fs'));
     var s = StringStream.New(c, 'class.fs');
     GenerateParserInputTable('parser-input.html', s.Copy());
@@ -25,5 +28,90 @@ export const test = function() {
     } finally {
         htmlLogger.Close();
     }
+};
+
+const testIdentifier = () => {
+    {
+        const s = StringStream.New('a', 'id.fs');
+        const r = identifier.parse(s);
+        assert(r !== null);
+        assert(r!.Result.Value === 'a');
+    }
+
+    {
+        const s = StringStream.New('a1abc', 'id.fs');
+        const r = identifier.parse(s);
+        assert(r !== null);
+        assert(r!.Result.Value === 'a1abc');
+    }
+
+    {
+        const s = StringStream.New('_', 'id.fs');
+        const r = identifier.parse(s);
+        assert(r !== null);
+        assert(r!.Result.Value === '_');
+    }
+
+    {
+        const s = StringStream.New('_1', 'id.fs');
+        const r = identifier.parse(s);
+        assert(r !== null);
+        assert(r!.Result.Value === '_1');
+    }
+};
+
+const testNumber = () => {
+    // TODO
+};
+
+const testFunc = () => {
+    {
+        const s = 'func f() { }';
+        const ss = StringStream.New(s, 'func.fs');
+        const r = func.parse(ss);
+        assert(r !== null);
+    }
+
+    {
+        const s = 'func f(a, b) { }';
+        const ss = StringStream.New(s, 'func.fs');
+        const r = func.parse(ss);
+        assert(r !== null);
+    }
+
+    {
+        const s = 'func f(a1, a2) { }';
+        const ss = StringStream.New(s, 'func.fs');
+        const r = func.parse(ss);
+        assert(r !== null);
+    }
+
+    {
+        const s = 'func f(a1, a2){ }';
+        const ss = StringStream.New(s, 'func.fs');
+        const r = func.parse(ss);
+        assert(r !== null);
+    }
+
+    {
+        const s = 'func f(a1, a2){}';
+        const ss = StringStream.New(s, 'func.fs');
+        const r = func.parse(ss);
+        assert(r !== null);
+    }
+
+    {
+        const s = 'func f(a1, a2){ return a1 + a2; }';
+        const ss = StringStream.New(s, 'func.fs');
+        const r = func.parse(ss);
+        assert(r !== null);
+    }
+};
+
+export const test = function() {
+    // testClass();
+    testIdentifier();
+    testFunc();
+    htmlLogger.Close();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全
