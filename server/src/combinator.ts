@@ -85,6 +85,7 @@ class Optional<T> implements IParser<Option<T>> {
 
     @debug()
     public parse(input: ParserInput): ParserResult<Option<T>> {
+        // console.trace('who call optional');
         var parser = this.mParser;
         const oldInput = input.Copy();
         const r = parser.parse(input);

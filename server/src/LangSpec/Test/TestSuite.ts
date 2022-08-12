@@ -109,8 +109,9 @@ const testFunc = () => {
 };
 
 export const test = function() {
+    Error.stackTraceLimit = Infinity;
     // testClass();
-    testIdentifier();
+    // testIdentifier();
     testFunc();
     htmlLogger.Close();
 };

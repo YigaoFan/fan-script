@@ -327,7 +327,7 @@ export enum ExpKind {
 // 这里面有些地方是可以放任意多的空格，这个要想一下在哪加上
 export const consExp = function (func: IParser<Func>, kind: ExpKind, postfix: IParser<null> | null = null): IParser<IExpression> {
     // handle blank TODO
-    const argsBindedConsExp = consExp.bind(null, func, ExpKind.All);// sub expression has full function
+    const argsBindedConsExp = consExp.bind(null, func, ExpKind.All, null);// sub expression has full function
     const lit = from(consLiteral(func)).transform(LiteralExpression.New).prefixComment('parse literal expression').raw;
     const name = from(identifier).transform(IdentifierExpression.New).prefixComment('parse identifier expression').raw;
     const parenExp = from(lazy(argsBindedConsExp))
