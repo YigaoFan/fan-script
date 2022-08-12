@@ -76,8 +76,8 @@ const rightCombine = <T>(t: T, ts: T[]): T[] => {
     return ts;
 };
 
-const leftParen = from(makeWordParser('(', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
-const rightParen = from(makeWordParser(')', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
+export const leftParen = from(makeWordParser('(', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
+export const rightParen = from(makeWordParser(')', id)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 const varWithBlanks = from(varName).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
 const remainParas = from(makeWordParser(',', nullize)).rightWith(varWithBlanks, selectRight).zeroOrMore(asArray).raw;
 const paras = from(varWithBlanks).rightWith(optional(remainParas), rightCombineOption).raw;
@@ -493,32 +493,37 @@ export const consStmt = function(lazyFunc: IParser<Func>, kind: StmtKind): IPars
     // getXXX 只是简单的封装，让代码不那么乱
     // expression statement
     const getExpStmt = function(): IParser<ExpStmt> {
-        const secondBranch = from(makeWordParser('+=', AddAssign_ExpStmtSubNode.New));
-        const thirdBranch = from(makeWordParser('-=', MinusAssign_ExpStmtSubNode.New));
-        const refinement = genRefinement(lazyFunc, Refine_ExpStmtSubNode.New, Refine_ExpStmtSubNode.SetKey);
-        const consAfterName = function(): IParser<ExpStmtSubNode> {
-            const firstBranch = from(makeWordParser('=', Assign_ExpStmtSubNode.New)).rightWith(optional(lazy(consAfterName)), (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, r.ToUndefined()));
-            const toWithExpressions = [firstBranch, secondBranch, thirdBranch, ];// ts 的类型系统真是厉害呀，这个数组项的类型的模板参数可以归到基类
-            const branches = toWithExpressions.map(x => x.rightWith(expWithBlank, (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, Expression_ExpStmtSubNode.New(r))));
-
-            const invocation = genInvocation(lazyFunc, Invoke_ExpStmtSubNode.New, Invoke_ExpStmtSubNode.SetArgs);
-            // invoke 完如果想环，必须先 refine 一下
-            // 同一种图，可能有多种代码表示，比如下面这个两个分支，可以用 eitherof，也可以用 optional
-            const fourthBranch = from(invocation)
-                                    .oneOrMore(asArray)
-                                    .rightWith(optional(from(refinement).rightWith(lazy(consAfterName), ExpStmtSubNode.SetRightReturnCurrent).raw), 
-                                        (nodes, r) => ExpStmtSubNode.SetRightReturnCurrent(nodes.reduce((previous, current) => ExpStmtSubNode.SetRightReturnCurrent(previous, current) as Invoke_ExpStmtSubNode), r.ToUndefined()));
-            branches.push(fourthBranch);
-            const start = from(optional(refinement))
-                                .transform(x => ExpStmtSubNode.SetRightReturnCurrent(Empty_ExpStmtSubNode.New(), x.ToUndefined()))
-                                .rightWith(eitherOf(selectNotNull, ...toWithExpressions.map(x => x.raw)),
-                                           ExpStmtSubNode.SetRightReturnCurrent)
-                                .raw;
-            return start;
+        const cons1stWay = function(): IParser<ExpStmtSubNode> {
+            const consAfterName = function(): IParser<ExpStmtSubNode> {
+                const firstBranch = from(makeWordParser('=', Assign_ExpStmtSubNode.New)).rightWith(optional(blanks), selectLeft).rightWith(optional(lazy(cons1stWay)), (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, r.ToUndefined()));
+                const secondBranch = from(makeWordParser('+=', AddAssign_ExpStmtSubNode.New));
+                const thirdBranch = from(makeWordParser('-=', MinusAssign_ExpStmtSubNode.New));
+                const refinement = genRefinement(lazyFunc, Refine_ExpStmtSubNode.New, Refine_ExpStmtSubNode.SetKey);
+                const toWithExpressions = [firstBranch, secondBranch, thirdBranch, ];// ts 的类型系统真是厉害呀，这个数组项的类型的模板参数可以归到基类
+                const branches = toWithExpressions.map(x => x.rightWith(expWithBlank, (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, Expression_ExpStmtSubNode.New(r))));
+    
+                const invocation = genInvocation(lazyFunc, Invoke_ExpStmtSubNode.New, Invoke_ExpStmtSubNode.SetArgs);
+                // invoke 完如果想环，必须先 refine 一下
+                // 同一种图，可能有多种代码表示，比如下面这个两个分支，可以用 eitherof，也可以用 optional
+                const fourthBranch = from(invocation).rightWith(optional(blanks), selectLeft)
+                                        .oneOrMore(asArray)
+                                        .rightWith(optional(from(refinement).rightWith(optional(blanks), selectLeft).rightWith(lazy(consAfterName), ExpStmtSubNode.SetRightReturnCurrent).raw), 
+                                            (nodes, r) => ExpStmtSubNode.SetRightReturnCurrent(nodes.reduce((previous, current) => ExpStmtSubNode.SetRightReturnCurrent(previous, current) as Invoke_ExpStmtSubNode), r.ToUndefined()));
+                branches.push(fourthBranch);
+                const start = from(optional(refinement))
+                                    .rightWith(optional(blanks), selectLeft)
+                                    .transform(x => ExpStmtSubNode.SetRightReturnCurrent(Empty_ExpStmtSubNode.New(), x.ToUndefined()))
+                                    .rightWith(optional(lazy(consAfterName)), (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, r.ToUndefined()))
+                                    .rightWith(eitherOf(selectNotNull, ...branches.map(x => x.raw)),
+                                               ExpStmtSubNode.SetRightReturnCurrent)
+                                    .raw;
+                return start;
+            };
+            const oneWay = from(identifier).rightWith(optional(blanks), selectLeft).transform(Name_ExpStmtSubNode.New).rightWith(consAfterName(), ExpStmtSubNode.SetRightReturnCurrent).raw;
+            return oneWay;
         };
-        const oneWay = from(identifier).transform(Name_ExpStmtSubNode.New).rightWith(consAfterName(), ExpStmtSubNode.SetRightReturnCurrent).raw;
-        const exp = from(or(oneWay, consDeleteExp(lazyFunc), (a, b) => ExpStmt.New(selectNotNullIn2DifferentType(a, b)))).rightWith(optional(blanks), selectLeft).rightWith(makeWordParser(';', nullize), selectLeft).raw;
-        return exp;
+        const expStmt = from(or(cons1stWay(), consDeleteExp(lazyFunc), (a, b) => ExpStmt.New(selectNotNullIn2DifferentType(a, b)))).rightWith(optional(blanks), selectLeft).rightWith(makeWordParser(';', nullize), selectLeft).prefixComment('parse exp stmt').raw;
+        return expStmt;
     };
 
     // 既然 body、if、for 各个体中互相引用了，那就不能先定义了，只能先声明，然后引用
@@ -567,7 +572,8 @@ export const consStmt = function(lazyFunc: IParser<Func>, kind: StmtKind): IPars
     if (kind === StmtKind.VarStmt) {
         return varStmt;
     }
-    const stmt = from(eitherOf<Statement, Statement>(selectNotNull, ifStmt, forStmt, retStmt, varStmt, getExpStmt())).raw; // add ; after getExpStmt() 
+    // 这里 whitespace 怎么能传进来的呢？TODO 外面使用解析结果时会出问题
+    const stmt = from(eitherOf<Statement, Statement>(selectNotNull, whitespace, ifStmt, forStmt, retStmt, varStmt, getExpStmt())).raw; // add ; after getExpStmt() 
     return stmt;
 };
 
@@ -575,7 +581,7 @@ export const consStmt = function(lazyFunc: IParser<Func>, kind: StmtKind): IPars
 //      parse sub part
 // parse xxx, result
 // parse yyy, result
-log('evaluate consFunc and func');
+// log('evaluate consFunc and func');
 export const consFunc = function() : IParser<Func> { 
     return from(makeWordParser('func', Func.New))
                     .prefixComment('parse func keyword')

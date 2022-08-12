@@ -65,51 +65,104 @@ const testNumber = () => {
 };
 
 const testFunc = () => {
+    // {
+    //     const s = 'func f() { }';
+    //     const ss = StringStream.New(s, 'func.fs');
+    //     const r = func.parse(ss);
+    //     assert(r !== null);
+    // }
+
+    // {
+    //     const s = 'func f(a, b) { }';
+    //     const ss = StringStream.New(s, 'func.fs');
+    //     const r = func.parse(ss);
+    //     assert(r !== null);
+    // }
+
+    // {
+    //     const s = 'func f(a1, a2) { }';
+    //     const ss = StringStream.New(s, 'func.fs');
+    //     const r = func.parse(ss);
+    //     assert(r !== null);
+    // }
+
+    // {
+    //     const s = 'func f(a1, a2){ }';
+    //     const ss = StringStream.New(s, 'func.fs');
+    //     const r = func.parse(ss);
+    //     assert(r !== null);
+    // }
+
+    // {
+    //     const s = 'func f(a1, a2){}';
+    //     const ss = StringStream.New(s, 'func.fs');
+    //     const r = func.parse(ss);
+    //     assert(r !== null);
+    // }
+
+    // {
+    //     const s = 'func f(a1, a2){ return a1 + a2; }';
+    //     const ss = StringStream.New(s, 'func.fs');
+    //     GenerateParserInputTable('parser-input.html', ss.Copy());
+    //     try {
+    //         const r = func.parse(ss);
+    //         assert(r !== null);
+    //     } finally {
+    //         htmlLogger.Close();
+    //     }    
+    // }
+
+    // {
+    //     const s = 'func f(a1, a2, a3){ return a1 + a2 +a3; }';
+    //     const ss = StringStream.New(s, 'func.fs');
+    //     GenerateParserInputTable('parser-input.html', ss.Copy());
+    //     try {
+    //         const r = func.parse(ss);
+    //         assert(r !== null);
+    //     } finally {
+    //         htmlLogger.Close();
+    //     }    
+    // }
+
+    // {
+    //     const s = 'func f(a1, a2, a3){ return a1 ? a2 :a3; }';
+    //     const ss = StringStream.New(s, 'func.fs');
+    //     GenerateParserInputTable('parser-input.html', ss.Copy());
+    //     try {
+    //         const r = func.parse(ss);
+    //         assert(r !== null);
+    //     } finally {
+    //         htmlLogger.Close();
+    //     }    
+    // }
+
     {
-        const s = 'func f() { }';
-        const ss = StringStream.New(s, 'func.fs');
-        const r = func.parse(ss);
-        assert(r !== null);
+        // const s = 'func f(a1, a2, a3){ return a1.pro[a2][a3]; }'; // 目前 return 里的 exp 不支持这种复杂的 exp
+        // const ss = StringStream.New(s, 'func.fs');
+        // GenerateParserInputTable('parser-input.html', ss.Copy());
+        // try {
+        //     const r = func.parse(ss);
+        //     assert(r !== null);
+        // } finally {
+        //     htmlLogger.Close();
+        // }    
     }
 
     {
-        const s = 'func f(a, b) { }';
+        const s = 'func f(a1, a2, a3){ var v; v = a1.pro[a2][a3]; return v; }';
         const ss = StringStream.New(s, 'func.fs');
-        const r = func.parse(ss);
-        assert(r !== null);
-    }
-
-    {
-        const s = 'func f(a1, a2) { }';
-        const ss = StringStream.New(s, 'func.fs');
-        const r = func.parse(ss);
-        assert(r !== null);
-    }
-
-    {
-        const s = 'func f(a1, a2){ }';
-        const ss = StringStream.New(s, 'func.fs');
-        const r = func.parse(ss);
-        assert(r !== null);
-    }
-
-    {
-        const s = 'func f(a1, a2){}';
-        const ss = StringStream.New(s, 'func.fs');
-        const r = func.parse(ss);
-        assert(r !== null);
-    }
-
-    {
-        const s = 'func f(a1, a2){ return a1 + a2; }';
-        const ss = StringStream.New(s, 'func.fs');
-        const r = func.parse(ss);
-        assert(r !== null);
+        GenerateParserInputTable('parser-input.html', ss.Copy());
+        try {
+            const r = func.parse(ss);
+            assert(r !== null);
+        } finally {
+            htmlLogger.Close();
+        }
     }
 };
 
 export const test = function() {
-    Error.stackTraceLimit = Infinity;
+    // Error.stackTraceLimit = Infinity;
     // testClass();
     // testIdentifier();
     testFunc();

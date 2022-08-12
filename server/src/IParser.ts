@@ -1,5 +1,6 @@
 import { formatParserResult, log, } from './util';
 import { HtmlLogger, } from './HtmlLogger';
+import { TimeBomb } from './TimeBomb';
 
 // stateful internal
 export interface IInputStream {
@@ -152,23 +153,24 @@ export const htmlLogger = new HtmlLogger('parse.html');
  */
 var indent = 0;
 // 缩进的第二行好像还是有问题 TODO
-export const logWith = function (indentSetting: Indent, ...args: any[]) {
-    const genSpaces = (count: number) => Array(count).join(' ');
-    switch (indentSetting) {
-        case Indent.CurrentLineReduce: --indent;
-    }
+// export const logWith = function (indentSetting: Indent, ...args: any[]) {
+//     const genSpaces = (count: number) => Array(count).join(' ');
+//     switch (indentSetting) {
+//         case Indent.CurrentLineReduce: --indent;
+//     }
 
-    log(genSpaces(indent), ...args);
+//     log(genSpaces(indent), ...args);
 
-    switch (indentSetting) {
-        case Indent.NextLineAdd: ++indent;
-    }
-};
+//     switch (indentSetting) {
+//         case Indent.NextLineAdd: ++indent;
+//     }
+// };
 
 
-// export const logWith = htmlLogger.Log.bind(htmlLogger);
+export const logWith = htmlLogger.Log.bind(htmlLogger);
 export var enableDebug = true;
 
+const b = new TimeBomb(100);
 // 下面这个是一个方法，更好的方法，是可以通过反射，反射到某个包下所有的 parser 类型，然后动态地给 parser.parse 做代理
 export const debug = function (enable: boolean = enableDebug) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
@@ -181,10 +183,11 @@ export const debug = function (enable: boolean = enableDebug) {
         d.value = function (this: any, ...args: any[]) {
             var title = `${this.constructor.name} ${k}`;
             // summary
-            // logWith(Indent.NextLineAdd, `start ${title} with ${args}`);// ${} will call class.toString to get better string
+            logWith(Indent.NextLineAdd, `start ${title} with ${args}`);// ${} will call class.toString to get better string
+            // b.Update();
             // log('this arg', this === undefined);
             var r = v.apply(this, args);
-            // logWith(Indent.CurrentLineReduce, `end ${title} \n result ${formatParserResult(r)}`);
+            logWith(Indent.CurrentLineReduce, `end ${title} \n result ${formatParserResult(r)}`);
             return r;
         };
 
