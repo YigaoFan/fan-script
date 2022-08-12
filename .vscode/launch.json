@@ -17,5 +17,12 @@
 			],
 			"preLaunchTask": "${defaultBuildTask}"
         },
+        {
+            "type": "node",
+            "name": "LSP-server",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "program": "${workspaceFolder}/server/out/main.js"
+        }
     ]
 }
