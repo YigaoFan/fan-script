@@ -9,6 +9,8 @@ import {
     IParser,
     debug,
     Text,
+    logWith,
+    Indent,
 } from "./IParser";
 import { log } from "./util";
 
@@ -34,7 +36,7 @@ export class WordParser<T> implements IParser<T> {
                 t.Append(c);
                 continue;
             }
-            // log(`failed on ${i}, expect "${word[i]}", actual: "${JSON.stringify(c)}"`);
+            logWith(Indent.SameToCurrent, `failed on ${i}, expect "${word[i]}", actual: "${JSON.stringify(c)}"`);
             return null;
         }
 

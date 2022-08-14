@@ -315,12 +315,12 @@ export const genInvocation = <T>(func: IParser<Func>, nodeCtor: () => T, argsSet
     const invocation = from(leftParen)
                             .transform(nodeCtor)
                             .rightWith(optional(whitespace), selectLeft)
-                            .rightWith(from(lazy(consExp.bind(null, func, ExpKind.All)))
+                            .rightWith(optional(from(lazy(consExp.bind(null, func, ExpKind.All)))
                                             .rightWith(optional(whitespace), selectLeft)
                                             .leftWith(optional(whitespace), selectRight)
                                             .rightWith(makeWordParser(',', nullize), selectLeft)
                                             .rightWith(optional(whitespace), selectLeft)
-                                            .zeroOrMore(asArray).raw, argsSetter)
+                                            .zeroOrMore(asArray).raw), (l, r) => argsSetter(l, r.hasValue() ? r.value : []))
                             .rightWith(rightParen, selectLeft).raw;
     return invocation;
 };
@@ -367,7 +367,7 @@ export const consExp = function (func: IParser<Func>, kind: ExpKind, postfix: IP
     if (postfix) {
         notExpEndExps = notExpEndExps.map(x => from(x).rightWith(postfix, selectLeft).raw);
     }
-    const exp = eitherOf(selectNotNull, ...notExpEndExps, ...expEndExps);
+    const exp = from(eitherOf(selectNotNull, ...notExpEndExps, ...expEndExps)).prefixComment('parse expression').raw;
     // 我现在感觉，做补全的时候会将这些语法规则重新写一遍，以另一种方式
     return exp;
 };

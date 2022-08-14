@@ -149,7 +149,7 @@ const testFunc = () => {
     }
 
     {
-        const s = 'func f(a1, a2, a3){ var v; v = a1.pro[a2][a3]; return v; }';
+        const s = 'func f(a1, a2, a3){ var v; v = a1.pro[a2][a3](); return v; }';
         const ss = StringStream.New(s, 'func.fs');
         GenerateParserInputTable('parser-input.html', ss.Copy());
         try {

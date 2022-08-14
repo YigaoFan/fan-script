@@ -312,7 +312,7 @@ class PrefixComment<T> implements IParser<T> {
     }
 
     public parse(input: ParserInput): ParserResult<T> {
-        logWith(Indent.KeepSame, this.mComment);
+        logWith(Indent.SameToNext, this.mComment);
         const r = this.mParser.parse(input);
         return r;
     }    

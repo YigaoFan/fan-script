@@ -143,7 +143,8 @@ export type ParserResult<T> = ParseSuccessResult<T> | ParseFailResult;
 export enum Indent {
     NextLineAdd,
     CurrentLineReduce,
-    KeepSame,
+    SameToNext,
+    SameToCurrent,
 }
 
 export const htmlLogger = new HtmlLogger('parse.html');
@@ -170,7 +171,7 @@ var indent = 0;
 export const logWith = htmlLogger.Log.bind(htmlLogger);
 export var enableDebug = true;
 
-const b = new TimeBomb(100);
+const b = new TimeBomb(50);
 // 下面这个是一个方法，更好的方法，是可以通过反射，反射到某个包下所有的 parser 类型，然后动态地给 parser.parse 做代理
 export const debug = function (enable: boolean = enableDebug) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
@@ -184,7 +185,7 @@ export const debug = function (enable: boolean = enableDebug) {
             var title = `${this.constructor.name} ${k}`;
             // summary
             logWith(Indent.NextLineAdd, `start ${title} with ${args}`);// ${} will call class.toString to get better string
-            // b.Update();
+            b.Update();
             // log('this arg', this === undefined);
             var r = v.apply(this, args);
             logWith(Indent.CurrentLineReduce, `end ${title} \n result ${formatParserResult(r)}`);

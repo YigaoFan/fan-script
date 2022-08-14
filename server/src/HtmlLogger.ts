@@ -66,8 +66,11 @@ export class HtmlLogger {
                 this.mDetailStack[this.mDetailStack.length - 1].AddDescription(s);
                 this.mDetailStack.pop();
                 break;
-            case Indent.KeepSame:
+            case Indent.SameToNext:
                 this.mNextStepComment = s;
+                break;
+            case Indent.SameToCurrent:
+                this.mDetailStack[this.mDetailStack.length - 1].AddDescription(s);
                 break;
         }
     }

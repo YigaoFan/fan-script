@@ -480,6 +480,10 @@ enum StmtKind {
     VarStmt,
 }
 
+// 加一个终止符的概念，到了终止符，返回
+// 终止符应该是一个特别的设定，而不是一个普通的 parser
+// 解析要有开始和终止的概念，也要有开始和终止之间这一段是某个 parser 全权负责解析的概念，所以之前 return 语句里的多级 refinement 应该有办法解决
+
 // 要不要语法解析过程也搞成一个语法结点内，可以有哪些子结点，而不止是解析结果有结构
 export const consStmt = function(lazyFunc: IParser<Func>, kind: StmtKind): IParser<Statement> {
     const expWithBlank = from(consExp(lazyFunc, ExpKind.All)).leftWith(optional(blanks), selectRight).rightWith(optional(blanks), selectLeft).raw;
@@ -513,8 +517,7 @@ export const consStmt = function(lazyFunc: IParser<Func>, kind: StmtKind): IPars
                 const start = from(optional(refinement))
                                     .rightWith(optional(blanks), selectLeft)
                                     .transform(x => ExpStmtSubNode.SetRightReturnCurrent(Empty_ExpStmtSubNode.New(), x.ToUndefined()))
-                                    .rightWith(optional(lazy(consAfterName)), (l, r) => ExpStmtSubNode.SetRightReturnCurrent(l, r.ToUndefined()))
-                                    .rightWith(eitherOf(selectNotNull, ...branches.map(x => x.raw)),
+                                    .rightWith(eitherOf(selectNotNull, ...branches.map(x => x.raw), lazy(consAfterName)),// 递归的 parser 放在最后一个
                                                ExpStmtSubNode.SetRightReturnCurrent)
                                     .raw;
                 return start;
