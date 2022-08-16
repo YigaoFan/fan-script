@@ -330,6 +330,136 @@ export enum ExpKind {
     DeleteExp,
 }
 
+enum PrefixOperatorKind {
+    Add = '+',
+    Minus = '-',
+    TypeOf = 'typof -',
+    Not = '!',
+}
+
+class PrefixOperator implements ISyntaxNode {
+    private mOperator: PrefixOperatorKind;
+
+    public static New(operator: Text) {
+        let op: PrefixOperatorKind;
+        switch (operator.Value) {
+            case 'typeof ':
+                op = PrefixOperatorKind.TypeOf;
+                break;
+            case '+':
+                op = PrefixOperatorKind.Add;
+                break;
+            case '-':
+                op = PrefixOperatorKind.Minus;
+                break;
+            case '!':
+                op = PrefixOperatorKind.Not;
+                break;
+            default:
+                throw new Error(`not handle prefix operator ${operator.Value}`);
+        }
+        return new PrefixOperator(op);
+    }
+
+    private constructor(operator: PrefixOperatorKind) {
+        this.mOperator = operator;
+    }
+
+    Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        return this.mOperator;
+    }    
+}
+
+enum InfixOperatorKind {
+    Multiply = '*',
+    Divide = '/',
+    Remain = '%',
+    Add = '+',
+    Minus = '-',
+    GreaterEqual = '>=',
+    LessEqual = '<=',
+    Greater = '>',
+    Less = '<',
+    Equal = '==',
+    NotEqual = '!=',
+    Or = '||',
+    And = '&&',
+}
+
+class InfixOperator implements ISyntaxNode {
+    private mOperator: InfixOperatorKind;
+
+    public static New(operator: Text) {
+        let op: InfixOperatorKind;
+        switch (operator.Value) {
+            case '*':
+                op = InfixOperatorKind.Multiply;
+                break;
+            case '/':
+                op = InfixOperatorKind.Divide;
+                break;
+            case '%':
+                op = InfixOperatorKind.Remain;
+                break;
+            case '+':
+                op = InfixOperatorKind.Add;
+                break;
+            case '-':
+                op = InfixOperatorKind.Minus;
+                break;
+            case '>=':
+                op = InfixOperatorKind.GreaterEqual;
+                break;
+            case '<=':
+                op = InfixOperatorKind.LessEqual;
+                break;
+            case '>':
+                op = InfixOperatorKind.Greater;
+                break;
+            case '<':
+                op = InfixOperatorKind.Less;
+                break;
+            case '==':
+                op = InfixOperatorKind.Equal;
+                break;
+            case '!=':
+                op = InfixOperatorKind.NotEqual;
+                break;
+            case '||':
+                op = InfixOperatorKind.Or;
+                break;
+            case '&&':
+                op = InfixOperatorKind.And;
+                break;
+            default:
+                throw new Error(`not handle prefix operator ${operator.Value}`);
+        }
+        return new InfixOperator(op);
+    }
+
+    private constructor(operator: InfixOperatorKind) {
+        this.mOperator = operator;
+    }
+
+    Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        return this.mOperator;
+    }
+}
+
+export const prefixOperator = oneOf(['typeof ', '+', '-', '!'], PrefixOperator.New);
+export const infixOperator = oneOf(['*', '/', '%', '+', '-', '>=', '<=', '>', '<', '==', '!=', '||', '&&'], InfixOperator.New);
 // 之后做补全会碰到一个问题：什么时候算进入到某个语法节点的范围，在这个范围内进行补全，在这个范围内，某些东西可能是不完整的
 // 建立 ast 相关 node 的类型的事要提上日程了
 // 这里面有些地方是可以放任意多的空格，这个要想一下在哪加上

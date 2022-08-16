@@ -28,7 +28,7 @@ export class WordParser<T> implements IParser<T> {
     @debug()
     public parse(input: ParserInput): ParserResult<T> {
         let word = this.mWord;
-        const t = Text.New(input.Filename);
+        const t = Text.Empty();
         // log(`word parse "${word}"`);
         for (let i = 0; i < word.length; i++) {
             const c = input.NextChar;

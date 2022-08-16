@@ -45,10 +45,6 @@ export class StringStream implements IInputStream {
         return c;
     }
 
-    public get Filename(): string {
-        return this.mFilename;
-    }
-
     public toString(): string {
         return `pos ${this.mCurrentIndex} content ` + this.mChars.map(x => x.Value).join('');
     }

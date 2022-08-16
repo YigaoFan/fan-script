@@ -5,7 +5,7 @@ import { TimeBomb } from './TimeBomb';
 // stateful internal
 export interface IInputStream {
     get NextChar(): Text;
-    get Filename(): string;
+    AsyncNextChar(): Promise<Text>;
     Copy(): IInputStream;
 }
 
@@ -202,4 +202,5 @@ export const debug = function (enable: boolean = enableDebug) {
  */
 export interface IParser<T> {
     parse(input: ParserInput): ParserResult<T>;
+    asyncParse?(input: ParserInput): Promise<ParserResult<T>>;
 }
