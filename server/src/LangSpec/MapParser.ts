@@ -64,7 +64,6 @@ const expGrammarMap: { nonTerminated: NonTerminatedRule[], terminated: Terminate
 };
 
 const InitialStart = -1;
-// From, NowPoint 从 -1 开始吧 TODO
 // TODO 写完看一下，我这里写得好像很长，课上的代码好像很短？对比一下
 class NonTerminatedParserState {
     public From: number;
@@ -118,6 +117,10 @@ class NonTerminatedParserState {
         }
 
         return ParserWorkState.Fail;
+    }
+
+    public get Completed(): boolean {
+        return this.NowPoint === this.Rule[1].length;
     }
 
     /** Note: Copy firstly then call this method */
@@ -240,7 +243,9 @@ class ExpressionChartParser implements IParser<Expression> {
             const r = await this.iter(input);
             if (r) {
                 // cons parser result
-                break;
+                const chart = this.mNonTerminatedStateChart;
+                const lastColumn = chart[chart.length - 1];
+                const completeds = lastColumn.filter(x => x.Completed && x.From === 0);
             }
         }
         return null;
@@ -251,7 +256,7 @@ class ExpressionChartParser implements IParser<Expression> {
      */
     public async iter(input: ParserInput): Promise<boolean> {
         const c = input.NextChar;
-        if (c.Value === this.mEndChar) {
+        if (c.Empty || c.Value === this.mEndChar) {
             return true;
         }
         const completedItems: { From: number, LeftSymbol: string, }[] = [];
@@ -295,11 +300,16 @@ class ExpressionChartParser implements IParser<Expression> {
             ExpressionChartParser.Reduce(p, this.mNonTerminatedStateChart);
         }
         // closure
-        const nextChar = input.NextChar;
-        const lastColumn = this.mNonTerminatedStateChart[this.mNonTerminatedStateChart.length - 1];
-        const expectSymbols = lastColumn.filter(x => x.NowPoint < x.Rule[1].length).map(x => x.Rule[1][x.NowPoint]);
-        for (const s of expectSymbols) {
-            ExpressionChartParser.ClosureOnNonterminated(s, this.mNonTerminatedStateChart.length - 1, lastColumn, this.mTerminatedStateChart);
+        {
+            const from = this.mNonTerminatedStateChart.length - 1;
+            const nextChar = input.NextChar; // how to restore TODO
+            const lastColumn = this.mNonTerminatedStateChart[this.mNonTerminatedStateChart.length - 1];
+            // Closure 好像只用在 non-terminal
+            // ExpressionChartParser.ClosureOnChar(nextChar, from, lastColumn, this.mTerminatedStateChart);
+            const expectSymbols = lastColumn.filter(x => x.NowPoint < x.Rule[1].length).map(x => x.Rule[1][x.NowPoint]);
+            for (const s of expectSymbols) {
+                ExpressionChartParser.ClosureOnNonterminated(s, from, lastColumn, this.mTerminatedStateChart);
+            }
         }
 
         return false;
@@ -318,8 +328,24 @@ class ExpressionChartParser implements IParser<Expression> {
         }
     }
 
-    private static ClosureOnChar(char: Text, nonTerminatedColumn: NonTerminatedParserState[], terminatedChart: TerminatedParserState<ISyntaxNode>[]) {
+    private static ClosureOnChar(char: Text, from: number, nonTerminatedColumn: NonTerminatedParserState[], terminatedChart: TerminatedParserState<ISyntaxNode>[]) {
+        for (const rule of expGrammarMap.nonTerminated) {
+            // 下面这两个 if 都要考虑吗？比如 symbol: exp 遇到 exp -> exp + exp，这个 rule 会被加两次
+            // closure 到底是看 rule 的左边还是右边
+            // 看右边。想了下 closure 是用来连接不同的 non-terminated rule
+            if (rule[1].length > 0) {
+                if (rule[1][0] === char.Value) {
+                    nonTerminatedColumn.push(NonTerminatedParserState.New(from, rule, 0));
+                }
+            }
+        }
 
+        for (const rule of expGrammarMap.terminated) {
+            const s = new AsyncStream();
+            // @ts-expect-error TODO fix
+            const promise = parser.asyncParse(s);
+            terminatedChart.push(TerminatedParserState.New(InitialStart, rule, promise, s.Channel));
+        }
     }
 
     // 把 0 长度的也加进来，逻辑可以不用放在这里 TODO
@@ -327,20 +353,16 @@ class ExpressionChartParser implements IParser<Expression> {
         for (const rule of expGrammarMap.nonTerminated) {
             // 下面这两个 if 都要考虑吗？比如 symbol: exp 遇到 exp -> exp + exp，这个 rule 会被加两次
             // closure 到底是看 rule 的左边还是右边
-            if (rule[0] === symbol) {
-                nonTerminatedColumn.push(NonTerminatedParserState.New(from, rule, 0));
-            }
+            // 看右边。想了下 closure 是用来连接不同的 non-terminated rule
             if (rule[1].length > 0) {
                 if (rule[1][0] === symbol) {
                     nonTerminatedColumn.push(NonTerminatedParserState.New(from, rule, 0));
                 }
             }
         }
+    }
 
-        for (const rule of expGrammarMap.terminated) {
-            if (rule[0] == symbol) {
-                // terminatedChart.push(TerminatedParserState.New(from, rule, /*TODO*/));
-            }
-        }
+    private ConsAstFrom(state: NonTerminatedParserState, chart: NonTerminatedParserState[][]) {
+        const from = state.From;
     }
 }
