@@ -1,19 +1,38 @@
-import { IParser, Position, } from "../IParser";
+import { IParser, Position, Text, } from "../IParser";
 import { id, or, from, nullize, selectRight, optional, Option, eitherOf, } from "../combinator";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { number, Number, } from "./Number";
 import { string, String, } from "./String";
 import { consObject, Obj, } from "./Object";
-import { Array, consArray, } from "./Array";
+import { Array, } from "./Array";
 import { consFunc, Func, } from "./Func";
 import { log, selectNotNull, stringify } from "../util";
 import { lazy } from "../parser";
 
-interface ILiteral extends ISyntaxNode {
+export abstract class Literal implements ISyntaxNode {
+    abstract Contains(p: Position): boolean;
+    abstract get Valid(): boolean;
+    abstract toString(): string;
     // ['constructor']: new (...args: ConstructorParameters<typeof ILiteral>) => this;
+
+    public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ISyntaxNode {
+        switch (typeInfo) {
+            case 'StringLiteral':
+                return StringLiteral.New(...args);
+            case 'NumberLiteral':
+                return NumberLiteral.New(...args);
+            case 'ObjectLiteral':
+                return ObjectLiteral.New(...args);
+            case 'ArrayLiteral':
+                return ArrayLiteral.New(...args);
+            case 'FuncLiteral':
+                return FuncLiteral.New(...args);
+        }
+        throw new Error(`not support type info: ${typeInfo}`);
+    }
 }
 
-class NumberLiteral implements ILiteral {
+class NumberLiteral implements Literal {
     private mNum: Number;
 
     // 先用下面这种麻烦的方法写着，之后再看有没有简便的方法
@@ -38,7 +57,7 @@ class NumberLiteral implements ILiteral {
 
 }
 
-class StringLiteral implements ILiteral {
+class StringLiteral implements Literal {
     private mStr: String;
 
     public static New(str: String): StringLiteral {
@@ -60,7 +79,7 @@ class StringLiteral implements ILiteral {
     }
 }
 
-class ObjectLiteral implements ILiteral {
+class ObjectLiteral implements Literal {
     private mObj: Obj;
 
     public static New(obj: Obj): ObjectLiteral {
@@ -82,7 +101,7 @@ class ObjectLiteral implements ILiteral {
     }
 }
 
-class ArrayLiteral implements ILiteral {
+class ArrayLiteral implements Literal {
     private mArray: Array;
 
     public static New(array: Array): ArrayLiteral {
@@ -100,7 +119,7 @@ class ArrayLiteral implements ILiteral {
     }
 }
 
-class FuncLiteral implements ILiteral {
+class FuncLiteral implements Literal {
     private mFunc: Func;
 
     public static New(func: Func): FuncLiteral {
@@ -118,20 +137,20 @@ class FuncLiteral implements ILiteral {
     }
 }
 
-export const consLiteral = function(func: IParser<Func>): IParser<ILiteral> {
-    // undefined 和 null 没弄吧？ TODO
-    const num = from(number).transform(NumberLiteral.New).raw;
-    const str = from(string).transform(StringLiteral.New).raw;
-    const obj = from(consObject(func)).transform(ObjectLiteral.New).raw;
-    const arr = from(consArray(func)).transform(ArrayLiteral.New).raw;
-    const fun = from(func).transform(FuncLiteral.New).raw; // func 这里是 undefined 说到底可能还是引用顺序的问题, 已显式化此依赖为一个参数
-    // IParser<StringLiteral> 为什么可以赋值给 IParser<ILiteral>
-    const lit = from(eitherOf<ILiteral, ILiteral>(selectNotNull, num, str, obj, arr, fun)).prefixComment('parse literal').raw;
-    return lit;
-};
-// log('evaluate literal');
-// export const literal: IParser<Literal> = from(consLiteral());
-export type Literal = ILiteral;// 不要直接暴露接口出去
+// export const consLiteral = function(func: IParser<Func>): IParser<Literal> {
+//     // undefined 和 null 没弄吧？ TODO
+//     const num = from(number).transform(NumberLiteral.New).raw;
+//     const str = from(string).transform(StringLiteral.New).raw;
+//     const obj = from(consObject(func)).transform(ObjectLiteral.New).raw;
+//     const arr = from(consArray(func)).transform(ArrayLiteral.New).raw;
+//     const fun = from(func).transform(FuncLiteral.New).raw; // func 这里是 undefined 说到底可能还是引用顺序的问题, 已显式化此依赖为一个参数
+//     // IParser<StringLiteral> 为什么可以赋值给 IParser<ILiteral>
+//     const lit = from(eitherOf<Literal, Literal>(selectNotNull, num, str, obj, arr, fun)).prefixComment('parse literal').raw;
+//     return lit;
+// };
+// // log('evaluate literal');
+// // export const literal: IParser<Literal> = from(consLiteral());
+// export type Literal = Literal;// 不要直接暴露接口出去
 
 // 原来是忘了 npm install
 // 有时候一些编译错误，需要重新开始编译才能不提示，增量编译还是会错误地提示有问题

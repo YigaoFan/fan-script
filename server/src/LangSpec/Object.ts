@@ -9,7 +9,7 @@ import { Identifier, identifier, } from "./Identifier";
 import { String, string, } from "./String";
 import { whitespace } from "./Whitespace";
 
-class KeyValuePair implements ISyntaxNode {
+export class KeyValuePair implements ISyntaxNode {
     // 这里面的数据都是可能为空的，这是之后编写 SyntaxNode 的习惯规定
     private mKey?: Identifier | String;
     private mValue?: Expression;
@@ -47,7 +47,37 @@ class KeyValuePair implements ISyntaxNode {
     }
 }
 
+export class Key implements ISyntaxNode {
+    public static New() {
+        return new Key();
+    }
 
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        throw new Error("Method not implemented.");
+    }    
+}
+
+export class Value implements ISyntaxNode {
+    public static New() {
+        return new Value();
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        throw new Error("Method not implemented.");
+    }    
+}
 
 export class Obj implements ISyntaxNode {
     private mPairs?: KeyValuePair[];

@@ -34,15 +34,33 @@ export class Array implements ISyntaxNode {
     }
 }
 
-const consItem = (func: IParser<Func>) => (from(lazy(consExp.bind(null, func, ExpKind.All))) // 这里讲道理要把这个 lazy 的 consExp 参数化
-                                            .leftWith(optional(whitespace), selectRight)
-                                            .rightWith(optional(whitespace), selectLeft)
-                                            .rightWith(makeWordParser(',', nullize), selectLeft));
+export class Items implements ISyntaxNode {
+    public static New() {
+        return new Items();
+    }
 
-export const consArray = (func: IParser<Func>): IParser<Array> =>  {
-    return from(makeWordParser('[', Array.New))
-                .rightWith(consItem(func).zeroOrMore(asArray).raw, Array.SetItems)
-                .rightWith(makeWordParser(']', nullize), selectLeft)
-                .prefixComment('parse array')
-                .raw;
-};
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        throw new Error("Method not implemented.");
+    }    
+}
+
+export class Item implements ISyntaxNode {
+    public static New() {
+        return new Item();
+    }
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        throw new Error("Method not implemented.");
+    }    
+}

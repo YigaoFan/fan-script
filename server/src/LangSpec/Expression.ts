@@ -8,11 +8,38 @@ import { asArray, exchangeParas, log, selectNotNull, stringify } from "../util";
 import { whitespace } from "./Whitespace";
 import { Func, leftParen, rightParen } from "./Func";
 
-interface IExpression extends ISyntaxNode {
-
+export abstract class Expression implements ISyntaxNode {
+    abstract Contains(p: Position): boolean;
+    abstract get Valid(): boolean;
+    abstract toString(): string;
+    public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ISyntaxNode {
+        switch (typeInfo) {
+            case 'LiteralExpression':
+                return LiteralExpression.New(...args);
+            case 'IdentifierExpression':
+                return IdentifierExpression.New(...args);
+            case 'ParenExpression':
+                return ParenExpression.New(...args);
+            case 'PrefixOperatorExpression':
+                return PrefixOperatorExpression.New(...args);
+            case 'InfixOperatorExpression':
+                return InfixOperatorExpression.New(...args);
+            case 'TernaryExpression':
+                return TernaryExpression.New(...args);
+            case 'InvocationExpression':
+                return InvocationExpression.New(...args);
+            case 'RefinementExpression':
+                return RefinementExpression.New(...args);
+            case 'NewExpression':
+                return NewExpression.New(...args);
+            case 'DeleteExpression':
+                return DeleteExpression.New(...args);
+        }
+        throw new Error(`not support type info: ${typeInfo}`);
+    }
 }
 
-class LiteralExpression implements IExpression {
+class LiteralExpression implements Expression {
     private mLiteral?: Literal;
 
     public static New(literal: Literal): LiteralExpression {
@@ -35,7 +62,7 @@ class LiteralExpression implements IExpression {
     }
 }
 
-class IdentifierExpression implements IExpression {
+class IdentifierExpression implements Expression {
     private mIdentifier: Identifier;
 
     public static New(identifier: Identifier): IdentifierExpression {
@@ -58,7 +85,26 @@ class IdentifierExpression implements IExpression {
     }
 }
 
-class PrefixOperatorExpression implements IExpression {
+class ParenExpression implements Expression {
+    private mExp?: Expression;
+
+    public static New(): ParenExpression {
+        return new ParenExpression();
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        return stringify({
+            innerExp: this.mExp?.toString(),
+        });
+    }
+}
+class PrefixOperatorExpression implements Expression {
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -66,13 +112,13 @@ class PrefixOperatorExpression implements IExpression {
         throw new Error("Method not implemented.");
     }
     private mOperator?: Text;
-    private mExpression?: IExpression;
+    private mExpression?: Expression;
 
     public static New(operator: Text): PrefixOperatorExpression {
         return new PrefixOperatorExpression(operator);
     }
 
-    public static SetSubExpression(expression: PrefixOperatorExpression, subExpression: IExpression) {
+    public static SetSubExpression(expression: PrefixOperatorExpression, subExpression: Expression) {
         expression.mExpression = subExpression;
         return expression;
     }
@@ -89,10 +135,10 @@ class PrefixOperatorExpression implements IExpression {
     }
 }
 
-class InfixOperatorExpression implements IExpression {
+class InfixOperatorExpression implements Expression {
     private mOperator: Text;
-    private mLeftExpression?: IExpression;
-    private mRightExpression?: IExpression;
+    private mLeftExpression?: Expression;
+    private mRightExpression?: Expression;
 
     public static New(operator: Text): InfixOperatorExpression {
         return new InfixOperatorExpression(operator);
@@ -127,32 +173,32 @@ class InfixOperatorExpression implements IExpression {
     }
 }
 
-class TernaryExpression implements IExpression {
+class TernaryExpression implements Expression {
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
-    private mCondition?: IExpression;
-    private mTrueResult?: IExpression;
-    private mFalseResult?: IExpression;
+    private mCondition?: Expression;
+    private mTrueResult?: Expression;
+    private mFalseResult?: Expression;
 
     public static New(): TernaryExpression {
         return new TernaryExpression();
     }
 
-    public static SetCondition(expression: TernaryExpression, condtion: IExpression) {
+    public static SetCondition(expression: TernaryExpression, condtion: Expression) {
         expression.mCondition = condtion;
         return expression;
     }
 
-    public static SetTrueResult(expression: TernaryExpression, trueResult: IExpression) {
+    public static SetTrueResult(expression: TernaryExpression, trueResult: Expression) {
         expression.mTrueResult = trueResult;
         return expression;
     }
 
-    public static SetFalseResult(expression: TernaryExpression, falseResult: IExpression) {
+    public static SetFalseResult(expression: TernaryExpression, falseResult: Expression) {
         expression.mFalseResult = falseResult;
         return expression;
     }
@@ -169,31 +215,31 @@ class TernaryExpression implements IExpression {
 type A = PrefixOperatorExpression | InfixOperatorExpression;
 var a: any = 1;
 var b = a instanceof PrefixOperatorExpression;
-class InvocationExpression implements IExpression {
+class InvocationExpression implements Expression {
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
-    private mFunc?: IExpression;
-    private mArgs?: IExpression[];
+    private mFunc?: Expression;
+    private mArgs?: Expression[];
 
     public static New(): InvocationExpression {
         return new InvocationExpression();
     }
 
-    public static SetFunc(expression: InvocationExpression, func: IExpression) {
+    public static SetFunc(expression: InvocationExpression, func: Expression) {
         expression.mFunc = func;
         return expression;
     }
 
-    public static SetArgs(expression: InvocationExpression, args: IExpression[]) {
+    public static SetArgs(expression: InvocationExpression, args: Expression[]) {
         expression.mArgs = args;
         return expression;
     }
 
-    public get Args(): IExpression[] | undefined {
+    public get Args(): Expression[] | undefined {
         return this.mArgs;
     }
 
@@ -205,31 +251,31 @@ class InvocationExpression implements IExpression {
     }
 }
 
-class RefinementExpression implements IExpression {
+class RefinementExpression implements Expression {
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
-    private mObject?: IExpression;
-    private mKey?: IExpression;
+    private mObject?: Expression;
+    private mKey?: Expression;
 
     public static New(): RefinementExpression {
         return new RefinementExpression();
     }
 
-    public static SetObject(expression: RefinementExpression, obj: IExpression) {
+    public static SetObject(expression: RefinementExpression, obj: Expression) {
         expression.mObject = obj;
         return expression;
     }
 
-    public static SetKey(expression: RefinementExpression, key: IExpression) {
+    public static SetKey(expression: RefinementExpression, key: Expression) {
         expression.mKey = key;
         return expression;
     }
 
-    public get Key(): IExpression | undefined {
+    public get Key(): Expression | undefined {
         return this.mKey;
     }
 
@@ -241,26 +287,26 @@ class RefinementExpression implements IExpression {
     }
 }
 
-class NewExpression implements IExpression {
+class NewExpression implements Expression {
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
-    private mType?: IExpression;
-    private mArgs?: IExpression[];
+    private mType?: Expression;
+    private mArgs?: Expression[];
 
     public static New(): NewExpression {
         return new NewExpression();
     }
 
-    public static SetType(expression: NewExpression, type: IExpression) {
+    public static SetType(expression: NewExpression, type: Expression) {
         expression.mType = type;
         return expression;
     }
 
-    public static SetArgs(expression: NewExpression, args: IExpression[]) {
+    public static SetArgs(expression: NewExpression, args: Expression[]) {
         expression.mArgs = args;
         return expression;
     }
@@ -273,26 +319,26 @@ class NewExpression implements IExpression {
     }
 }
 
-export class DeleteExpression implements IExpression {
+export class DeleteExpression implements Expression {
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
-    private mObject?: IExpression;
-    private mKey?: IExpression;
+    private mObject?: Expression;
+    private mKey?: Expression;
 
     public static New(): DeleteExpression {
         return new DeleteExpression();
     }
 
-    public static SetObject(expression: DeleteExpression, obj: IExpression) {
+    public static SetObject(expression: DeleteExpression, obj: Expression) {
         expression.mObject = obj;
         return expression;
     }
 
-    public static SetKey(expression: DeleteExpression, key: IExpression) {
+    public static SetKey(expression: DeleteExpression, key: Expression) {
         expression.mKey = key;
         return expression;
     }
@@ -305,13 +351,13 @@ export class DeleteExpression implements IExpression {
     }
 }
 
-export const genRefinement = <T>(func: IParser<Func>, nodeCtor: () => T, keySetter: (t: T, k: IExpression) => T) => {
+export const genRefinement = <T>(func: IParser<Func>, nodeCtor: () => T, keySetter: (t: T, k: Expression) => T) => {
     const refine1 = from(makeWordParser('[', nodeCtor)).rightWith(optional(whitespace), selectLeft).rightWith(lazy(consExp.bind(null, func, ExpKind.All)), keySetter).rightWith(optional(whitespace), selectLeft).rightWith(makeWordParser(']', nullize), selectLeft).raw;
     const refine2 = from(makeWordParser('.', nodeCtor)).rightWith(optional(whitespace), selectLeft).rightWith(identifier, (t, x) => (keySetter(t, IdentifierExpression.New(x)))).raw;
     const refinement = or(refine1, refine2, selectNotNull) as IParser<T>;
     return refinement;
 };
-export const genInvocation = <T>(func: IParser<Func>, nodeCtor: () => T, argsSetter: (t: T, k: IExpression[]) => T) => {
+export const genInvocation = <T>(func: IParser<Func>, nodeCtor: () => T, argsSetter: (t: T, k: Expression[]) => T) => {
     const invocation = from(leftParen)
                             .transform(nodeCtor)
                             .rightWith(optional(whitespace), selectLeft)
@@ -464,46 +510,89 @@ export const infixOperator = oneOf(['*', '/', '%', '+', '-', '>=', '<=', '>', '<
 // 建立 ast 相关 node 的类型的事要提上日程了
 // 这里面有些地方是可以放任意多的空格，这个要想一下在哪加上
 /** exp 管 exp 内部的空格，两边的空格不要管 */
-export const consExp = function (func: IParser<Func>, kind: ExpKind, postfix: IParser<null> | null = null): IParser<IExpression> {
-    const noPostfixArgsBindedConsExp = consExp.bind(null, func, ExpKind.All, null);// sub expression has full function
-    const postfixArgsBindedConsExp = consExp.bind(null, func, ExpKind.All, postfix); // for the exp that end with exp
-    const lit = from(consLiteral(func)).transform(LiteralExpression.New).prefixComment('parse literal expression').raw;
-    const name = from(identifier).transform(IdentifierExpression.New).prefixComment('parse identifier expression').raw;
-    const parenExp = from(lazy(noPostfixArgsBindedConsExp)).leftWith(leftParen, selectRight).rightWith(rightParen, selectLeft).prefixComment('parse paren expression').raw;
-    const prefixOp = ['typeof ', '+', '-', '!'];
-    const preExp = from(oneOf(prefixOp, PrefixOperatorExpression.New)).rightWith(optional(whitespace), selectLeft).rightWith(lazy(postfixArgsBindedConsExp), PrefixOperatorExpression.SetSubExpression).prefixComment('parse prefix expression').raw;
-    const infixOp = ['*', '/', '%', '+', '-', '>=', '<=', '>', '<', '==', '!=', '||', '&&'];
-    const inExp = from(lazy(noPostfixArgsBindedConsExp)).leftWith(optional(whitespace), selectRight).rightWith(optional(whitespace), selectLeft).rightWith(oneOf(infixOp, InfixOperatorExpression.New), exchangeParas(InfixOperatorExpression.SetLeftExpression)).rightWith(optional(whitespace), selectLeft).rightWith(lazy(postfixArgsBindedConsExp), InfixOperatorExpression.SetRightExpression).rightWith(optional(whitespace), selectLeft).prefixComment('parse infix expression').raw;
-    const ternaryExp = from(lazy(noPostfixArgsBindedConsExp)).rightWith(optional(whitespace), selectLeft).rightWith(makeWordParser('?', TernaryExpression.New), exchangeParas(TernaryExpression.SetCondition)).rightWith(optional(whitespace), selectLeft).rightWith(lazy(noPostfixArgsBindedConsExp), TernaryExpression.SetTrueResult).rightWith(optional(whitespace), selectLeft).rightWith(makeWordParser(':', nullize), selectLeft).rightWith(optional(whitespace), selectLeft).rightWith(lazy(postfixArgsBindedConsExp), TernaryExpression.SetFalseResult).prefixComment('parse ternary expression').raw;
-    const invocation = genInvocation(func, InvocationExpression.New, InvocationExpression.SetArgs);
-    const invokeExp = from(lazy(noPostfixArgsBindedConsExp)).rightWith(optional(whitespace), selectLeft).rightWith(invocation, exchangeParas(InvocationExpression.SetFunc)).prefixComment('parse invocation expression').raw;
-    const refinement = genRefinement(func, RefinementExpression.New, RefinementExpression.SetKey);
-    const refineExp = from(lazy(noPostfixArgsBindedConsExp)).rightWith(optional(whitespace), selectLeft).rightWith(refinement, exchangeParas(RefinementExpression.SetObject)).prefixComment('parse refinement expression').raw;
-    // ! 还能像下面这样用
-    const newExp = from(makeWordParser('new', NewExpression.New)).rightWith(whitespace, selectLeft).rightWith(lazy(noPostfixArgsBindedConsExp), NewExpression.SetType).rightWith(whitespace, selectLeft).rightWith(from(invocation).transform(x => x.Args!).raw, NewExpression.SetArgs).prefixComment('parse new expression').raw;
-    const deleteExp = from(makeWordParser('delete', DeleteExpression.New))
-                            .rightWith(whitespace, selectLeft)
-                            .rightWith(lazy(noPostfixArgsBindedConsExp), DeleteExpression.SetObject)
-                            .rightWith(whitespace, selectLeft)
-                            .rightWith(from(refinement).transform(x => x.Key!).raw, DeleteExpression.SetKey)
-                            .prefixComment('parse delete expression')
-                            .raw;
-    if (kind === ExpKind.DeleteExp) {
-        return deleteExp;
-    }
-    var notExpEndExps = [lit, name, parenExp, invokeExp, newExp, deleteExp, refineExp];
-    var expEndExps = [preExp, inExp, ternaryExp];
-    // var exps = [lit, name, newExp, deleteExp, parenExp, preExp, inExp, ternaryExp, invokeExp, refineExp];
-    if (postfix) {
-        notExpEndExps = notExpEndExps.map(x => from(x).rightWith(postfix, selectLeft).raw);
-    }
-    const exp = from(eitherOf(selectNotNull, ...notExpEndExps, ...expEndExps)).prefixComment('parse expression').raw;
-    // 我现在感觉，做补全的时候会将这些语法规则重新写一遍，以另一种方式
-    return exp;
-};
+// export const consExp = function (func: IParser<Func>, kind: ExpKind, postfix: IParser<null> | null = null): IParser<Expression> {
+//     const noPostfixArgsBindedConsExp = consExp.bind(null, func, ExpKind.All, null);// sub expression has full function
+//     const postfixArgsBindedConsExp = consExp.bind(null, func, ExpKind.All, postfix); // for the exp that end with exp
+//     const lit = from(consLiteral(func)).transform(LiteralExpression.New).prefixComment('parse literal expression').raw;
+//     const name = from(identifier).transform(IdentifierExpression.New).prefixComment('parse identifier expression').raw;
+//     const parenExp = from(lazy(noPostfixArgsBindedConsExp)).leftWith(leftParen, selectRight).rightWith(rightParen, selectLeft).prefixComment('parse paren expression').raw;
+//     const prefixOp = ['typeof ', '+', '-', '!'];
+//     const preExp = from(oneOf(prefixOp, PrefixOperatorExpression.New)).rightWith(optional(whitespace), selectLeft).rightWith(lazy(postfixArgsBindedConsExp), PrefixOperatorExpression.SetSubExpression).prefixComment('parse prefix expression').raw;
+//     const infixOp = ['*', '/', '%', '+', '-', '>=', '<=', '>', '<', '==', '!=', '||', '&&'];
+//     const inExp = from(lazy(noPostfixArgsBindedConsExp)).leftWith(optional(whitespace), selectRight).rightWith(optional(whitespace), selectLeft).rightWith(oneOf(infixOp, InfixOperatorExpression.New), exchangeParas(InfixOperatorExpression.SetLeftExpression)).rightWith(optional(whitespace), selectLeft).rightWith(lazy(postfixArgsBindedConsExp), InfixOperatorExpression.SetRightExpression).rightWith(optional(whitespace), selectLeft).prefixComment('parse infix expression').raw;
+//     const ternaryExp = from(lazy(noPostfixArgsBindedConsExp)).rightWith(optional(whitespace), selectLeft).rightWith(makeWordParser('?', TernaryExpression.New), exchangeParas(TernaryExpression.SetCondition)).rightWith(optional(whitespace), selectLeft).rightWith(lazy(noPostfixArgsBindedConsExp), TernaryExpression.SetTrueResult).rightWith(optional(whitespace), selectLeft).rightWith(makeWordParser(':', nullize), selectLeft).rightWith(optional(whitespace), selectLeft).rightWith(lazy(postfixArgsBindedConsExp), TernaryExpression.SetFalseResult).prefixComment('parse ternary expression').raw;
+//     const invocation = genInvocation(func, InvocationExpression.New, InvocationExpression.SetArgs);
+//     const invokeExp = from(lazy(noPostfixArgsBindedConsExp)).rightWith(optional(whitespace), selectLeft).rightWith(invocation, exchangeParas(InvocationExpression.SetFunc)).prefixComment('parse invocation expression').raw;
+//     const refinement = genRefinement(func, RefinementExpression.New, RefinementExpression.SetKey);
+//     const refineExp = from(lazy(noPostfixArgsBindedConsExp)).rightWith(optional(whitespace), selectLeft).rightWith(refinement, exchangeParas(RefinementExpression.SetObject)).prefixComment('parse refinement expression').raw;
+//     // ! 还能像下面这样用
+//     const newExp = from(makeWordParser('new', NewExpression.New)).rightWith(whitespace, selectLeft).rightWith(lazy(noPostfixArgsBindedConsExp), NewExpression.SetType).rightWith(whitespace, selectLeft).rightWith(from(invocation).transform(x => x.Args!).raw, NewExpression.SetArgs).prefixComment('parse new expression').raw;
+//     const deleteExp = from(makeWordParser('delete', DeleteExpression.New))
+//                             .rightWith(whitespace, selectLeft)
+//                             .rightWith(lazy(noPostfixArgsBindedConsExp), DeleteExpression.SetObject)
+//                             .rightWith(whitespace, selectLeft)
+//                             .rightWith(from(refinement).transform(x => x.Key!).raw, DeleteExpression.SetKey)
+//                             .prefixComment('parse delete expression')
+//                             .raw;
+//     if (kind === ExpKind.DeleteExp) {
+//         return deleteExp;
+//     }
+//     var notExpEndExps = [lit, name, parenExp, invokeExp, newExp, deleteExp, refineExp];
+//     var expEndExps = [preExp, inExp, ternaryExp];
+//     // var exps = [lit, name, newExp, deleteExp, parenExp, preExp, inExp, ternaryExp, invokeExp, refineExp];
+//     if (postfix) {
+//         notExpEndExps = notExpEndExps.map(x => from(x).rightWith(postfix, selectLeft).raw);
+//     }
+//     const exp = from(eitherOf(selectNotNull, ...notExpEndExps, ...expEndExps)).prefixComment('parse expression').raw;
+//     // 我现在感觉，做补全的时候会将这些语法规则重新写一遍，以另一种方式
+//     return exp;
+// };
 // log('evaluate expression');
 // export const expression: IParser<Expression> = consExp();
-// typescript 里 IParser<IExpression> 可以赋给 IParser<SyntaxNode> 吗 可以
-export const consDeleteExp = function (func: IParser<Func>) { return consExp(func, ExpKind.DeleteExp); };
+// typescript 里 IParser<Expression> 可以赋给 IParser<SyntaxNode> 吗 可以
+// export const consDeleteExp = function (func: IParser<Func>) { return consExp(func, ExpKind.DeleteExp); };
 
-export type Expression = IExpression;
+export class Invocation implements ISyntaxNode {
+    public static New() {
+        return new Invocation();
+    }
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        throw new Error("Method not implemented.");
+    }
+}
+
+export class Refinement implements ISyntaxNode {
+    public static New() {
+        return new Refinement();
+    }
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        throw new Error("Method not implemented.");
+    }
+}
+
+export class Args implements ISyntaxNode {
+    public static New() {
+        return new Args();
+    }
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        throw new Error("Method not implemented.");
+    }
+}
