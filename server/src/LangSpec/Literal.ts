@@ -8,6 +8,7 @@ import { Array, } from "./Array";
 import { consFunc, Func, } from "./Func";
 import { log, selectNotNull, stringify } from "../util";
 import { lazy } from "../parser";
+import { assert } from "console";
 
 export abstract class Literal implements ISyntaxNode {
     abstract Contains(p: Position): boolean;
@@ -16,17 +17,18 @@ export abstract class Literal implements ISyntaxNode {
     // ['constructor']: new (...args: ConstructorParameters<typeof ILiteral>) => this;
 
     public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ISyntaxNode {
+        assert(args.length === 1);
         switch (typeInfo) {
             case 'StringLiteral':
-                return StringLiteral.New(...args);
+                return StringLiteral.New(args[0] as String);
             case 'NumberLiteral':
-                return NumberLiteral.New(...args);
+                return NumberLiteral.New(args[0] as Number);
             case 'ObjectLiteral':
-                return ObjectLiteral.New(...args);
+                return ObjectLiteral.New(args[0] as Obj);
             case 'ArrayLiteral':
-                return ArrayLiteral.New(...args);
+                return ArrayLiteral.New(args[0] as Array);
             case 'FuncLiteral':
-                return FuncLiteral.New(...args);
+                return FuncLiteral.New(args[0] as Func);
         }
         throw new Error(`not support type info: ${typeInfo}`);
     }

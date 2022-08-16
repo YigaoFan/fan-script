@@ -7,6 +7,7 @@ import { consLiteral, Literal, } from "./Literal";
 import { asArray, exchangeParas, log, selectNotNull, stringify } from "../util";
 import { whitespace } from "./Whitespace";
 import { Func, leftParen, rightParen } from "./Func";
+import { assert } from "console";
 
 export abstract class Expression implements ISyntaxNode {
     abstract Contains(p: Position): boolean;
@@ -15,25 +16,35 @@ export abstract class Expression implements ISyntaxNode {
     public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ISyntaxNode {
         switch (typeInfo) {
             case 'LiteralExpression':
-                return LiteralExpression.New(...args);
+                assert(args.length === 1);
+                return LiteralExpression.New(args[0] as Literal);
             case 'IdentifierExpression':
-                return IdentifierExpression.New(...args);
+                assert(args.length === 1);
+                return IdentifierExpression.New(args[0] as Identifier);
             case 'ParenExpression':
-                return ParenExpression.New(...args);
+                assert(args.length === 3);
+                return ParenExpression.New(args[0] as Text, args[1] as Expression, args[2] as Text);
             case 'PrefixOperatorExpression':
-                return PrefixOperatorExpression.New(...args);
+                assert(args.length === 2);
+                return PrefixOperatorExpression.New(args[0] as Text, args[1] as Expression);
             case 'InfixOperatorExpression':
-                return InfixOperatorExpression.New(...args);
+                assert(args.length === 3);
+                return InfixOperatorExpression.New(args[0] as Expression, args[1] as Text, args[2] as Expression);
             case 'TernaryExpression':
-                return TernaryExpression.New(...args);
+                assert(args.length === 5);
+                return TernaryExpression.New(args[0] as Expression, args[1] as Text, args[2] as Expression, args[3] as Text, args[4] as Expression);
             case 'InvocationExpression':
-                return InvocationExpression.New(...args);
+                assert(args.length === 2);
+                return InvocationExpression.New(args[0] as Expression, args[1] as Invocation);
             case 'RefinementExpression':
-                return RefinementExpression.New(...args);
+                assert(args.length === 2);
+                return RefinementExpression.New(args[0] as Expression, args[1] as Refinement);
             case 'NewExpression':
-                return NewExpression.New(...args);
+                assert(args.length === 3);
+                return NewExpression.New(args[0] as Text, args[1] as Expression, args[2] as Invocation);
             case 'DeleteExpression':
-                return DeleteExpression.New(...args);
+                assert(args.length === 3);
+                return DeleteExpression.New(args[0] as Text, args[1] as Expression, args[2] as Refinement);
         }
         throw new Error(`not support type info: ${typeInfo}`);
     }
@@ -86,10 +97,18 @@ class IdentifierExpression implements Expression {
 }
 
 class ParenExpression implements Expression {
-    private mExp?: Expression;
+    private mLeftParen: Text;
+    private mExp: Expression;
+    private mRightParen: Text;
 
-    public static New(): ParenExpression {
-        return new ParenExpression();
+    public static New(leftParen: Text, exp: Expression, rightParen: Text): ParenExpression {
+        return new ParenExpression(leftParen, exp, rightParen);
+    }
+
+    private constructor(leftParen: Text, exp: Expression, rightParen: Text) {
+        this.mLeftParen = leftParen;
+        this.mExp = exp;
+        this.mRightParen = rightParen;
     }
 
     public Contains(p: Position): boolean {
@@ -104,18 +123,20 @@ class ParenExpression implements Expression {
         });
     }
 }
+
 class PrefixOperatorExpression implements Expression {
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+
     private mOperator?: Text;
     private mExpression?: Expression;
 
-    public static New(operator: Text): PrefixOperatorExpression {
-        return new PrefixOperatorExpression(operator);
+    public static New(operator: Text, subExpression: Expression): PrefixOperatorExpression {
+        return new PrefixOperatorExpression(operator, subExpression);
     }
 
     public static SetSubExpression(expression: PrefixOperatorExpression, subExpression: Expression) {
@@ -123,8 +144,9 @@ class PrefixOperatorExpression implements Expression {
         return expression;
     }
 
-    public constructor(operator: Text) {
+    public constructor(operator: Text, subExpression: Expression) {
         this.mOperator = operator;
+        this.mExpression = subExpression;
     }
 
     public toString(): string {
@@ -140,8 +162,8 @@ class InfixOperatorExpression implements Expression {
     private mLeftExpression?: Expression;
     private mRightExpression?: Expression;
 
-    public static New(operator: Text): InfixOperatorExpression {
-        return new InfixOperatorExpression(operator);
+    public static New(left: Expression, operator: Text, right: Expression): InfixOperatorExpression {
+        return new InfixOperatorExpression(left, operator, right);
     }
 
     public static SetLeftExpression(expression: InfixOperatorExpression, subExpression: Expression): InfixOperatorExpression {
@@ -154,8 +176,10 @@ class InfixOperatorExpression implements Expression {
         return expression;
     }
 
-    public constructor(operator: Text) {
+    public constructor(left: Expression, operator: Text, right: Expression) {
         this.mOperator = operator;
+        this.mLeftExpression = left;
+        this.mRightExpression = right;
     }
 
     public toString(): string {
@@ -184,8 +208,14 @@ class TernaryExpression implements Expression {
     private mTrueResult?: Expression;
     private mFalseResult?: Expression;
 
-    public static New(): TernaryExpression {
-        return new TernaryExpression();
+    public static New(cond: Expression, questionMark: Text, trueResult: Expression, colonMark: Text, falseResult: Expression): TernaryExpression {
+        return new TernaryExpression(cond, trueResult, falseResult);
+    }
+
+    private constructor(cond: Expression, trueResult: Expression, falseResult: Expression) {
+        this.mCondition = cond;
+        this.mTrueResult = trueResult;
+        this.mFalseResult = falseResult;
     }
 
     public static SetCondition(expression: TernaryExpression, condtion: Expression) {
@@ -212,9 +242,6 @@ class TernaryExpression implements Expression {
     }
 }
 
-type A = PrefixOperatorExpression | InfixOperatorExpression;
-var a: any = 1;
-var b = a instanceof PrefixOperatorExpression;
 class InvocationExpression implements Expression {
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
@@ -223,10 +250,15 @@ class InvocationExpression implements Expression {
         throw new Error("Method not implemented.");
     }
     private mFunc?: Expression;
-    private mArgs?: Expression[];
+    private mInvocation?: Invocation;
 
-    public static New(): InvocationExpression {
-        return new InvocationExpression();
+    public static New(func: Expression, invocation: Invocation): InvocationExpression {
+        return new InvocationExpression(func, invocation);
+    }
+
+    private constructor(func: Expression, invocation: Invocation) {
+        this.mFunc = func;
+        this.mInvocation = invocation;
     }
 
     public static SetFunc(expression: InvocationExpression, func: Expression) {
@@ -234,19 +266,19 @@ class InvocationExpression implements Expression {
         return expression;
     }
 
-    public static SetArgs(expression: InvocationExpression, args: Expression[]) {
-        expression.mArgs = args;
+    public static SetInvocation(expression: InvocationExpression, invocation: Invocation) {
+        expression.mInvocation = invocation;
         return expression;
     }
 
-    public get Args(): Expression[] | undefined {
-        return this.mArgs;
+    public get Invocation(): Invocation | undefined {
+        return this.mInvocation;
     }
 
     public toString(): string {
         return stringify({
             func: this.mFunc?.toString(),
-            args: this.mArgs?.map(x => x.toString()),
+            invocation: this.mInvocation?.toString(),
         });
     }
 }
@@ -259,10 +291,15 @@ class RefinementExpression implements Expression {
         throw new Error("Method not implemented.");
     }
     private mObject?: Expression;
-    private mKey?: Expression;
+    private mRefinement?: Refinement;
 
-    public static New(): RefinementExpression {
-        return new RefinementExpression();
+    public static New(obj: Expression, refinement: Refinement): RefinementExpression {
+        return new RefinementExpression(obj, refinement);
+    }
+
+    private constructor(obj: Expression, refinement: Refinement) {
+        this.mObject = obj;
+        this.mRefinement = refinement;
     }
 
     public static SetObject(expression: RefinementExpression, obj: Expression) {
@@ -270,19 +307,19 @@ class RefinementExpression implements Expression {
         return expression;
     }
 
-    public static SetKey(expression: RefinementExpression, key: Expression) {
-        expression.mKey = key;
+    public static SetKey(expression: RefinementExpression, refinement: Refinement) {
+        expression.mRefinement = refinement;
         return expression;
     }
 
-    public get Key(): Expression | undefined {
-        return this.mKey;
+    public get Refinement(): Refinement | undefined {
+        return this.mRefinement;
     }
 
     public toString(): string {
         return stringify({
             object: this.mObject?.toString(),
-            key: this.mKey?.toString(),
+            refinement: this.mRefinement?.toString(),
         });
     }
 }
@@ -295,10 +332,15 @@ class NewExpression implements Expression {
         throw new Error("Method not implemented.");
     }
     private mType?: Expression;
-    private mArgs?: Expression[];
+    private mInvocation?: Invocation;
 
-    public static New(): NewExpression {
-        return new NewExpression();
+    public static New(newKeyword: Text, type: Expression, invocation: Invocation): NewExpression {
+        return new NewExpression(type, invocation);
+    }
+
+    private constructor(type: Expression, invocation: Invocation) {
+        this.mType = type;
+        this.mInvocation = invocation;
     }
 
     public static SetType(expression: NewExpression, type: Expression) {
@@ -306,15 +348,15 @@ class NewExpression implements Expression {
         return expression;
     }
 
-    public static SetArgs(expression: NewExpression, args: Expression[]) {
-        expression.mArgs = args;
+    public static SetArgs(expression: NewExpression, invocation: Invocation) {
+        expression.mInvocation = invocation;
         return expression;
     }
 
     public toString(): string {
         return stringify({
             type: this.mType?.toString(),
-            args: this.mArgs?.map(x => x.toString()),
+            invocation: this.mInvocation?.toString(),
         });
     }
 }
@@ -327,10 +369,15 @@ export class DeleteExpression implements Expression {
         throw new Error("Method not implemented.");
     }
     private mObject?: Expression;
-    private mKey?: Expression;
+    private mRefinement?: Refinement;
 
-    public static New(): DeleteExpression {
-        return new DeleteExpression();
+    public static New(newKeyword: Text, object: Expression, refinement: Refinement): DeleteExpression {
+        return new DeleteExpression(object, refinement);
+    }
+
+    public constructor(object: Expression, refinement: Refinement) {
+        this.mObject = object;
+        this.mRefinement = refinement;
     }
 
     public static SetObject(expression: DeleteExpression, obj: Expression) {
@@ -338,15 +385,15 @@ export class DeleteExpression implements Expression {
         return expression;
     }
 
-    public static SetKey(expression: DeleteExpression, key: Expression) {
-        expression.mKey = key;
+    public static SetKey(expression: DeleteExpression, refinement: Refinement) {
+        expression.mRefinement = refinement;
         return expression;
     }
 
     public toString(): string {
         return stringify({
             object: this.mObject?.toString(),
-            key: this.mKey?.toString(),
+            refinement: this.mRefinement?.toString(),
         });
     }
 }
@@ -370,11 +417,6 @@ export const genInvocation = <T>(func: IParser<Func>, nodeCtor: () => T, argsSet
                             .rightWith(rightParen, selectLeft).raw;
     return invocation;
 };
-// 注意变量定义及其引用位置，定义在引用后，会出 undefined 的问题
-export enum ExpKind {
-    All,
-    DeleteExp,
-}
 
 enum PrefixOperatorKind {
     Add = '+',
@@ -501,6 +543,27 @@ class InfixOperator implements ISyntaxNode {
     }
     public toString(): string {
         return this.mOperator;
+    }
+}
+
+export class Keyword implements ISyntaxNode {
+    private mText: Text;
+    public static New(text: Text) {
+        return new Keyword(text);
+    }
+
+    private constructor(text: Text) {
+        this.mText = text;
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        throw new Error("Method not implemented.");
     }
 }
 

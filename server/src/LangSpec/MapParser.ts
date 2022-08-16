@@ -2,16 +2,17 @@ import { AsyncStream } from "../AsyncStream";
 import { Channel } from "../Channel";
 import { IInputStream, IParser, ParserInput, ParserResult, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { Args, Expression, infixOperator, Invocation, prefixOperator, Refinement } from "./Expression";
+import { Args, Expression, infixOperator, Invocation, Keyword, prefixOperator, Refinement } from "./Expression";
 import { func } from "./Func";
 import { identifier } from "./Identifier";
 import { Literal } from "./Literal";
 import { number } from "./Number";
 import { Array, Item, Items } from "./Array";
-import { Key, KeyValuePair, Obj, Value } from "./Object";
+import { Key, Pair, Obj, Value, Pairs } from "./Object";
 import { string } from "./String";
+import { makeWordParser } from "../parser";
+import { id } from "../combinator";
 
-Expression
 type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
     | 'array' | 'items' | 'item' | 'invocation' | 'args' | 'refinement';
 type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
@@ -19,7 +20,6 @@ type TerminatedRule = readonly [string, IParser<ISyntaxNode>];
 // TODO add space
 const expGrammarMap: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
-        // 下面的每一个都要有一个 New、和各个元素静态的 setter
         ['exp', ['literal'], 'LiteralExpression'], // like 'LiteralExpression' is type info for node factory
         ['exp', ['id'], 'IdentifierExpression'],
         ['exp', ['(', 'exp', ')'], 'ParenExpression'],
@@ -65,17 +65,20 @@ const expGrammarMap: { nonTerminated: NonTerminatedRule[], terminated: Terminate
         ['infix-operator', infixOperator],
         ['string', string],
         ['number', number],
-        ['func', func]
+        ['func', func],
+        ['new', makeWordParser('new', Keyword.New)],
+        ['delete', makeWordParser('delete', Keyword.New)],
     ],
 };
 
 type Factory = (nodes: (ISyntaxNode | Text)[]) => ISyntaxNode;
 type FactoryWithTypeInfo = (nodeTypeInfo:string, nodes: (ISyntaxNode | Text)[]) => ISyntaxNode;
 const NodeFactory: { [key: string]: Factory | FactoryWithTypeInfo; } = {
-    "exp": Expression.New,
+    exp: Expression.New,
     literal: Literal.New,
     object: Obj.New,
-    pairs: KeyValuePair.New,
+    pairs: Pairs.New,
+    pair: Pair.New,
     key: Key.New,
     value: Value.New,
     array: Array.New,
@@ -98,15 +101,15 @@ class NonTerminatedParserState {
         return new NonTerminatedParserState(from, rule, nowPoint);
     }
 
-    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number) {
+    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, nodes: (Text | ISyntaxNode)[] = []) {
         this.From = from;
         this.Rule = rule;
         this.NowPoint = nowPoint;
-        this.mNodes = [];
+        this.mNodes = nodes;
     }
 
     public Copy(): NonTerminatedParserState {
-        return new NonTerminatedParserState(this.From, this.Rule, this.NowPoint);
+        return new NonTerminatedParserState(this.From, this.Rule, this.NowPoint, [...this.mNodes]);
     }
     
     /** 
@@ -128,9 +131,7 @@ class NonTerminatedParserState {
 
         const destSymbol = this.Rule[1][this.NowPoint + 1];
         if (NonTerminatedParserState.IsChar(destSymbol)) {
-            if (destSymbol.length > 1) {
-
-            } else if (destSymbol === t.Value) { // 这里不对，destSymbol 是一个字符串，t 是单个字符 TODO
+            if (destSymbol === t.Value) { // destSymbol 必须是一个字符串
                 this.AddSub(t);
                 this.NowPoint++;
                 if (this.NowPoint === len) {
@@ -171,11 +172,7 @@ class NonTerminatedParserState {
     }
 
     private AddSub(s: Text | ISyntaxNode) {
-        if (s instanceof Text) {
-
-        } else {
-            this.mNodes.push(s);
-        }
+        this.mNodes.push(s);
     }
 
     /** Judge if @arg symbol is char, not the left of a rule */
@@ -294,10 +291,10 @@ class ExpressionChartParser implements IParser<Expression> {
         for (;;) {
             const r = await this.iter(input);
             if (r) {
-                // cons parser result
                 const chart = this.mNonTerminatedStateChart;
                 const lastColumn = chart[chart.length - 1];
                 const completeds = lastColumn.filter(x => x.Completed && x.From === 0);
+                return Promise.resolve(completeds[0].Result);
             }
         }
         return null;

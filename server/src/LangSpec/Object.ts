@@ -1,3 +1,4 @@
+import { assert } from "console";
 import { id, or, from, nullize, selectRight, optional, eitherOf, selectLeft, } from "../combinator";
 import { IParser, Position, Text, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
@@ -9,24 +10,60 @@ import { Identifier, identifier, } from "./Identifier";
 import { String, string, } from "./String";
 import { whitespace } from "./Whitespace";
 
-export class KeyValuePair implements ISyntaxNode {
-    // 这里面的数据都是可能为空的，这是之后编写 SyntaxNode 的习惯规定
-    private mKey?: Identifier | String;
-    private mValue?: Expression;
+export class Pairs implements ISyntaxNode {
+    private mPairs: Pair[];
 
-    public static New(key: Identifier | String) : KeyValuePair {
-        return new KeyValuePair(key);
+    public static New(args: (ISyntaxNode | Text)[]): Pairs {
+        assert(args.length === 3 || args.length === 0);
+        const ps = new Pairs();
+        if (args.length === 0) {
+            return ps;
+        }
+
+        ps.mPairs.push(args[0] as Pair);
+        ps.mPairs.push(...(args[2] as Pairs).mPairs);
+        return ps;
     }
 
-    public static SetValue(pair: KeyValuePair, value: Expression) {
+    private constructor() {
+        this.mPairs = [];
+    }
+    
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    
+    public toString(): string {
+        return stringify({
+            pairs: this.mPairs.map(x => x.toString()),
+        });
+    }
+}
+
+export class Pair implements ISyntaxNode {
+    // 这里面的数据都是可能为空的，这是之后编写 SyntaxNode 的习惯规定
+    private mKey?: Key;
+    private mValue?: Value;
+
+    public static New(args: (ISyntaxNode | Text)[]) : Pair {
+        assert(args.length === 3);
+        return new Pair(args[0] as Key, args[2] as Value);
+    }
+
+    private constructor(key: Key, value: Value) {
+        this.mKey = key;
+        this.mValue = value;
+    }
+
+    public static SetValue(pair: Pair, value: Value) {
         pair.mValue = value;
         return pair;
     }
 
-    // 然后构造函数可以的话，都是可以不用参数构造的
-    public constructor(key: Identifier | String) {
-        this.mKey = key;
-    }
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -48,8 +85,16 @@ export class KeyValuePair implements ISyntaxNode {
 }
 
 export class Key implements ISyntaxNode {
-    public static New() {
-        return new Key();
+    private mKey?: Identifier | String;
+
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length === 1);
+        const key = args[0] as Identifier | String;
+        return new Key(key);
+    }
+
+    private constructor(key: Identifier | String) {
+        this.mKey = key;
     }
 
     public Contains(p: Position): boolean {
@@ -59,13 +104,20 @@ export class Key implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
     public toString(): string {
-        throw new Error("Method not implemented.");
+        return stringify(this.mKey?.toString());
     }    
 }
 
 export class Value implements ISyntaxNode {
-    public static New() {
-        return new Value();
+    private mValue: Expression;
+
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length === 1);
+        return new Value(args[0] as Expression);
+    }
+
+    private constructor(value: Expression) {
+        this.mValue = value;
     }
 
     public Contains(p: Position): boolean {
@@ -75,18 +127,18 @@ export class Value implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
     public toString(): string {
-        throw new Error("Method not implemented.");
+        return stringify(this.mValue?.toString());
     }    
 }
 
 export class Obj implements ISyntaxNode {
-    private mPairs?: KeyValuePair[];
+    private mPairs?: Pair[];
 
     public static New(): Obj {
         return new Obj();
     }
 
-    public static SetPairs(obj: Obj, pairs: KeyValuePair[]) {
+    public static SetPairs(obj: Obj, pairs: Pair[]) {
         obj.mPairs = pairs;
         return obj;
     }
@@ -108,12 +160,12 @@ export class Obj implements ISyntaxNode {
 }
 
 const consPair = (func: IParser<Func>) => (from(or(identifier, string, selectNotNullIn2DifferentType))
-                .transform(KeyValuePair.New)
+                .transform(Pair.New)
                 .leftWith(optional(whitespace), selectRight)
                 .rightWith(from(makeWordParser(':', nullize))
                     .leftWith(optional(whitespace), nullize)
                     .rightWith(optional(whitespace), nullize).raw, selectLeft)
-                .rightWith(lazy(consExp.bind(null, func, ExpKind.All)), KeyValuePair.SetValue)// 这里讲道理要把这个 lazy 的 consExp 参数化
+                .rightWith(lazy(consExp.bind(null, func, ExpKind.All)), Pair.SetValue)// 这里讲道理要把这个 lazy 的 consExp 参数化
                 .rightWith(optional(whitespace), selectLeft)
                 .rightWith(makeWordParser(',', nullize), selectLeft));
 /**
