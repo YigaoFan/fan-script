@@ -312,6 +312,9 @@ class ExpressionChartParser implements IParser<Expression> {
                 const chart = this.mNonTerminatedStateChart;
                 const lastColumn = chart[chart.length - 1];
                 const completeds = lastColumn.filter(x => x.Completed && x.From === 0);
+                if (completeds.length == 0) {
+                    return Promise.resolve(null);
+                }
                 return Promise.resolve(completeds[0].Result);
             }
         }
