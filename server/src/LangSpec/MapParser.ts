@@ -1,4 +1,4 @@
-import { AsyncStream } from "../AsyncStream";
+import { SignalStringStream } from "../SignalStringStream";
 import { Channel } from "../Channel";
 import { AsyncParserInput, AsyncParserResult, IInputStream, IParser, ParserInput, ParserResult, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
@@ -13,6 +13,7 @@ import { string } from "./String";
 import { makeWordParser } from "../parser";
 import { whitespace } from "./Whitespace";
 import { optional } from "../combinator";
+import { Signal } from "../Signal";
 
 type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement';
@@ -210,18 +211,18 @@ class TerminatedParserState<T> {
     private mPromise: Promise<AsyncParserResult<T>>;
     private mFrom: number;
     private mRule: TerminatedRule;
-    private mChannel: Channel<Text>;
+    private mSignal: Signal;
     private mParserResult?: AsyncParserResult<T>;
 
-    public static New<T1>(from: number, rule: TerminatedRule, promise: Promise<AsyncParserResult<T1>>, channel: Channel<Text>) {
-        return new TerminatedParserState(from, rule, promise, channel);
+    public static New<T1>(from: number, rule: TerminatedRule, promise: Promise<AsyncParserResult<T1>>, signal: Signal) {
+        return new TerminatedParserState(from, rule, promise, signal);
     }
 
-    private constructor(from: number, rule: TerminatedRule, promise: Promise<AsyncParserResult<T>>, channel: Channel<Text>) {
+    private constructor(from: number, rule: TerminatedRule, promise: Promise<AsyncParserResult<T>>, signal: Signal) {
         this.mFrom = from;
         this.mRule = rule;
         this.mPromise = promise;
-        this.mChannel = channel;
+        this.mSignal = signal;
     }
     
     public get From(): number {
@@ -233,8 +234,8 @@ class TerminatedParserState<T> {
     }
 
     // NonTerminatedRule 里也有 Terminated 的东西，比如 {，所以 move，控制 nonterminated 里的 terminated 如 { 只有一个字符，方便移动更新状态
-    public async Move(t: Text): Promise<ParserWorkState> {
-        this.mChannel.PutValue(t);
+    public async Move(): Promise<ParserWorkState> {
+        this.mSignal.Signal();
         var isFulfilled = false;
         var isPending = true;
         var isRejected = false;
@@ -300,10 +301,9 @@ class ExpressionChartParser implements IParser<Expression> {
         for (const r of expGrammarMap.terminated) {
             // 这些 parser 是对象，内部应该没有状态影响多次 parser 吧？
             const parser = r[1];
-            const s = new AsyncStream();
-            // @ts-expect-error TODO fix
+            const s = input.Copy();
             const promise = parser.asyncParse(s);
-            this.mTerminatedStateChart.push(TerminatedParserState.New(InitialStart, r, promise, s.Channel));
+            this.mTerminatedStateChart.push(TerminatedParserState.New(InitialStart, r, promise, s.GetSignal()));
         }
 
         for (;;) {
@@ -315,7 +315,6 @@ class ExpressionChartParser implements IParser<Expression> {
                 return Promise.resolve(completeds[0].Result);
             }
         }
-        return null;
     }
 
     /**
@@ -349,7 +348,7 @@ class ExpressionChartParser implements IParser<Expression> {
             }
         }
         { // terminated shift
-            const shiftResultPromises = this.mTerminatedStateChart.map(async x => await x.Move(c));
+            const shiftResultPromises = this.mTerminatedStateChart.map(async x => await x.Move());
             const shiftResults = await Promise.all(shiftResultPromises);
             for (let i = 0; i < shiftResults.length; i++) {
                 const r = shiftResults[i];
@@ -372,7 +371,7 @@ class ExpressionChartParser implements IParser<Expression> {
                     .filter(x => x.NowPoint < x.Rule[1].length && !NonTerminatedParserState.IsChar(x.Rule[1][x.NowPoint]))
                     .map(x => x.Rule[1][x.NowPoint]);
             for (const s of expectSymbols) {
-                ExpressionChartParser.ClosureOnNonterminated(s, from, lastColumn, this.mTerminatedStateChart);
+                ExpressionChartParser.ClosureOnNonterminated(input, s, from, lastColumn, this.mTerminatedStateChart);
             }
         }
 
@@ -392,7 +391,7 @@ class ExpressionChartParser implements IParser<Expression> {
         }
     }
 
-    private static ClosureOnNonterminated(symbol: string, from: number, nonTerminatedColumn: NonTerminatedParserState[], terminatedChart: TerminatedParserState<ISyntaxNode>[]) {
+    private static ClosureOnNonterminated(input: AsyncParserInput, symbol: string, from: number, nonTerminatedColumn: NonTerminatedParserState[], terminatedChart: TerminatedParserState<ISyntaxNode>[]) {
         for (const rule of expGrammarMap.nonTerminated) {
             if (rule[0] === symbol) {
                 nonTerminatedColumn.push(NonTerminatedParserState.New(from, rule, 0));
@@ -400,10 +399,9 @@ class ExpressionChartParser implements IParser<Expression> {
         }
         for (const rule of expGrammarMap.terminated) {
             if (rule[0] === symbol) {
-                const s = new AsyncStream();
-                // @ts-expect-error TODO fix
-                const promise = parser.asyncParse(s);
-                terminatedChart.push(TerminatedParserState.New(InitialStart, rule, promise, s.Channel));
+                const s = input.Copy();
+                const promise = rule[1].asyncParse(s);
+                terminatedChart.push(TerminatedParserState.New(InitialStart, rule, promise, s.GetSignal()));
             }
         }
     }

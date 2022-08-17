@@ -1,6 +1,7 @@
 import { formatParserResult, log, } from './util';
 import { HtmlLogger, } from './HtmlLogger';
 import { TimeBomb } from './TimeBomb';
+import { Signal } from './Signal';
 
 // stateful internal
 export interface IInputStream {
@@ -12,6 +13,7 @@ export interface IInputStream {
 export interface IAsyncInputStream {
     get NextChar(): Promise<Text>;
     Copy(): IAsyncInputStream;
+    GetSignal(): Signal;
 }
 
 export class Position {
