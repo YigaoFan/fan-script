@@ -393,8 +393,4 @@ class ExpressionChartParser implements IParser<Expression> {
             }
         }
     }
-
-    private ConsAstFrom(state: NonTerminatedParserState, chart: NonTerminatedParserState[][]) {
-        const from = state.From;
-    }
 }

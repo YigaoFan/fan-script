@@ -139,20 +139,7 @@ class FuncLiteral implements Literal {
     }
 }
 
-// export const consLiteral = function(func: IParser<Func>): IParser<Literal> {
-//     // undefined 和 null 没弄吧？ TODO
-//     const num = from(number).transform(NumberLiteral.New).raw;
-//     const str = from(string).transform(StringLiteral.New).raw;
-//     const obj = from(consObject(func)).transform(ObjectLiteral.New).raw;
-//     const arr = from(consArray(func)).transform(ArrayLiteral.New).raw;
-//     const fun = from(func).transform(FuncLiteral.New).raw; // func 这里是 undefined 说到底可能还是引用顺序的问题, 已显式化此依赖为一个参数
 //     // IParser<StringLiteral> 为什么可以赋值给 IParser<ILiteral>
-//     const lit = from(eitherOf<Literal, Literal>(selectNotNull, num, str, obj, arr, fun)).prefixComment('parse literal').raw;
-//     return lit;
-// };
-// // log('evaluate literal');
-// // export const literal: IParser<Literal> = from(consLiteral());
-// export type Literal = Literal;// 不要直接暴露接口出去
 
 // 原来是忘了 npm install
 // 有时候一些编译错误，需要重新开始编译才能不提示，增量编译还是会错误地提示有问题
