@@ -3,10 +3,10 @@ import { IParser, Text, Position, } from "../IParser";
 import { makeWordParser, oneOf, lazy, } from "../parser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { Identifier, identifier } from "./Identifier";
-import { consLiteral, Literal, } from "./Literal";
+import { Literal, } from "./Literal";
 import { asArray, exchangeParas, log, selectNotNull, stringify } from "../util";
 import { whitespace } from "./Whitespace";
-import { Func, leftParen, rightParen } from "./Func";
+// import { Func, leftParen, rightParen } from "./Func";
 import { assert } from "console";
 
 export abstract class Expression implements ISyntaxNode {
@@ -397,26 +397,6 @@ export class DeleteExpression implements Expression {
         });
     }
 }
-
-export const genRefinement = <T>(func: IParser<Func>, nodeCtor: () => T, keySetter: (t: T, k: Expression) => T) => {
-    const refine1 = from(makeWordParser('[', nodeCtor)).rightWith(optional(whitespace), selectLeft).rightWith(lazy(consExp.bind(null, func, ExpKind.All)), keySetter).rightWith(optional(whitespace), selectLeft).rightWith(makeWordParser(']', nullize), selectLeft).raw;
-    const refine2 = from(makeWordParser('.', nodeCtor)).rightWith(optional(whitespace), selectLeft).rightWith(identifier, (t, x) => (keySetter(t, IdentifierExpression.New(x)))).raw;
-    const refinement = or(refine1, refine2, selectNotNull) as IParser<T>;
-    return refinement;
-};
-export const genInvocation = <T>(func: IParser<Func>, nodeCtor: () => T, argsSetter: (t: T, k: Expression[]) => T) => {
-    const invocation = from(leftParen)
-                            .transform(nodeCtor)
-                            .rightWith(optional(whitespace), selectLeft)
-                            .rightWith(optional(from(lazy(consExp.bind(null, func, ExpKind.All)))
-                                            .rightWith(optional(whitespace), selectLeft)
-                                            .leftWith(optional(whitespace), selectRight)
-                                            .rightWith(makeWordParser(',', nullize), selectLeft)
-                                            .rightWith(optional(whitespace), selectLeft)
-                                            .zeroOrMore(asArray).raw), (l, r) => argsSetter(l, r.hasValue() ? r.value : []))
-                            .rightWith(rightParen, selectLeft).raw;
-    return invocation;
-};
 
 enum PrefixOperatorKind {
     Add = '+',

@@ -1,11 +1,11 @@
 import { IParser, Position, Text, } from "../IParser";
-import { consExp, ExpKind, Expression, } from "./Expression";
+import { Expression, } from "./Expression";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { from, nullize, optional, selectLeft, selectRight } from "../combinator";
 import { lazy, makeWordParser } from "../parser";
 import { whitespace, } from "./Whitespace";
 import { asArray, stringify } from "../util";
-import { Func } from "./Func";
+// import { Func } from "./Func";
 import { assert } from "console";
 
 export class Array implements ISyntaxNode {

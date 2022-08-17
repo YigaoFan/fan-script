@@ -5,8 +5,8 @@ import { htmlLogger } from '../../IParser';
 import { GenerateParserInputTable } from '../../ParserInputTable';
 import { StringStream } from '../../StringStream';
 import { log } from '../../util';
-import { classs } from '../Class';
-import { func } from '../Func';
+// import { classs } from '../Class';
+// import { func } from '../Func';
 import { identifier } from '../Identifier';
 
 const tests: (() => void)[] = [];
@@ -24,7 +24,7 @@ const testClass = () => {
     var s = StringStream.New(c, 'class.fs');
     GenerateParserInputTable('parser-input.html', s.Copy());
     try {
-        var o = classs.parse(s);
+        // var o = classs.parse(s);
     } finally {
         htmlLogger.Close();
     }
@@ -149,15 +149,15 @@ const testFunc = () => {
     }
 
     {
-        const s = 'func f(a1, a2, a3){ var v; v = a1.pro[a2][a3](); return v; }';
-        const ss = StringStream.New(s, 'func.fs');
-        GenerateParserInputTable('parser-input.html', ss.Copy());
-        try {
-            const r = func.parse(ss);
-            assert(r !== null);
-        } finally {
-            htmlLogger.Close();
-        }
+        // const s = 'func f(a1, a2, a3){ var v; v = a1.pro[a2][a3](); return v; }';
+        // const ss = StringStream.New(s, 'func.fs');
+        // GenerateParserInputTable('parser-input.html', ss.Copy());
+        // try {
+        //     const r = func.parse(ss);
+        //     assert(r !== null);
+        // } finally {
+        //     htmlLogger.Close();
+        // }
     }
 };
 

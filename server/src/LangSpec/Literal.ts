@@ -3,9 +3,9 @@ import { id, or, from, nullize, selectRight, optional, Option, eitherOf, } from 
 import { ISyntaxNode } from "../ISyntaxNode";
 import { number, Number, } from "./Number";
 import { string, String, } from "./String";
-import { consObject, Obj, } from "./Object";
+import { Obj, } from "./Object";
 import { Array, } from "./Array";
-import { consFunc, Func, } from "./Func";
+// import { consFunc, Func, } from "./Func";
 import { log, selectNotNull, stringify } from "../util";
 import { lazy } from "../parser";
 import { assert } from "console";
