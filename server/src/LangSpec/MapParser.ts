@@ -124,7 +124,7 @@ class NonTerminatedParserState {
         const len = this.Rule[1].length;
         if (len === 0) {
             // 长度为 0 的这样处理对吗，按理说 0 应该不用 move
-            return ParserWorkState.Succeed;
+            return ParserWorkState.Succeed; // 这里 nodes 里没东西，组成上级结点时会出问题吗？
         }
         if (this.NowPoint > InitialStart) {
             if (!NonTerminatedParserState.IsChar(this.Rule[1][this.NowPoint])) {
@@ -174,7 +174,7 @@ class NonTerminatedParserState {
             return true;
         }
         const nodes = this.mNodes.filter(notNull);
-        const nodeResults = nodes.map(x => x instanceof Text ? x : x!.Result);
+        const nodeResults = nodes.map(x => x!.Result);
         const remain = nodes[nodes.length - 1]!.Remain;
         if (this.Rule[2]) {
             return {
