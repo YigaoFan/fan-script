@@ -616,9 +616,16 @@ export const infixOperator = oneOf(['*', '/', '%', '+', '-', '>=', '<=', '>', '<
 // export const consDeleteExp = function (func: IParser<Func>) { return consExp(func, ExpKind.DeleteExp); };
 
 export class Invocation implements ISyntaxNode {
-    public static New() {
-        return new Invocation();
+    private mArgs: Args;
+
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length === 3);
+        return new Invocation(args[1] as Args);
     }
+    public constructor(args: Args) {
+        this.mArgs = args;
+    }
+    
     public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -626,14 +633,24 @@ export class Invocation implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
     public toString(): string {
-        throw new Error("Method not implemented.");
+        return stringify({
+            args: this.mArgs.toString(),
+        });
     }
 }
 
 export class Refinement implements ISyntaxNode {
-    public static New() {
-        return new Refinement();
+    private mKey: Expression | Identifier;
+
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length === 2 || args.length === 3);
+        return new Refinement(args[1] as Expression | Identifier);
     }
+    
+    private constructor(key: Expression | Identifier) {
+        this.mKey = key;
+    }
+    
     public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -646,9 +663,19 @@ export class Refinement implements ISyntaxNode {
 }
 
 export class Args implements ISyntaxNode {
-    public static New() {
-        return new Args();
+    private mArgs: Expression[] = [];
+
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length === 3 || args.length === 0);
+        const as = new Args();
+        if (args.length === 0) {
+            return as;
+        }
+        as.mArgs.push(args[0] as Expression);
+        as.mArgs.push(...(args[2] as Args).mArgs);
+        return as;
     }
+
     public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -656,6 +683,6 @@ export class Args implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
     public toString(): string {
-        throw new Error("Method not implemented.");
+        return stringify(this.mArgs.map(x => x.toString()));
     }
 }

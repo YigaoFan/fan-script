@@ -22,6 +22,7 @@ export class AsyncStream implements IInputStream {
     }
 
     public Copy(): IInputStream {
+        // AsyncStream 和 StringStream 绑定就可以实现了
         throw new Error('Still not support copy');
     }
 

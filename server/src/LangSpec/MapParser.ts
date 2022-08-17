@@ -11,7 +11,6 @@ import { Array, Item, Items } from "./Array";
 import { Key, Pair, Obj, Value, Pairs } from "./Object";
 import { string } from "./String";
 import { makeWordParser } from "../parser";
-import { id } from "../combinator";
 
 type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
     | 'array' | 'items' | 'item' | 'invocation' | 'args' | 'refinement';
@@ -51,7 +50,7 @@ const expGrammarMap: { nonTerminated: NonTerminatedRule[], terminated: Terminate
         ['item', ['exp']],
 
         ['invocation', ['(', 'args', ')']],
-        ['args', ['arg', ',', 'args']],
+        ['args', ['exp', ',', 'args']],
         ['args', []],
 
         ['refinement', ['.', 'id']],
@@ -88,12 +87,12 @@ const NodeFactory: { [key: string]: Factory | FactoryWithTypeInfo; } = {
     args: Args.New,
     refinement: Refinement.New,
 };
-const InitialStart = -1;
+const InitialStart = 0;
 // TODO 写完看一下，我这里写得好像很长，课上的代码好像很短？对比一下
 class NonTerminatedParserState {
     public From: number;
     public readonly Rule: NonTerminatedRule;
-    private readonly mNodes: (Text | ISyntaxNode)[];
+    private readonly mNodes: (Text | ISyntaxNode | null)[]; // 传到 factory 里时过滤掉 null
     /** now on @property Rule[NowPoint] left */
     public NowPoint: number;
 
@@ -101,7 +100,7 @@ class NonTerminatedParserState {
         return new NonTerminatedParserState(from, rule, nowPoint);
     }
 
-    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, nodes: (Text | ISyntaxNode)[] = []) {
+    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, nodes: (Text | ISyntaxNode | null)[] = []) {
         this.From = from;
         this.Rule = rule;
         this.NowPoint = nowPoint;
@@ -164,10 +163,17 @@ class NonTerminatedParserState {
     }
 
     public get Result(): ISyntaxNode {
+        function notNull(value: Text | ISyntaxNode | null): value is (Text | ISyntaxNode) {
+            if (value === null) {
+                return false;
+            }
+            return true;
+        }
+        const nodes = this.mNodes.filter(notNull);
         if (this.Rule[2]) {
-            return (NodeFactory[this.Rule[0]] as FactoryWithTypeInfo)(this.Rule[2], this.mNodes);
+            return (NodeFactory[this.Rule[0]] as FactoryWithTypeInfo)(this.Rule[2], nodes);
         } else {
-            return (NodeFactory[this.Rule[0]] as Factory)(this.mNodes);
+            return (NodeFactory[this.Rule[0]] as Factory)(nodes);
         }
     }
 

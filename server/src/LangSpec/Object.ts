@@ -132,19 +132,20 @@ export class Value implements ISyntaxNode {
 }
 
 export class Obj implements ISyntaxNode {
-    private mPairs?: Pair[];
+    private mPairs?: Pairs;
 
-    public static New(): Obj {
-        return new Obj();
+    public static New(args: (ISyntaxNode | Text)[]): Obj {
+        assert(args.length === 3);
+        return new Obj(args[1] as Pairs);
     }
 
-    public static SetPairs(obj: Obj, pairs: Pair[]) {
+    private constructor(pairs: Pairs) {
+        this.mPairs = pairs;
+    }
+
+    public static SetPairs(obj: Obj, pairs: Pairs) {
         obj.mPairs = pairs;
         return obj;
-    }
-
-    private constructor() {
-        this.mPairs = [];
     }
 
     Contains(p: Position): boolean {
@@ -155,25 +156,7 @@ export class Obj implements ISyntaxNode {
     }
 
     public toString(): string {
-        return stringify(this.mPairs?.map(x => x.toString()));
+        return stringify(this.mPairs?.toString());
     }
 }
-
-const consPair = (func: IParser<Func>) => (from(or(identifier, string, selectNotNullIn2DifferentType))
-                .transform(Pair.New)
-                .leftWith(optional(whitespace), selectRight)
-                .rightWith(from(makeWordParser(':', nullize))
-                    .leftWith(optional(whitespace), nullize)
-                    .rightWith(optional(whitespace), nullize).raw, selectLeft)
-                .rightWith(lazy(consExp.bind(null, func, ExpKind.All)), Pair.SetValue)// 这里讲道理要把这个 lazy 的 consExp 参数化
-                .rightWith(optional(whitespace), selectLeft)
-                .rightWith(makeWordParser(',', nullize), selectLeft));
-/**
- * 强制每个 pair 后面都要打逗号
- */ 
-export const consObject = (func: IParser<Func>) => (from(makeWordParser('{', Obj.New))
-                                                    .rightWith(consPair(func).zeroOrMore(asArray).raw, Obj.SetPairs)
-                                                    .rightWith(makeWordParser('}', nullize), selectLeft)
-                                                    .prefixComment('parse object')
-                                                    .raw);
 
