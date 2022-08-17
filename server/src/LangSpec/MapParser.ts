@@ -13,7 +13,7 @@ import { string } from "./String";
 import { makeWordParser } from "../parser";
 
 type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
-    | 'array' | 'items' | 'item' | 'invocation' | 'args' | 'refinement';
+    | 'array' | 'items' | 'invocation' | 'args' | 'refinement';
 type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
 type TerminatedRule = readonly [string, IParser<ISyntaxNode>];
 // TODO add space
@@ -46,8 +46,7 @@ const expGrammarMap: { nonTerminated: NonTerminatedRule[], terminated: Terminate
 
         ['array', ['[', 'items', ']'], 'Array'],
         ['items', []],
-        ['items', ['item', ',', 'items']],
-        ['item', ['exp']],
+        ['items', ['exp', ',', 'items']],
 
         ['invocation', ['(', 'args', ')']],
         ['args', ['exp', ',', 'args']],
@@ -82,7 +81,6 @@ const NodeFactory: { [key: string]: Factory | FactoryWithTypeInfo; } = {
     value: Value.New,
     array: Array.New,
     items: Items.New,
-    item: Item.New,
     invocation: Invocation.New,
     args: Args.New,
     refinement: Refinement.New,
