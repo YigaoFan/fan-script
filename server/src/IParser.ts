@@ -13,7 +13,6 @@ export interface IInputStream {
 export interface IAsyncInputStream {
     get NextChar(): Promise<Text>;
     Copy(): IAsyncInputStream;
-    GetSignal(): Signal;
 }
 
 export class Position {

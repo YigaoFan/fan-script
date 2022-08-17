@@ -301,7 +301,7 @@ class ExpressionChartParser implements IParser<Expression> {
         for (const r of expGrammarMap.terminated) {
             // 这些 parser 是对象，内部应该没有状态影响多次 parser 吧？
             const parser = r[1];
-            const s = input.Copy();
+            const s = SignalStringStream.New(input.Copy());
             const promise = parser.asyncParse(s);
             this.mTerminatedStateChart.push(TerminatedParserState.New(InitialStart, r, promise, s.GetSignal()));
         }
@@ -399,7 +399,7 @@ class ExpressionChartParser implements IParser<Expression> {
         }
         for (const rule of expGrammarMap.terminated) {
             if (rule[0] === symbol) {
-                const s = input.Copy();
+                const s = SignalStringStream.New(input.Copy());
                 const promise = rule[1].asyncParse(s);
                 terminatedChart.push(TerminatedParserState.New(InitialStart, rule, promise, s.GetSignal()));
             }
