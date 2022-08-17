@@ -1,8 +1,8 @@
-import { Char, IInputStream, Position, Text, } from './IParser';
+import { Char, IAsyncInputStream, IInputStream, Position, Text, } from './IParser';
 import { Channel, } from './Channel';
 import { log } from './util';
 
-export class AsyncStream implements IInputStream {
+export class AsyncStream implements IAsyncInputStream {
     private mChannel: Channel<Text>;
 
     public static New(): AsyncStream {
@@ -17,17 +17,13 @@ export class AsyncStream implements IInputStream {
         this.mChannel.PutValue(v);
     }
 
-    public get NextChar(): Text {
-        throw new Error('AsyncStream not support normal NextChar, please use AsyncNextChar');
-    }
-
-    public Copy(): IInputStream {
+    public Copy(): IAsyncInputStream {
         // AsyncStream 和 StringStream 绑定就可以实现了
         throw new Error('Still not support copy');
     }
 
-    public async AsyncNextChar(): Promise<Text> {
-        var c = await this.mChannel.GetValue();
+    public get NextChar(): Promise<Text> {
+        var c = this.mChannel.GetValue();
         return c;
     }
 

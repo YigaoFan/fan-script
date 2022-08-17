@@ -5,8 +5,13 @@ import { TimeBomb } from './TimeBomb';
 // stateful internal
 export interface IInputStream {
     get NextChar(): Text;
-    AsyncNextChar(): Promise<Text>;
     Copy(): IInputStream;
+}
+
+// stateful internal
+export interface IAsyncInputStream {
+    get NextChar(): Promise<Text>;
+    Copy(): IAsyncInputStream;
 }
 
 export class Position {
@@ -121,24 +126,16 @@ export class Text {
         return this.mChars.length == 0;
     }
 }
-// export class NoOption {
-//     public static new() {
-//         return new NoOption();
-//     }
 
-//     // 为什么 NoOption.equal 那里要 any 呢
-//     public static equal(t: any): t is NoOption {
-//         return t instanceof NoOption;
-//     }
-// }
-
-type ParseSuccessResult<T1> = { Result: T1, Remain: ParserInput, };
+type ParseSuccessResult<T1, Input> = { Result: T1, Remain: Input, };
 type ParseFailResult = null; // 应该推广出去？ TODO
 export type ParserInput = IInputStream;
+export type AsyncParserInput = IAsyncInputStream;
 // NoOption for optional result,让 Optional 的结果类型侵入到所有结果类型，这是个错误的决定，所有地方无论有没有 optional，都得处理这个结果，
 // 所以为了只处理有 optional 操作的地方，要让 Option 的结果在 IParser<T> 的 T 中体现出来
 // 相当于缩小影响范围
-export type ParserResult<T> = ParseSuccessResult<T> | ParseFailResult;
+export type ParserResult<T> = ParseSuccessResult<T, ParserInput> | ParseFailResult;
+export type AsyncParserResult<T> = ParseSuccessResult<T, AsyncParserInput> | ParseFailResult;
 
 export enum Indent {
     NextLineAdd,
@@ -201,6 +198,7 @@ export const debug = function (enable: boolean = enableDebug) {
  * decorator @function debug should be called on @method parse method of derived class
  */
 export interface IParser<T> {
+    // 分两套，parse 里面调用 parse，asyncParse 里调 asyncParse，两边的 input 也可以区分
     parse(input: ParserInput): ParserResult<T>;
-    asyncParse?(input: ParserInput): Promise<ParserResult<T>>;
+    asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<T>>;
 }
