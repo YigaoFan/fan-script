@@ -13,7 +13,7 @@ export class SignalStringStream implements IAsyncInputStream {
 
     public constructor(stream: IAsyncInputStream) {
         this.mAsyncStream = stream;
-        this.mAccessControl = { Signal: new Signal(), AccessiblePos: 0 }; // 这里 AccessiblePos 的初始位置可能不对 TODO
+        this.mAccessControl = { Signal: new Signal(), AccessiblePos: 0 };
         this.mCurrentPos = 0;
     }
 
