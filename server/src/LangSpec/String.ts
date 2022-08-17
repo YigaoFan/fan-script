@@ -2,12 +2,9 @@ import { makeWordParser, oneOf, lazy, not, } from "../parser";
 import {
     from,
     optional,
-    appendString,
-    withHandleNull,
     id,
     nullize,
     selectLeft,
-    selectNonblank,
     selectRight,
     or,
 } from "../combinator";
