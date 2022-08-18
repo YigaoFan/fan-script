@@ -72,4 +72,8 @@ export const makeQuerablePromise = function<T>(promise: Promise<T>) {
     // @ts-expect-error
     result.isRejected = function() { return isRejected; };
     return result;
-}
+};
+
+export const wait1 = async () => {
+    return new Promise<void>(res => { setTimeout(res, 1000); });
+};

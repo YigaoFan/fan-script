@@ -36,9 +36,10 @@ export class SignalStringStream implements IAsyncInputStream {
                 if (this.mCurrentPos - this.mAccessControl.AccessiblePos > 1) {
                     log("mCurrentIndex isn't one bigger than AccessiblePos, please rethink program logic here");
                 }
-                // log('wait signal of', this.mCurrentPos);
-                await this.mAccessControl.Signal.WaitSignal();// 不知道这里写得对不对，晚上回去拿到 node 里单独测一下 TODO
-                // log('got signal of', this.mCurrentPos);
+                log('wait signal of', this.mCurrentPos);
+                const p = this.mAccessControl.Signal.WaitSignal();
+                await p;
+                log('got signal of', this.mCurrentPos);
                 ++this.mAccessControl.AccessiblePos;
             }
             ++this.mCurrentPos;

@@ -90,7 +90,7 @@ export class OneOfCharsParser<T> implements IParser<T> {
     public async asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<T>> {
         const c = await input.NextChar;
         let chars = this.mChars;
-        // log('chars', chars, 'c', c.Value);
+        log('chars', chars, 'c', c.Value);
         if (chars.includes(c.Value)) {
             return {
                 Result: this.mResultFactory(c),

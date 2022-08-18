@@ -15,7 +15,7 @@ import { whitespace } from "./Whitespace";
 import { optional } from "../combinator";
 import { Signal } from "../Signal";
 import { assert, log } from "console";
-import { makeQuerablePromise } from "../util";
+import { makeQuerablePromise, wait1 as wait1s } from "../util";
 
 type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement';
@@ -235,7 +235,7 @@ class TerminatedParserState<T> {
     // NonTerminatedRule 里也有 Terminated 的东西，比如 {，所以 move，控制 nonterminated 里的 terminated 如 { 只有一个字符，方便移动更新状态
     public async Move(): Promise<ParserWorkState> {
         this.mSignal.Signal();
-        
+        // await wait1s();
         const querablePromise = makeQuerablePromise(this.mPromise);
         // @ts-expect-error
         if (querablePromise.isPending()) {
@@ -306,8 +306,11 @@ export class ExpressionChartParser implements IParser<Expression> {
         //     this.mTerminatedStateChart.push(TerminatedParserState.New(InitialStart, r, promise, s.GetSignal()));
         // }
 
-        for (;;) {
+        for (let i = 0;;i++) {
+            log('iter start', i);
             const r = await this.iter(input);
+            log('iter end', i);
+
             if (r) {
                 const chart = this.mNonTerminatedStateChart;
                 const lastColumn = chart[chart.length - 1];
@@ -349,8 +352,12 @@ export class ExpressionChartParser implements IParser<Expression> {
             }
         }
         { // terminated shift
+            log('terminate start move');
             const shiftResultPromises = this.mTerminatedStateChart.map(async x => await x.Move());
             const shiftResults = await Promise.all(shiftResultPromises);
+            log('terminate end move'); // 果然到这里 move 都完毕了，上面这步应该有玄机，所以只要在下面获取 move 状态就好了。
+
+
             for (let i = 0; i < shiftResults.length; i++) {
                 const r = shiftResults[i];
                 if (r === ParserWorkState.Succeed) {

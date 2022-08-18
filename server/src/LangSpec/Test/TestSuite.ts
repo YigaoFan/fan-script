@@ -4,6 +4,7 @@ import path = require('path');
 import { AsyncStringStream } from '../../AsyncStringStream';
 import { htmlLogger } from '../../IParser';
 import { GenerateParserInputTable } from '../../ParserInputTable';
+import { SignalStringStream } from '../../SignalStringStream';
 import { StringStream } from '../../StringStream';
 import { log } from '../../util';
 // import { classs } from '../Class';
@@ -32,34 +33,48 @@ const testClass = () => {
     }
 };
 
-const testIdentifier = () => {
+const testIdentifier = async () => {
     {
-        const s = StringStream.New('a', 'id.fs');
-        const r = identifier.parse(s);
-        assert(r !== null);
-        assert(r!.Result.Value === 'a');
+        const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
+        const ss = AsyncStringStream.New(s, 'func.fs');
+        const sss = SignalStringStream.New(ss);
+        const pr = identifier.asyncParse(sss);
+        sss.Signal();
+        sss.Signal();
+        await pr.then((r) => {
+            log('check id a');
+            assert(r != null);
+            assert(r!.Result.Value === 'a');
+        }, (r) => log('faild', r));        
     }
 
-    {
-        const s = StringStream.New('a1abc', 'id.fs');
-        const r = identifier.parse(s);
-        assert(r !== null);
-        assert(r!.Result.Value === 'a1abc');
-    }
+    // {
+    //     const s = StringStream.New('a', 'id.fs');
+    //     const r = identifier.parse(s);
+    //     assert(r !== null);
+    //     assert(r!.Result.Value === 'a');
+    // }
 
-    {
-        const s = StringStream.New('_', 'id.fs');
-        const r = identifier.parse(s);
-        assert(r !== null);
-        assert(r!.Result.Value === '_');
-    }
+    // {
+    //     const s = StringStream.New('a1abc', 'id.fs');
+    //     const r = identifier.parse(s);
+    //     assert(r !== null);
+    //     assert(r!.Result.Value === 'a1abc');
+    // }
 
-    {
-        const s = StringStream.New('_1', 'id.fs');
-        const r = identifier.parse(s);
-        assert(r !== null);
-        assert(r!.Result.Value === '_1');
-    }
+    // {
+    //     const s = StringStream.New('_', 'id.fs');
+    //     const r = identifier.parse(s);
+    //     assert(r !== null);
+    //     assert(r!.Result.Value === '_');
+    // }
+
+    // {
+    //     const s = StringStream.New('_1', 'id.fs');
+    //     const r = identifier.parse(s);
+    //     assert(r !== null);
+    //     assert(r!.Result.Value === '_1');
+    // }
 };
 
 const testNumber = () => {
@@ -173,20 +188,20 @@ const testExp = async () => {
         const r = await p.asyncParse(ss);
         assert(r != null);
     }
-    {
-        // string
-        const s = '"abc"';
-        const ss = AsyncStringStream.New(s, 'func.fs');
-        const p = new ExpressionChartParser(';');
-        const r = await p.asyncParse(ss);
-        assert(r != null);
-    }
+    // {
+    //     // string
+    //     const s = '"abc"';
+    //     const ss = AsyncStringStream.New(s, 'func.fs');
+    //     const p = new ExpressionChartParser(';');
+    //     const r = await p.asyncParse(ss);
+    //     assert(r != null);
+    // }
 };
 
 export const test = async function() {
     // Error.stackTraceLimit = Infinity;
     // testClass();
-    // testIdentifier();
+    // await testIdentifier();
     // testFunc();
     // htmlLogger.Close();
     await testExp();

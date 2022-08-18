@@ -21,11 +21,11 @@ export class Signal {
     }
 
     public Signal() {
-        // log('signal');
+        log('signal');
         if (this.mWaitter) {
-            // log('do continuation', this.mWaitter);
+            log('do resolve', this.mWaitter);
             this.mWaitter();// this is not continuation, just set a return result. the continuation will be called after all of here
-            // log('end continuation');
+            log('end resolve');
             this.mWaitter = undefined;
         } else {
             this.mSignaled = true;

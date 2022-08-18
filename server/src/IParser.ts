@@ -183,7 +183,7 @@ export const debug = function (enable: boolean = enableDebug) {
             var title = `${this.constructor.name} ${k}`;
             // summary
             logWith(Indent.NextLineAdd, `start ${title} with ${args}`);// ${} will call class.toString to get better string
-            b.Update();
+            // b.Update();
             // log('this arg', this === undefined);
             var r = v.apply(this, args);
             logWith(Indent.CurrentLineReduce, `end ${title} \n result ${formatParserResult(r)}`);
