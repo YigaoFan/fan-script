@@ -38,7 +38,7 @@ export class Array implements ISyntaxNode {
 }
 
 export class Items implements ISyntaxNode {
-    private mItems: Item[];
+    private mItems: Expression[];
 
     public static New(args: (ISyntaxNode | Text)[]) {
         assert(args.length === 3 || args.length === 0);
@@ -46,7 +46,7 @@ export class Items implements ISyntaxNode {
         if (args.length === 0) {
             return is;
         }
-        is.mItems.push(args[0] as Item);
+        is.mItems.push(args[0] as Expression);
         is.mItems.push(...(args[2] as Items).mItems);
         return is;
     }
@@ -63,28 +63,5 @@ export class Items implements ISyntaxNode {
     }
     public toString(): string {
         return stringify(this.mItems.map(x => x.toString()));
-    }    
-}
-
-export class Item implements ISyntaxNode {
-    private mExp: Expression;
-
-    public static New(args: (ISyntaxNode | Text)[]) {
-        assert(args.length === 1);
-        return new Item(args[0] as Expression);
-    }
-
-    private constructor(exp: Expression) {
-        this.mExp = exp;
-    }
-
-    public Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    public get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-    public toString(): string {
-        return this.mExp.toString();
     }    
 }

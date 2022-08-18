@@ -9,6 +9,7 @@ import { Array, } from "./Array";
 import { log, selectNotNull, stringify } from "../util";
 import { lazy } from "../parser";
 import { assert } from "console";
+import { Func } from "./Func";
 
 export abstract class Literal implements ISyntaxNode {
     abstract Contains(p: Position): boolean;
@@ -53,10 +54,10 @@ class NumberLiteral implements Literal {
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
+    
     get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
-
 }
 
 class StringLiteral implements Literal {

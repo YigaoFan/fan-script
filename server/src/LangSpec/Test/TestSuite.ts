@@ -1,6 +1,7 @@
 import { assert } from 'console';
 import { readFileSync } from 'fs';
 import path = require('path');
+import { AsyncStringStream } from '../../AsyncStringStream';
 import { htmlLogger } from '../../IParser';
 import { GenerateParserInputTable } from '../../ParserInputTable';
 import { StringStream } from '../../StringStream';
@@ -8,6 +9,7 @@ import { log } from '../../util';
 // import { classs } from '../Class';
 // import { func } from '../Func';
 import { identifier } from '../Identifier';
+import { ExpressionChartParser } from '../MapParser';
 
 const tests: (() => void)[] = [];
 
@@ -161,11 +163,32 @@ const testFunc = () => {
     }
 };
 
-export const test = function() {
+const testExp = async () => {
+    // 目前还不支持加空格
+    {
+        // id
+        const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
+        const ss = AsyncStringStream.New(s, 'func.fs');
+        const p = new ExpressionChartParser(';');
+        const r = await p.asyncParse(ss);
+        assert(r != null);
+    }
+    {
+        // string
+        const s = '"abc"';
+        const ss = AsyncStringStream.New(s, 'func.fs');
+        const p = new ExpressionChartParser(';');
+        const r = await p.asyncParse(ss);
+        assert(r != null);
+    }
+};
+
+export const test = async function() {
     // Error.stackTraceLimit = Infinity;
     // testClass();
     // testIdentifier();
-    testFunc();
-    htmlLogger.Close();
+    // testFunc();
+    // htmlLogger.Close();
+    await testExp();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全

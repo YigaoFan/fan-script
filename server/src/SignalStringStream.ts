@@ -2,6 +2,8 @@ import { Char, IAsyncInputStream, IInputStream, Position, Text, } from './IParse
 import { log } from './util';
 import { Signal } from './Signal';
 
+// 这个 stream 从 mapparser 里传出去会影响外面 parser 的进行，因为这里需要信号
+// 所以要注意这个只给 mTerminatedStateChart 用，拿出来的时候看能不能还原 TODO
 export class SignalStringStream implements IAsyncInputStream {
     private mAccessControl: { Signal: Signal, AccessiblePos: number, }; // signal 是控制对一个位置的访问权限，没有访问权限得等外面使用 signal 开放
     private mAsyncStream: IAsyncInputStream;
