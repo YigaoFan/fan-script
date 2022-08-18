@@ -10,7 +10,7 @@ import { log } from '../../util';
 // import { classs } from '../Class';
 // import { func } from '../Func';
 import { identifier } from '../Identifier';
-import { ExpressionChartParser } from '../MapParser';
+import { ExpressionChartParser } from '../ExpressionChartParser';
 
 const tests: (() => void)[] = [];
 
@@ -183,27 +183,28 @@ const testExp = async () => {
     {
         // id
         const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
-        const ss = AsyncStringStream.New(s, 'func.fs');
+        const ss = StringStream.New(s, 'func.fs');
         const p = new ExpressionChartParser(';');
-        const r = await p.asyncParse(ss);
+        const r = p.parse(ss);
+        log('parse result', r);
         assert(r != null);
     }
     // {
     //     // string
     //     const s = '"abc"';
-    //     const ss = AsyncStringStream.New(s, 'func.fs');
+    //     const ss = StringStream.New(s, 'func.fs');
     //     const p = new ExpressionChartParser(';');
-    //     const r = await p.asyncParse(ss);
+    //     const r = p.parse(ss);
     //     assert(r != null);
     // }
 };
 
-export const test = async function() {
+export const test = function() {
     // Error.stackTraceLimit = Infinity;
     // testClass();
     // await testIdentifier();
     // testFunc();
     // htmlLogger.Close();
-    await testExp();
+    testExp();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全

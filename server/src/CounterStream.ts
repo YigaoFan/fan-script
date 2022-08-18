@@ -1,5 +1,5 @@
 import { IInputStream, Position, Text, } from './IParser';
-import { log } from './util';
+import { log, stringify } from './util';
 
 export class CounterStream implements IInputStream {
     private mStream: IInputStream;
@@ -26,7 +26,10 @@ export class CounterStream implements IInputStream {
     }
 
     public toString(): string {
-        return '#this is AsyncStream#';
+        return stringify({
+            count: this.mCount,
+            stream: this.mStream.toString(),
+        });
     }
 
     public get Count() {
