@@ -14,7 +14,8 @@ import { makeWordParser } from "../parser";
 import { whitespace } from "./Whitespace";
 import { optional } from "../combinator";
 import { Signal } from "../Signal";
-import { assert } from "console";
+import { assert, log } from "console";
+import { makeQuerablePromise } from "../util";
 
 type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement';
@@ -38,7 +39,7 @@ const expGrammarMap: { nonTerminated: NonTerminatedRule[], terminated: Terminate
         ['literal', ['number'], 'NumberLiteral'],
         ['literal', ['object'], 'ObjectLiteral'],
         ['literal', ['array'], 'ArrayLiteral'],
-        ['literal', ['func'], 'FuncLiteral'],
+        // ['literal', ['func'], 'FuncLiteral'],
 
         ['object', ['{', 'pairs', '}']],
         ['pairs', []],
@@ -58,8 +59,6 @@ const expGrammarMap: { nonTerminated: NonTerminatedRule[], terminated: Terminate
 
         ['refinement', ['.', 'id']],
         ['refinement', ['[', 'exp', ']']],
-        // func要用这种方法定义吗，还是保持原来的
-        // 感觉可以调用原来的，要有个注册机制，只要把 func 的 parser 注册为原来的就行
     ],
     terminated: [
         ['id', identifier],
@@ -125,10 +124,6 @@ class NonTerminatedParserState {
      */
     public MoveAChar(char: AsyncParserResult<Text>): ParserWorkState {
         const len = this.Rule[1].length;
-        if (len === 0) {
-            // 长度为 0 的这样处理对吗，按理说 0 应该不用 move
-            return ParserWorkState.Succeed; // 这里 nodes 里没东西，组成上级结点时会出问题吗？
-        }
         if (this.NowPoint > InitialStart) {
             if (!NonTerminatedParserState.IsChar(this.Rule[1][this.NowPoint])) {
                 return ParserWorkState.Fail;
@@ -240,26 +235,19 @@ class TerminatedParserState<T> {
     // NonTerminatedRule 里也有 Terminated 的东西，比如 {，所以 move，控制 nonterminated 里的 terminated 如 { 只有一个字符，方便移动更新状态
     public async Move(): Promise<ParserWorkState> {
         this.mSignal.Signal();
-        var isFulfilled = false;
-        var isPending = true;
-        var isRejected = false;
-        this.mPromise.then(
-            function (v) {
-                isFulfilled = true;
-                isPending = false;
-                return v;
-            },
-            function (e) {
-                isRejected = true;
-                isPending = false;
-                throw e;
-            }
-        );
-        if (isPending) {
+        
+        const querablePromise = makeQuerablePromise(this.mPromise);
+        // @ts-expect-error
+        if (querablePromise.isPending()) {
+            log('terminated parser pending');
             return Promise.resolve(ParserWorkState.Pending);
-        } else if (isRejected) {
+        // @ts-expect-error
+        } else if (querablePromise.isRejected()) {
+            log('terminated parser failed');
             return Promise.resolve(ParserWorkState.Fail);
-        } else if (isFulfilled) {
+        // @ts-expect-error
+        } else if (querablePromise.isFulfilled()) {
+            log('terminated parser success');
             const r = await this.mPromise;
             if (r === null) {
                 return Promise.resolve(ParserWorkState.Fail);
