@@ -81,16 +81,107 @@ const testNumber = () => {
     // TODO
 };
 
+const testExp = () => {
+    const exp = 'exp';
+    // 目前还不支持加空格
+    {
+        // id
+        const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
+        const ss = StringStream.New(s, 'func.fs');
+        const p = new ChartParser(exp, ';');
+        const r = p.parse(ss);
+        log('parse result', r);
+        assert(r != null);
+    }
+    {
+        // string
+        const s = '"abc"';
+        const ss = StringStream.New(s, 'func.fs');
+        GenerateParserInputTable('parser-input.html', ss.Copy());
+        const p = new ChartParser(exp, ';');
+        try {
+            const r = p.parse(ss);
+            assert(r != null);
+        } finally {
+            htmlLogger.Close();
+        }
+    }
+    {
+        // refinement
+        const s = 'a.b';
+        const ss = StringStream.New(s, 'func.fs');
+        GenerateParserInputTable('parser-input.html', ss.Copy());
+        const p = new ChartParser(exp, ';');
+        try {
+            const r = p.parse(ss);
+            assert(r != null);
+        } finally {
+            htmlLogger.Close();
+        }
+    }
+    {
+        // multiple refinement
+        const s = 'a.b.c';
+        const ss = StringStream.New(s, 'func.fs');
+        GenerateParserInputTable('parser-input.html', ss.Copy());
+        const p = new ChartParser(exp, ';');
+        try {
+            const r = p.parse(ss);
+            assert(r != null);
+        } finally {
+            htmlLogger.Close();
+        }
+    }
+};
+
+const testStmt = () => {
+    const stmts = 'stmt';
+    {
+        const s = 'return a;';
+        const ss = StringStream.New(s, 'func.fs');
+        const p = new ChartParser(stmts, ';');
+        const r = p.parse(ss);
+        log('parse result', r);
+        assert(r != null);
+    }
+
+    {
+        const s = 'return a.b.c;';
+        const ss = StringStream.New(s, 'func.fs');
+        const p = new ChartParser(stmts, ';');
+        const r = p.parse(ss);
+        log('parse result', r);
+        assert(r != null);
+    }
+};
+
+const testParas = () => {
+    const paras = 'paras';
+    {
+        const s = '';
+        const ss = StringStream.New(s, 'func.fs');
+        GenerateParserInputTable('parser-input.html', ss.Copy());
+        const p = new ChartParser(paras, ';');
+        const r = p.parse(ss);
+        log('parse result', r);
+        assert(r != null);
+    }
+};
+
 const testFunc = () => {
-    // {
-    //     const s = 'func f() { }';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     const r = func.parse(ss);
-    //     assert(r !== null);
-    // }
+    const fun = 'fun';
+    {
+        const s = 'func f(a,){return a;}';
+        const ss = StringStream.New(s, 'func.fs');
+        GenerateParserInputTable('parser-input.html', ss.Copy());
+        const p = new ChartParser(fun, ';');
+        const r = p.parse(ss);
+        log('parse result', r);
+        assert(r != null);
+    }
 
     // {
-    //     const s = 'func f(a, b) { }';
+    //     const s = 'func f(a, b,) { }';
     //     const ss = StringStream.New(s, 'func.fs');
     //     const r = func.parse(ss);
     //     assert(r !== null);
@@ -178,87 +269,14 @@ const testFunc = () => {
     }
 };
 
-const testExp = () => {
-    const exp = 'exp';
-    // 目前还不支持加空格
-    {
-        // id
-        const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
-        const ss = StringStream.New(s, 'func.fs');
-        const p = new ChartParser(exp, ';');
-        const r = p.parse(ss);
-        log('parse result', r);
-        assert(r != null);
-    }
-    {
-        // string
-        const s = '"abc"';
-        const ss = StringStream.New(s, 'func.fs');
-        GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(exp, ';');
-        try {
-            const r = p.parse(ss);
-            assert(r != null);
-        } finally {
-            htmlLogger.Close();
-        }
-    }
-    {
-        // refinement
-        const s = 'a.b';
-        const ss = StringStream.New(s, 'func.fs');
-        GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(exp, ';');
-        try {
-            const r = p.parse(ss);
-            assert(r != null);
-        } finally {
-            htmlLogger.Close();
-        }
-    }
-    {
-        // multiple refinement
-        const s = 'a.b.c';
-        const ss = StringStream.New(s, 'func.fs');
-        GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(exp, ';');
-        try {
-            const r = p.parse(ss);
-            assert(r != null);
-        } finally {
-            htmlLogger.Close();
-        }
-    }
-};
-
-const testStmt = () => {
-    const stmts = 'stmt';
-    {
-        const s = 'return a;';
-        const ss = StringStream.New(s, 'func.fs');
-        const p = new ChartParser(stmts, ';');
-        const r = p.parse(ss);
-        log('parse result', r);
-        assert(r != null);
-    }
-
-    {
-        const s = 'return a.b.c;';
-        const ss = StringStream.New(s, 'func.fs');
-        const p = new ChartParser(stmts, ';');
-        const r = p.parse(ss);
-        log('parse result', r);
-        assert(r != null);
-    }
-};
-
 export const test = function() {
     // Error.stackTraceLimit = Infinity;
     // testClass();
     // await testIdentifier();
-    // testFunc();
+    // testParas();
+    testFunc();
     // htmlLogger.Close();
     // testExp();
-    testStmt();
+    // testStmt();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全

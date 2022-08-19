@@ -29,21 +29,19 @@ export class ChartParser implements IParser<Expression> {
 
     @debug()
     public parse(input: IInputStream): ParserResult<Expression> {
-        const nonTerminatedOnZero: NonTerminatedParserState[] = [];
-        for (const r of ExpGrammar.nonTerminated) {
-            if (r[0] == this.mRoot) {
-                nonTerminatedOnZero.push(NonTerminatedParserState.New(InitialStart, r));
-            }
-        }
-        this.mNonTerminatedStateChart.push(nonTerminatedOnZero);
+        var [thisNonTers, thisTers, thisComs] = ChartParser.ClosureOn(input, this.mRoot, InitialStart);
+        this.mNonTerminatedStateChart.push(thisNonTers);
+        this.mTerminatedStateChart = thisTers;
+
         const len = this.mNonTerminatedStateChart.length;
         const lastColumn = this.mNonTerminatedStateChart[len - 1];
         const coms = ChartParser.Closure([], lastColumn, lastColumn , this.mTerminatedStateChart, len - 1, input.Copy());
+        ChartParser.Reduce(thisComs.concat(coms), this.mNonTerminatedStateChart);
 
         for (let i = 0; ; i++) {
-            log('iter', i+1, 'chart len', this.mNonTerminatedStateChart.length);
+            log('iter', i);
             const r = this.iter(input);
-            log('iter', i+1, 'end');
+            log('iter', i, 'end');
 
             if (r) {
                 const chart = this.mNonTerminatedStateChart;
@@ -95,13 +93,13 @@ export class ChartParser implements IParser<Expression> {
             }
         }
         this.mNonTerminatedStateChart.push(stateCopies.filter((_, i) => shiftResults[i] !== ParserWorkState.Fail));
-        for (let i = shiftResults.length - 1; i >= 0; i--) {
-            const r = shiftResults[i];
-            if (r !== ParserWorkState.Fail) {
-                // len here is old len, because do a push operation above.
-                this.mNonTerminatedStateChart[len - 1].splice(i, 1);
-            }
-        }
+        // for (let i = shiftResults.length - 1; i >= 0; i--) {
+        //     const r = shiftResults[i];
+        //     if (r !== ParserWorkState.Fail) {
+        //         // len here is old len, because do a push operation above.
+        //         this.mNonTerminatedStateChart[len - 1].splice(i, 1);
+        //     }
+        // }
         return completedItems;
     }
 
@@ -123,7 +121,7 @@ export class ChartParser implements IParser<Expression> {
 
     private static Reduce(items: ReduceItem[], nonTerminatedStateChart: NonTerminatedParserState[][]) {
         const chart = nonTerminatedStateChart;
-        log('char len', chart.length);
+        // log('char len', chart.length);
         for (const item of items) {
             const toMoveStates = chart[item.From].filter(x => x.Rule[1][x.NowPoint] === item.LeftSymbol).map(x => x.Copy());
             const moveResults = toMoveStates.map(x => x.MoveANonTerminated(item.LeftSymbol, item.Result));
@@ -133,7 +131,7 @@ export class ChartParser implements IParser<Expression> {
             const newItems = toMoveStates
                 .filter((_, i) => moveResults[i] === ParserWorkState.Succeed)
                 .map(x => ({ From: x.From, LeftSymbol: x.Rule[0], Result: x.Result }));
-            log('char len before deep in', chart.length);
+            // log('char len before deep in', chart.length);
             ChartParser.Reduce(newItems, chart);
         }
     }
@@ -197,8 +195,9 @@ export class ChartParser implements IParser<Expression> {
                         var r = (NodeFactory[rule[0]] as Factory)([]);;
                     }
                     completeds.push({ From: from, LeftSymbol: symbol, Result: { Remain: input.Copy(), Result: r }, });
+                    nonTerminateds.push(NonTerminatedParserState.New(from, rule, input.Copy()));
                 } else {
-                    nonTerminateds.push(NonTerminatedParserState.New(from, rule));
+                    nonTerminateds.push(NonTerminatedParserState.New(from, rule, input.Copy()));
                 }
             }
         }

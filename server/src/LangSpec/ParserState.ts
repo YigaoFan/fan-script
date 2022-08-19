@@ -19,25 +19,27 @@ export class NonTerminatedParserState {
     private readonly mNodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[]; // 传到 factory 里时过滤掉 null
     /** now on @property Rule[NowPoint] left */
     public NowPoint: number;
+    private mStartInput: ParserInput;
 
-    public static New(from: number, rule: NonTerminatedRule) {
-        assert(rule[1].length != 0, 'NonTerminatedParserState rule cannot be empty');
-        return new NonTerminatedParserState(from, rule, InitialStart);
+    public static New(from: number, rule: NonTerminatedRule, startInput: ParserInput) {
+        // assert(rule[1].length != 0, 'NonTerminatedParserState rule cannot be empty');
+        return new NonTerminatedParserState(from, rule, InitialStart, startInput);
     }
 
     public EqualTo(that: NonTerminatedParserState): boolean {
         return this.From == that.From && this.Rule == that.Rule;
     }
 
-    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, nodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[] = []) {
+    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, startInput: ParserInput, nodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[] = []) {
         this.From = from;
         this.Rule = rule;
         this.NowPoint = nowPoint;
         this.mNodes = nodes;
+        this.mStartInput = startInput;
     }
 
     public Copy(): NonTerminatedParserState {
-        return new NonTerminatedParserState(this.From, this.Rule, this.NowPoint, [...this.mNodes]);
+        return new NonTerminatedParserState(this.From, this.Rule, this.NowPoint, this.mStartInput.Copy(), [...this.mNodes]);
     }
 
     /** 
@@ -46,12 +48,11 @@ export class NonTerminatedParserState {
      * Succeed means arrive end. Pending means pass this char but not arrive the end.
      */
     public MoveAChar(char: ParserResult<Text>): ParserWorkState {
+        if (this.IsEmptyRule) {
+            return ParserWorkState.Fail;
+        }
+
         const len = this.Rule[1].length;
-        // if (this.NowPoint > InitialStart) {
-        //     if (!NonTerminatedParserState.IsChar(this.Rule[1][this.NowPoint])) {
-        //         return ParserWorkState.Fail;
-        //     }
-        // }
 
         const destSymbol = this.Rule[1][this.NowPoint];
         if (NonTerminatedParserState.IsChar(destSymbol)) {
@@ -78,6 +79,9 @@ export class NonTerminatedParserState {
             throw new Error(`MoveANonTerminated on wrong input symbol(${symbol}) at ${this.Rule[1][this.NowPoint]}`);
         }
 
+        if (this.IsEmptyRule) {
+            return ParserWorkState.Fail;
+        }
         this.AddSub(node);
         this.NowPoint++;
         if (this.NowPoint === this.Rule[1].length) {
@@ -95,7 +99,7 @@ export class NonTerminatedParserState {
         }
         const usedNodes = this.mNodes.filter(notNull);
         const usedNodeResults = usedNodes.map(x => x!.Result);
-        const remain = this.mNodes[this.mNodes.length - 1]!.Remain;
+        const remain = this.IsEmptyRule ? this.mStartInput : this.mNodes[this.mNodes.length - 1]!.Remain;
 
         if (this.Rule[2]) {
             return {
@@ -122,6 +126,10 @@ export class NonTerminatedParserState {
 
     public toString(): string {
         return `${this.Rule[0]} -> ${this.Rule[1].join()} from ${this.From}`;
+    }
+
+    private get IsEmptyRule(): boolean {
+        return this.Rule[1].length == 0;
     }
 }
 

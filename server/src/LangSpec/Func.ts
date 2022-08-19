@@ -1,4 +1,4 @@
-import { IParser, Position, } from "../IParser";
+import { IParser, Position, Text, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import {
     from,
@@ -17,14 +17,22 @@ import { Whitespace, whitespace } from "./Whitespace";
 import { Identifier, identifier } from "./Identifier";
 import { Statement } from "./Statement";
 import { DeleteExpression, Expression, } from "./Expression";
+import { assert } from "console";
 
 export class Func implements ISyntaxNode {
     private mName?: Identifier;
-    private mParas?: Identifier[];
-    private mBlock?: Statement[];
+    private mParas: Paras;
+    private mBlock: Statement[];
 
-    public static New() {
-        return new Func();
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length === 8);
+        return new Func(args[1] as Identifier, args[3] as Paras, args[6] as Statement);
+    }
+
+    private constructor(name: Identifier, paras: Paras, stmt: Statement) {
+        this.mName = name;
+        this.mParas = paras;
+        this.mBlock = [stmt];
     }
 
     public static SetName(func: Func, name: Identifier) {
@@ -32,7 +40,7 @@ export class Func implements ISyntaxNode {
         return func;
     }
 
-    public static SetParameters(func: Func, parameters: Option<Identifier[]>) {
+    public static SetParameters(func: Func, parameters: Option<Paras>) {
         if (parameters.hasValue()) {
             func.mParas = parameters.value;
         }
@@ -54,10 +62,42 @@ export class Func implements ISyntaxNode {
     public toString(): string {
         return stringify({
             name: this.mName?.toString(),
-            parars: this.mParas?.map(x => x.toString()),
+            parars: this.mParas?.toString(),
             block: this.mBlock?.map(x => x.toString()),
         });
     }
+}
+
+export class Paras implements ISyntaxNode {
+    private mParas: Identifier[];
+
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length === 3 || args.length === 0);
+        const ps = new Paras();
+        if (args.length === 0) {
+            return ps;
+        }
+        ps.mParas.push(args[0] as Identifier);
+        ps.mParas.push(...(args[2] as Paras).mParas);
+        return ps;
+    }
+    
+    private constructor() {
+        this.mParas = [];
+    }
+
+    Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    public toString(): string {
+        return stringify({
+            paras: this.mParas.map(x => x.toString()),
+        });
+    }
+
 }
 
 const blanks = whitespace;
