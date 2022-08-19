@@ -11,12 +11,21 @@ import { string } from "./String";
 import { whitespace } from "./Whitespace";
 
 type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
-    | 'array' | 'items' | 'invocation' | 'args' | 'refinement';
+    | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'ret-stmt' | 'fun' | 'stmts';
 export type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode>];
 // TODO add space
 export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
+        ['cls', ['class', 'w', 'id', '{', 'w', 'funs', 'w', '}']],
+        
+        ['funs', ['func', 'w', 'funs']],// TODO add space
+        ['funs', []],// TODO add space
+        ['fun', ['func', 'w', 'id', '(', 'paras', ')', '{', 'stmts', '}']],// TODO add space
+
+        ['stmts', ['ret-stmt']],
+        ['ret-stmt', ['return', 'w', 'exp', ';']],
+        
         ['exp', ['literal'], 'LiteralExpression'], // like 'LiteralExpression' is type info for node factory
         ['exp', ['id'], 'IdentifierExpression'],
         ['exp', ['(', 'exp', ')'], 'ParenExpression'],
@@ -62,8 +71,9 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         // ['func', func],
         ['new', makeWordParser('new', Keyword.New)],
         ['delete', makeWordParser('delete', Keyword.New)],
+        ['return', makeWordParser('return', Keyword.New)],
         ['w', whitespace],
-        // ['ow', optional(whitespace)],
+        // ['ow', optional(whitespace)],//nullize
     ],
 };
 
