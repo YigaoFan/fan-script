@@ -10,7 +10,7 @@ import { log } from '../../util';
 // import { classs } from '../Class';
 // import { func } from '../Func';
 import { identifier } from '../Identifier';
-import { ExpressionChartParser } from '../ExpressionChartParser';
+import { ChartParser } from '../ChartParser';
 
 const tests: (() => void)[] = [];
 
@@ -178,49 +178,50 @@ const testFunc = () => {
     }
 };
 
-const testExp = async () => {
+const testExp = () => {
+    const exp = 'exp';
     // 目前还不支持加空格
-    // {
-    //     // id
-    //     const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     const p = new ExpressionChartParser(';');
-    //     const r = p.parse(ss);
-    //     log('parse result', r);
-    //     assert(r != null);
-    // }
-    // {
-    //     // string
-    //     const s = '"abc"';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     GenerateParserInputTable('parser-input.html', ss.Copy());
-    //     const p = new ExpressionChartParser(';');
-    //     try {
-    //         const r = p.parse(ss);
-    //         assert(r != null);
-    //     } finally {
-    //         htmlLogger.Close();
-    //     }
-    // }
-    // {
-    //     // refinement
-    //     const s = 'a.b';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     GenerateParserInputTable('parser-input.html', ss.Copy());
-    //     const p = new ExpressionChartParser(';');
-    //     try {
-    //         const r = p.parse(ss);
-    //         assert(r != null);
-    //     } finally {
-    //         htmlLogger.Close();
-    //     }
-    // }
+    {
+        // id
+        const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
+        const ss = StringStream.New(s, 'func.fs');
+        const p = new ChartParser(exp, ';');
+        const r = p.parse(ss);
+        log('parse result', r);
+        assert(r != null);
+    }
+    {
+        // string
+        const s = '"abc"';
+        const ss = StringStream.New(s, 'func.fs');
+        GenerateParserInputTable('parser-input.html', ss.Copy());
+        const p = new ChartParser(exp, ';');
+        try {
+            const r = p.parse(ss);
+            assert(r != null);
+        } finally {
+            htmlLogger.Close();
+        }
+    }
+    {
+        // refinement
+        const s = 'a.b';
+        const ss = StringStream.New(s, 'func.fs');
+        GenerateParserInputTable('parser-input.html', ss.Copy());
+        const p = new ChartParser(exp, ';');
+        try {
+            const r = p.parse(ss);
+            assert(r != null);
+        } finally {
+            htmlLogger.Close();
+        }
+    }
     {
         // multiple refinement
         const s = 'a.b.c';
         const ss = StringStream.New(s, 'func.fs');
         GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ExpressionChartParser(';');
+        const p = new ChartParser(exp, ';');
         try {
             const r = p.parse(ss);
             assert(r != null);
@@ -230,12 +231,34 @@ const testExp = async () => {
     }
 };
 
+const testStmt = () => {
+    const stmts = 'stmt';
+    {
+        const s = 'return a;';
+        const ss = StringStream.New(s, 'func.fs');
+        const p = new ChartParser(stmts, ';');
+        const r = p.parse(ss);
+        log('parse result', r);
+        assert(r != null);
+    }
+
+    {
+        const s = 'return a.b.c;';
+        const ss = StringStream.New(s, 'func.fs');
+        const p = new ChartParser(stmts, ';');
+        const r = p.parse(ss);
+        log('parse result', r);
+        assert(r != null);
+    }
+};
+
 export const test = function() {
     // Error.stackTraceLimit = Infinity;
     // testClass();
     // await testIdentifier();
     // testFunc();
     // htmlLogger.Close();
-    testExp();
+    // testExp();
+    testStmt();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全

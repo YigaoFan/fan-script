@@ -1,3 +1,4 @@
+import { from, nullize, optional } from "../combinator";
 import { IParser, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser } from "../parser";
@@ -7,24 +8,24 @@ import { identifier } from "./Identifier";
 import { Literal } from "./Literal";
 import { number } from "./Number";
 import { Obj, Pairs, Pair, Key, Value } from "./Object";
+import { ReturnStmt, Statement } from "./Statement";
 import { string } from "./String";
 import { whitespace } from "./Whitespace";
 
-type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
-    | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'ret-stmt' | 'fun' | 'stmts';
+export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
+    | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'retStmt' | 'fun' | 'stmt';
 export type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
-export type TerminatedRule = readonly [string, IParser<ISyntaxNode>];
+export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
 // TODO add space
 export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
-        ['cls', ['class', 'w', 'id', '{', 'w', 'funs', 'w', '}']],
+        // ['cls', ['class', 'w', 'id', '{', 'w', 'funs', 'w', '}']],
         
-        ['funs', ['func', 'w', 'funs']],// TODO add space
-        ['funs', []],// TODO add space
-        ['fun', ['func', 'w', 'id', '(', 'paras', ')', '{', 'stmts', '}']],// TODO add space
+        // ['funs', ['func', 'w', 'funs']],// TODO add space
+        // ['funs', []],
+        ['fun', ['func', 'w', 'id', '(', 'paras', ')', '{', 'stmt', '}']],// TODO add space
 
-        ['stmts', ['ret-stmt']],
-        ['ret-stmt', ['return', 'w', 'exp', ';']],
+        ['stmt', ['return', 'w', 'exp', 'ow', ';'], 'ReturnStmt'],
         
         ['exp', ['literal'], 'LiteralExpression'], // like 'LiteralExpression' is type info for node factory
         ['exp', ['id'], 'IdentifierExpression'],
@@ -72,8 +73,9 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['new', makeWordParser('new', Keyword.New)],
         ['delete', makeWordParser('delete', Keyword.New)],
         ['return', makeWordParser('return', Keyword.New)],
-        ['w', whitespace],
-        // ['ow', optional(whitespace)],//nullize
+        ['func', makeWordParser('func', Keyword.New)],
+        ['w', from(whitespace).transform(nullize).raw],
+        ['ow', from(optional(whitespace)).transform(nullize).raw],
     ],
 };
 
@@ -92,4 +94,6 @@ export const NodeFactory: { [key: string]: Factory | FactoryWithTypeInfo; } = {
     invocation: Invocation.New,
     args: Args.New,
     refinement: Refinement.New,
+    stmt: Statement.New,
+    // stmt: 
 };

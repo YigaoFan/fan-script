@@ -16,7 +16,7 @@ export enum ParserWorkState {
 export class NonTerminatedParserState {
     public From: number;
     public readonly Rule: NonTerminatedRule;
-    private readonly mNodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | null)[]; // 传到 factory 里时过滤掉 null
+    private readonly mNodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[]; // 传到 factory 里时过滤掉 null
     /** now on @property Rule[NowPoint] left */
     public NowPoint: number;
 
@@ -29,7 +29,7 @@ export class NonTerminatedParserState {
         return this.From == that.From && this.Rule == that.Rule;
     }
 
-    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, nodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | null)[] = []) {
+    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, nodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[] = []) {
         this.From = from;
         this.Rule = rule;
         this.NowPoint = nowPoint;
@@ -64,7 +64,7 @@ export class NonTerminatedParserState {
                 return ParserWorkState.Pending;
             }
         }
-        log(`move char expect ${destSymbol} actual ${char?.Result}`)
+        log(`move char expect ${destSymbol} actual ${char?.Result}`);
         return ParserWorkState.Fail;
     }
 
@@ -73,7 +73,7 @@ export class NonTerminatedParserState {
     }
 
     /** Note: Copy firstly then call this method */
-    public MoveANonTerminated(symbol: string, node: ParserResult<ISyntaxNode>): ParserWorkState {
+    public MoveANonTerminated(symbol: string, node: ParserResult<ISyntaxNode> | ParserResult<null>): ParserWorkState {
         if (symbol !== this.Rule[1][this.NowPoint]) {
             throw new Error(`MoveANonTerminated on wrong input symbol(${symbol}) at ${this.Rule[1][this.NowPoint]}`);
         }
@@ -87,30 +87,30 @@ export class NonTerminatedParserState {
     }
 
     public get Result(): ParserResult<ISyntaxNode> {
-        function notNull(value: ParserResult<Text> | ParserResult<ISyntaxNode> | null): value is (ParserResult<Text> | ParserResult<ISyntaxNode>) {
-            if (value === null) {
+        function notNull(value: ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>): value is (ParserResult<Text> | ParserResult<ISyntaxNode>) {
+            if (value!.Result === null) {
                 return false;
             }
             return true;
         }
-        const nodes = this.mNodes.filter(notNull);
-        const nodeResults = nodes.map(x => x!.Result);
-        const remain = nodes[nodes.length - 1]!.Remain;
+        const usedNodes = this.mNodes.filter(notNull);
+        const usedNodeResults = usedNodes.map(x => x!.Result);
+        const remain = this.mNodes[this.mNodes.length - 1]!.Remain;
 
         if (this.Rule[2]) {
             return {
-                Result: (NodeFactory[this.Rule[0]] as FactoryWithTypeInfo)(this.Rule[2], nodeResults),
+                Result: (NodeFactory[this.Rule[0]] as FactoryWithTypeInfo)(this.Rule[2], usedNodeResults),
                 Remain: remain,
             };
         } else {
             return {
-                Result: (NodeFactory[this.Rule[0]] as Factory)(nodeResults),
+                Result: (NodeFactory[this.Rule[0]] as Factory)(usedNodeResults),
                 Remain: remain,
             };
         }
     }
 
-    private AddSub(s: ParserResult<Text> | ParserResult<ISyntaxNode>) {
+    private AddSub(s: ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>) {
         this.mNodes.push(s);
     }
 
@@ -171,6 +171,17 @@ export class TerminatedParserState<T> {
             return ParserWorkState.Succeed;
         }
         return ParserWorkState.Pending;
+    }
+
+    public get State(): ParserWorkState {
+        if (!this.mParserResult) {
+            return ParserWorkState.Fail;
+        }
+
+        if (this.mNeedShiftCharCount > 0) {
+            return ParserWorkState.Pending;
+        }
+        return ParserWorkState.Succeed;
     }
 
     public toString(): string {

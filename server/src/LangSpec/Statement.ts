@@ -1,5 +1,6 @@
+import { assert } from "console";
 import { from, Option, optional, id, selectRight, selectLeft, } from "../combinator";
-import { Position } from "../IParser";
+import { Position, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser } from "../parser";
 import { stringify } from "../util";
@@ -7,20 +8,36 @@ import { DeleteExpression, Expression } from "./Expression";
 import { Identifier } from "./Identifier";
 import { whitespace } from "./Whitespace";
 
-interface IStatement extends ISyntaxNode {
+export abstract class Statement implements ISyntaxNode {
+    abstract Contains(p: Position): boolean;
+    abstract get Valid(): boolean;
+    abstract toString(): string;
+    public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ISyntaxNode {
+        switch (typeInfo) {
+            case 'ReturnStmt':
+                assert(args.length === 3);
+                return ReturnStmt.New(args[1] as Expression);
+        }
+        throw new Error(`not support type info: ${typeInfo}`);
+    }
 }
 
-class ReturnStmt implements Statement {
-    private mExp?: Expression;
+export class ReturnStmt implements Statement {
+    private mExp: Expression;
+
+    public static New(exp: Expression): ReturnStmt {
+        return new ReturnStmt(exp);
+    }
+
+    private constructor(exp: Expression) {
+        this.mExp = exp;
+    }
+
     Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
         throw new Error("Method not implemented.");
-    }
-
-    public static New() {
-        return new ReturnStmt();
     }
 
     public static SetExp(statement: ReturnStmt, result: Expression) {
@@ -386,7 +403,6 @@ class ExpStmt implements Statement {
         });
     }
 }
-export type Statement = IStatement;
 
 export const leftBrace = from(makeWordParser('{', id)).leftWith(optional(whitespace), selectRight).rightWith(optional(whitespace), selectLeft).raw;
 export const rightBrace = from(makeWordParser('}', id)).leftWith(optional(whitespace), selectRight).rightWith(optional(whitespace), selectLeft).raw;

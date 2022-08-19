@@ -543,7 +543,9 @@ export class Keyword implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
     public toString(): string {
-        throw new Error("Method not implemented.");
+        return stringify({
+            text: this.mText.toString(),
+        });
     }
 }
 
