@@ -7,6 +7,10 @@ import { ExpGrammar, Factory, FactoryWithTypeInfo, NodeFactory } from "./Grammar
 
 // TODO 写完看一下，我这里写得好像很长，课上的代码好像很短？对比一下
 
+interface IEqual {
+    EqualTo(that: this): boolean;
+}
+
 type ReduceItem = { From: number, LeftSymbol: string, Result: ParserResult<ISyntaxNode> };
 /** 这个解析对象只能用一次，因为内部有状态 */
 export class ExpressionChartParser implements IParser<Expression> {
@@ -25,18 +29,19 @@ export class ExpressionChartParser implements IParser<Expression> {
         const nonTerminatedOnZero: NonTerminatedParserState[] = [];
         for (const r of ExpGrammar.nonTerminated) {
             if (r[0] == 'exp') {
-                nonTerminatedOnZero.push(NonTerminatedParserState.New(InitialStart, r, InitialStart));
+                nonTerminatedOnZero.push(NonTerminatedParserState.New(InitialStart, r));
             }
         }
         this.mNonTerminatedStateChart.push(nonTerminatedOnZero);
         const len = this.mNonTerminatedStateChart.length;
         const lastColumn = this.mNonTerminatedStateChart[len - 1];
-        const [nons, ters, coms] = ExpressionChartParser.Closure(lastColumn, len - 1, input.Copy());
-        lastColumn.push(...nons);
-        this.mTerminatedStateChart.push(...ters);
+        const coms = ExpressionChartParser.Closure([], lastColumn, lastColumn , this.mTerminatedStateChart, len - 1, input.Copy());
 
         for (let i = 0; ; i++) {
+            log('iter', i+1, 'chart len', this.mNonTerminatedStateChart.length);
             const r = this.iter(input);
+            log('iter', i+1, 'end');
+
             if (r) {
                 const chart = this.mNonTerminatedStateChart;
                 const lastColumn = chart[chart.length - 1];
@@ -54,23 +59,22 @@ export class ExpressionChartParser implements IParser<Expression> {
      */
     public iter(input: ParserInput): boolean {
         const c = input.NextChar;
-
+        if (c.Empty || c.Value === this.mEndChar) {// 因为现在的 terminated parser在他最后一个位置就应该成功然后结束，而不是下一个空字符
+            return true;
+        }
         const completedItems: ReduceItem[] = [];
-        // shift
         completedItems.push(...this.ShiftOnNonTerminated(c, input.Copy()));
         completedItems.push(...this.shiftOnTerminated());
         const len = this.mNonTerminatedStateChart.length;
         const lastColumn = this.mNonTerminatedStateChart[len - 1];
-        const [nons, ters, coms] = ExpressionChartParser.Closure(lastColumn, len - 1, input.Copy());
-        lastColumn.push(...nons);
-        this.mTerminatedStateChart.push(...ters);
-        completedItems.push(...coms);
+        // const coms = ExpressionChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
+        // completedItems.push(...coms);
+        // 这里 coms 有用吗？
 
         ExpressionChartParser.Reduce(completedItems, this.mNonTerminatedStateChart);
+        ExpressionChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
 
-        if (c.Empty || c.Value === this.mEndChar) {
-            return true;
-        }
+        
         return false;
     }
 
@@ -115,6 +119,7 @@ export class ExpressionChartParser implements IParser<Expression> {
 
     private static Reduce(items: ReduceItem[], nonTerminatedStateChart: NonTerminatedParserState[][]) {
         const chart = nonTerminatedStateChart;
+        log('char len', chart.length);
         for (const item of items) {
             const toMoveStates = chart[item.From].filter(x => x.Rule[1][x.NowPoint] === item.LeftSymbol).map(x => x.Copy());
             const moveResults = toMoveStates.map(x => x.MoveANonTerminated(item.LeftSymbol, item.Result));
@@ -124,22 +129,56 @@ export class ExpressionChartParser implements IParser<Expression> {
             const newItems = toMoveStates
                 .filter((_, i) => moveResults[i] === ParserWorkState.Succeed)
                 .map(x => ({ From: x.From, LeftSymbol: x.Rule[0], Result: x.Result }));
+            log('char len before deep in', chart.length);
             ExpressionChartParser.Reduce(newItems, chart);
         }
     }
     
-    private static Closure(column: NonTerminatedParserState[], from: number, input: ParserInput) {
-        const newItems: [NonTerminatedParserState[], TerminatedParserState<ISyntaxNode>[], ReduceItem[]] = [[], [], []];
-        const expectSymbols = column
+    private static Closure(searchedSymbols: string[], totalNonTers: NonTerminatedParserState[], lastNewAddNonTers: NonTerminatedParserState[], terminateds: TerminatedParserState<ISyntaxNode>[], from: number, input: ParserInput): ReduceItem[] {
+        const completeds: ReduceItem[] = [];
+        if (lastNewAddNonTers.length == 0) {
+            return completeds;
+        }
+        var newSyms = ExpressionChartParser.getExpectSymbols(lastNewAddNonTers);
+        newSyms = ExpressionChartParser.Diff(newSyms, searchedSymbols);
+        const newNons: NonTerminatedParserState [] = [];
+        for (const s of newSyms) {
+            var [thisNonTers, thisTers, thisComs] = ExpressionChartParser.ClosureOn(input, s, from);
+            completeds.push(...thisComs);
+            thisNonTers = thisNonTers.filter(x => !totalNonTers.some(y => x.EqualTo(y)));
+            thisNonTers.forEach(x => totalNonTers.push(x));
+            newNons.push(...thisNonTers);
+            thisTers.forEach(x => ExpressionChartParser.AddIfNotExist(terminateds, x));
+        }
+
+        completeds.push(...ExpressionChartParser.Closure([...searchedSymbols, ...newSyms], totalNonTers, newNons, terminateds, from, input));
+        return completeds;
+    }
+
+    private static Diff(from: string[], to: string[]) {
+        const diff: string[] = [];
+        for (const i of from) {
+            if (!to.includes(i)) {
+                diff.push(i);
+            }
+        }
+        return diff;
+    }
+    private static getExpectSymbols(column: NonTerminatedParserState[]) {
+        var expectSymbols = column
             .filter(x => x.NowPoint < x.Rule[1].length && !NonTerminatedParserState.IsChar(x.Rule[1][x.NowPoint]))
             .map(x => x.Rule[1][x.NowPoint]);
-        for (const s of expectSymbols) {
-            const r = ExpressionChartParser.ClosureOn(input, s, from);
-            newItems[0].push(...r[0]);
-            newItems[1].push(...r[1]);
-            newItems[2].push(...r[2]);
+        expectSymbols = [...new Set(expectSymbols)];// remove duplicates
+        return expectSymbols;
+    }
+
+    private static AddIfNotExist<T extends IEqual>(ts: T[], newItem: T) {
+        for (const i of ts) {
+            if (i.EqualTo(newItem)) {
+                return;
+            }
         }
-        return newItems;
+        ts.push(newItem);
     }
 
     private static ClosureOn(input: ParserInput, symbol: string, from: number): readonly [NonTerminatedParserState[], TerminatedParserState<ISyntaxNode>[], ReduceItem[]] {
@@ -155,7 +194,7 @@ export class ExpressionChartParser implements IParser<Expression> {
                     }
                     completeds.push({ From: from, LeftSymbol: symbol, Result: { Remain: input.Copy(), Result: r }, });
                 } else {
-                    nonTerminateds.push(NonTerminatedParserState.New(from, rule, 0));
+                    nonTerminateds.push(NonTerminatedParserState.New(from, rule));
                 }
             }
         }
@@ -163,7 +202,7 @@ export class ExpressionChartParser implements IParser<Expression> {
         for (const rule of ExpGrammar.terminated) {
             if (rule[0] === symbol) {
                 const p = rule[1];
-                terminateds.push(TerminatedParserState.New(InitialStart, rule, p, input.Copy()));
+                terminateds.push(TerminatedParserState.New(from, rule, p, input.Copy()));
             }
         }
 

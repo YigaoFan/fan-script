@@ -152,21 +152,21 @@ export const htmlLogger = new HtmlLogger('parse.html');
  */
 var indent = 0;
 // 缩进的第二行好像还是有问题 TODO
-export const logWith = function (indentSetting: Indent, ...args: any[]) {
-    const genSpaces = (count: number) => Array(count).join(' ');
-    switch (indentSetting) {
-        case Indent.CurrentLineReduce: --indent;
-    }
+// export const logWith = function (indentSetting: Indent, ...args: any[]) {
+//     const genSpaces = (count: number) => Array(count).join(' ');
+//     switch (indentSetting) {
+//         case Indent.CurrentLineReduce: --indent;
+//     }
 
-    log(genSpaces(indent), ...args);
+//     log(genSpaces(indent), ...args);
 
-    switch (indentSetting) {
-        case Indent.NextLineAdd: ++indent;
-    }
-};
+//     switch (indentSetting) {
+//         case Indent.NextLineAdd: ++indent;
+//     }
+// };
 
 
-// export const logWith = htmlLogger.Log.bind(htmlLogger);
+export const logWith = htmlLogger.Log.bind(htmlLogger);
 export var enableDebug = true;
 
 const b = new TimeBomb(50);

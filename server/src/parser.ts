@@ -60,7 +60,7 @@ export class WordParser<T> implements IParser<T> {
                 t.Append(c);
                 continue;
             }
-            logWith(Indent.SameToCurrent, `failed on ${i}, expect "${word[i]}", actual: "${JSON.stringify(c)}"`);
+            log(`failed on ${i}, expect "${word[i]}", actual: "${c}"`);
             return null;
         }
 

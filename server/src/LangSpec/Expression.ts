@@ -547,8 +547,8 @@ export class Keyword implements ISyntaxNode {
     }
 }
 
-export const prefixOperator = oneOf(['typeof ', '+', '-', '!'], PrefixOperator.New);
-export const infixOperator = oneOf(['*', '/', '%', '+', '-', '>=', '<=', '>', '<', '==', '!=', '||', '&&'], InfixOperator.New);
+export const prefixOperator = from(oneOf(['typeof ', '+', '-', '!'], PrefixOperator.New)).prefixComment('parse prefix operato').raw;
+export const infixOperator = from(oneOf(['*', '/', '%', '+', '-', '>=', '<=', '>', '<', '==', '!=', '||', '&&'], InfixOperator.New)).raw;
 // 之后做补全会碰到一个问题：什么时候算进入到某个语法节点的范围，在这个范围内进行补全，在这个范围内，某些东西可能是不完整的
 // 建立 ast 相关 node 的类型的事要提上日程了
 // 这里面有些地方是可以放任意多的空格，这个要想一下在哪加上
@@ -638,7 +638,9 @@ export class Refinement implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
     public toString(): string {
-        throw new Error("Method not implemented.");
+        return stringify({
+            key: this.mKey.toString(),
+        });
     }
 }
 

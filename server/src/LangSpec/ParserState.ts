@@ -20,9 +20,13 @@ export class NonTerminatedParserState {
     /** now on @property Rule[NowPoint] left */
     public NowPoint: number;
 
-    public static New(from: number, rule: NonTerminatedRule, nowPoint: number) {
+    public static New(from: number, rule: NonTerminatedRule) {
         assert(rule[1].length != 0, 'NonTerminatedParserState rule cannot be empty');
-        return new NonTerminatedParserState(from, rule, nowPoint);
+        return new NonTerminatedParserState(from, rule, InitialStart);
+    }
+
+    public EqualTo(that: NonTerminatedParserState): boolean {
+        return this.From == that.From && this.Rule == that.Rule;
     }
 
     private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, nodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | null)[] = []) {
@@ -43,13 +47,13 @@ export class NonTerminatedParserState {
      */
     public MoveAChar(char: ParserResult<Text>): ParserWorkState {
         const len = this.Rule[1].length;
-        if (this.NowPoint > InitialStart) {
-            if (!NonTerminatedParserState.IsChar(this.Rule[1][this.NowPoint])) {
-                return ParserWorkState.Fail;
-            }
-        }
+        // if (this.NowPoint > InitialStart) {
+        //     if (!NonTerminatedParserState.IsChar(this.Rule[1][this.NowPoint])) {
+        //         return ParserWorkState.Fail;
+        //     }
+        // }
 
-        const destSymbol = this.Rule[1][this.NowPoint + 1];
+        const destSymbol = this.Rule[1][this.NowPoint];
         if (NonTerminatedParserState.IsChar(destSymbol)) {
             if (destSymbol === char!.Result.Value) { // destSymbol 必须是一个字符的字符串
                 this.AddSub(char);
@@ -59,9 +63,8 @@ export class NonTerminatedParserState {
                 }
                 return ParserWorkState.Pending;
             }
-            return ParserWorkState.Fail;
         }
-
+        log(`move char expect ${destSymbol} actual ${char?.Result}`)
         return ParserWorkState.Fail;
     }
 
@@ -116,12 +119,16 @@ export class NonTerminatedParserState {
         return (!ExpGrammar.terminated.map(x => x[0]).includes(symbol))
             && (!ExpGrammar.nonTerminated.map(x => x[0] as string).includes(symbol));
     }
+
+    public toString(): string {
+        return `${this.Rule[0]} -> ${this.Rule[1].join()} from ${this.From}`;
+    }
 }
 
 /** T cannot be undefined */
 export class TerminatedParserState<T> {
     private mFrom: number;
-    private mRule: TerminatedRule;
+    public readonly Rule: TerminatedRule;
     private mParserResult: ParserResult<T>;
     private mNeedShiftCharCount: number;
 
@@ -134,17 +141,17 @@ export class TerminatedParserState<T> {
 
     private constructor(from: number, rule: TerminatedRule, result: ParserResult<T>, shiftCharCount: number) {
         this.mFrom = from;
-        this.mRule = rule;
+        this.Rule = rule;
         this.mParserResult = result;
         this.mNeedShiftCharCount = shiftCharCount;
     }
 
-    public get From(): number {
-        return this.mFrom;
+    public EqualTo(that: TerminatedParserState<T>): boolean {
+        return this.From == that.From && this.Rule == that.Rule;
     }
 
-    public get Rule(): TerminatedRule {
-        return this.mRule;
+    public get From(): number {
+        return this.mFrom;
     }
 
     public get Result(): ParserResult<T> {
@@ -159,10 +166,14 @@ export class TerminatedParserState<T> {
             return ParserWorkState.Fail;
         }
 
+        --this.mNeedShiftCharCount;
         if (this.mNeedShiftCharCount == 0) {
             return ParserWorkState.Succeed;
         }
-        --this.mNeedShiftCharCount;
         return ParserWorkState.Pending;
+    }
+
+    public toString(): string {
+        return `${this.Rule[0]} from ${this.From}`;
     }
 }
