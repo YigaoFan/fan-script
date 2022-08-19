@@ -20,6 +20,7 @@ export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<nu
 // TODO add space
 export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
+        // ow还是有问题
         // ['cls', ['class', 'w', 'id', '{', 'w', 'funs', 'w', '}']],
         ['fun', ['func', 'w', 'id', '(', 'paras', ')', '{', 'stmt', '}']],
         ['paras', ['id', ',', 'paras']],
