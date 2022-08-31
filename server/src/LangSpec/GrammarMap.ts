@@ -22,7 +22,7 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
     nonTerminated: [
         // ow还是有问题
         // ['cls', ['class', 'w', 'id', '{', 'w', 'funs', 'w', '}']],
-        ['fun', ['func', 'w', 'id', '(', 'paras', ')', '{', 'stmt', '}']],
+        ['fun', ['func', 'w', 'id', 'ow', '(', 'paras', ')', 'ow', '{', 'stmt', '}']], // TODO 加可选空白
         ['paras', ['id', ',', 'paras']],
         ['paras', []],
 

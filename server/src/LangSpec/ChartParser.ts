@@ -4,6 +4,7 @@ import { Expression } from "./Expression";
 import { log } from "console";
 import { InitialStart, NonTerminatedParserState, ParserWorkState, TerminatedParserState } from "./ParserState";
 import { ExpGrammar, Factory, FactoryWithTypeInfo, Node, NodeFactory } from "./GrammarMap";
+import { ChartView } from "./ChartView";
 
 // TODO 写完看一下，我这里写得好像很长，课上的代码好像很短？对比一下
 
@@ -11,17 +12,15 @@ interface IEqual {
     EqualTo(that: this): boolean;
 }
 
-type TerminatedStates = (TerminatedParserState<null | ISyntaxNode>)[];
+export type TerminatedStates = TerminatedParserState<null | ISyntaxNode>[];
 type ReduceItem = { From: number, LeftSymbol: string, Result: ParserResult<ISyntaxNode | null> };
 /** 这个解析对象只能用一次，因为内部有状态 */
 export class ChartParser implements IParser<Expression> {
     private mTerminatedStateChart: TerminatedStates;
     private mNonTerminatedStateChart: NonTerminatedParserState[][];
-    private mEndChar: string;
     private mRoot: Node;
 
     public constructor(root: Node, endChar: string) {
-        this.mEndChar = endChar;
         this.mTerminatedStateChart = [];
         this.mNonTerminatedStateChart = [];
         this.mRoot = root;
@@ -38,12 +37,16 @@ export class ChartParser implements IParser<Expression> {
         const coms = ChartParser.Closure([], lastColumn, lastColumn , this.mTerminatedStateChart, len - 1, input.Copy());
         ChartParser.Reduce(thisComs.concat(coms), this.mNonTerminatedStateChart);
 
+        const view = new ChartView(input.Copy());
+        view.Snapshot(this.mTerminatedStateChart, this.mNonTerminatedStateChart);
         for (let i = 0; ; i++) {
             log('iter', i);
-            const r = this.iter(input);
+            const r = this.iter(input);            
             log('iter', i, 'end');
+            view.Snapshot(this.mTerminatedStateChart, this.mNonTerminatedStateChart);
 
             if (r) {
+                view.Close();
                 const chart = this.mNonTerminatedStateChart;
                 const lastColumn = chart[chart.length - 1];
                 const completeds = lastColumn.filter(x => x.Completed && x.From === 0);
@@ -65,7 +68,7 @@ export class ChartParser implements IParser<Expression> {
         }
         const completedItems: ReduceItem[] = [];
         completedItems.push(...this.ShiftOnNonTerminated(c, input.Copy()));
-        completedItems.push(...this.shiftOnTerminated());
+        completedItems.push(...this.ShiftOnTerminated());
         const len = this.mNonTerminatedStateChart.length;
         const lastColumn = this.mNonTerminatedStateChart[len - 1];
         // const coms = ExpressionChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
@@ -103,7 +106,7 @@ export class ChartParser implements IParser<Expression> {
         return completedItems;
     }
 
-    private shiftOnTerminated(): ReduceItem[] {
+    private ShiftOnTerminated(): ReduceItem[] {
         const completedItems: ReduceItem[] = [];
         const shiftResults = this.mTerminatedStateChart.map(x => x.Move());
 

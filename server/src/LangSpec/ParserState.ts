@@ -125,7 +125,7 @@ export class NonTerminatedParserState {
     }
 
     public toString(): string {
-        return `${this.Rule[0]} -> ${this.Rule[1].join()} from ${this.From}`;
+        return `${this.Rule[0]} -> ${this.Rule[1].slice(0, this.NowPoint).join(' ')} · ${this.Rule[1].slice(this.NowPoint).join(' ')} from ${this.From}`;
     }
 
     private get IsEmptyRule(): boolean {
@@ -138,7 +138,8 @@ export class TerminatedParserState<T> {
     private mFrom: number;
     public readonly Rule: TerminatedRule;
     private mParserResult: ParserResult<T>;
-    private mNeedShiftCharCount: number;
+    private mNeedShiftCharCounter: number;
+    private readonly mNeedShiftCharCount: number;
 
     public static New<T1>(from: number, rule: TerminatedRule, parser: IParser<T1>, input: ParserInput) {
         const cs = CounterStream.New(input);
@@ -151,6 +152,7 @@ export class TerminatedParserState<T> {
         this.mFrom = from;
         this.Rule = rule;
         this.mParserResult = result;
+        this.mNeedShiftCharCounter = shiftCharCount;
         this.mNeedShiftCharCount = shiftCharCount;
     }
 
@@ -174,8 +176,8 @@ export class TerminatedParserState<T> {
             return ParserWorkState.Fail;
         }
 
-        --this.mNeedShiftCharCount;
-        if (this.mNeedShiftCharCount == 0) {
+        --this.mNeedShiftCharCounter;
+        if (this.mNeedShiftCharCounter == 0) {
             return ParserWorkState.Succeed;
         }
         return ParserWorkState.Pending;
@@ -186,13 +188,13 @@ export class TerminatedParserState<T> {
             return ParserWorkState.Fail;
         }
 
-        if (this.mNeedShiftCharCount > 0) {
+        if (this.mNeedShiftCharCounter > 0) {
             return ParserWorkState.Pending;
         }
         return ParserWorkState.Succeed;
     }
 
     public toString(): string {
-        return `${this.Rule[0]} from ${this.From}`;
+        return `${this.Rule[0]} from ${this.From} need shift ${this.mNeedShiftCharCount} char`;
     }
 }

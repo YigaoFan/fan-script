@@ -1,7 +1,7 @@
 import { writeFileSync } from "fs";
 import { IInputStream } from "./IParser";
 
-const split40PerArray = <T>(ts: T[]) : T[][] => {
+export const split40PerArray = <T>(ts: T[]) : T[][] => {
     const splited: T[][] = [];
     if (ts.length < 40) {
         splited.push(ts);
