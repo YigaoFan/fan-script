@@ -62,19 +62,17 @@ export class ChartParser implements IParser<Expression> {
     public iter(input: ParserInput): boolean {
         const c = input.NextChar;
         if (c.Empty) {// 因为现在的 terminated parser在他最后一个位置就应该成功然后结束，而不是下一个空字符
+            // 上面的注释好像说错了
             return true;
         }
-        const completedItems: ReduceItem[] = [];
-        completedItems.push(...this.ShiftOnNonTerminated(c, input.Copy()));
-        completedItems.push(...this.ShiftOnTerminated());
+        const completeds: ReduceItem[] = [];
+        completeds.push(...this.ShiftOnNonTerminated(c, input.Copy()));
+        completeds.push(...this.ShiftOnTerminated());
         const len = this.mNonTerminatedStateChart.length;
         const lastColumn = this.mNonTerminatedStateChart[len - 1];
-        // const coms = ExpressionChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
-        // completedItems.push(...coms);
-        // 这里 coms 有用吗？
 
         // reduce 和 closure 的顺序先后顺序该是什么样？TODO
-        ChartParser.Reduce(completedItems, this.mNonTerminatedStateChart);
+        ChartParser.Reduce(completeds, this.mNonTerminatedStateChart);
         const newComs = ChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
         ChartParser.Reduce(newComs, this.mNonTerminatedStateChart);
         
@@ -142,7 +140,7 @@ export class ChartParser implements IParser<Expression> {
         if (lastNewAddNonTers.length == 0) {
             return completeds;
         }
-        var newSyms = ChartParser.getExpectSymbols(lastNewAddNonTers);
+        var newSyms = ChartParser.GetExpectSymbols(lastNewAddNonTers);
         newSyms = ChartParser.Diff(newSyms, searchedSymbols);
         const newNons: NonTerminatedParserState [] = [];
         for (const s of newSyms) {
@@ -158,6 +156,34 @@ export class ChartParser implements IParser<Expression> {
         return completeds;
     }
 
+    private static ClosureOn(input: ParserInput, symbol: string, from: number): readonly [NonTerminatedParserState[], TerminatedStates, ReduceItem[]] {
+        const nonTerminateds: NonTerminatedParserState[] = [];
+        const completeds: ReduceItem[] = [];
+        for (const rule of ExpGrammar.nonTerminated) {
+            if (rule[0] === symbol) {
+                const s = NonTerminatedParserState.New(from, rule, input.Copy());
+                nonTerminateds.push(s);
+                if (s.Completed) {
+                    completeds.push({ From: from, LeftSymbol: symbol, Result: s.Result, });
+                }
+            }
+        }
+        const terminateds: TerminatedStates = [];
+        for (const rule of ExpGrammar.terminated) {
+            if (rule[0] === symbol) {
+                const p = rule[1];
+                const s = TerminatedParserState.New(from, rule, p, input.Copy());
+                if (s.State == ParserWorkState.Succeed) {
+                    completeds.push({ From: from, LeftSymbol: symbol, Result: s.Result, });
+                } else {
+                    terminateds.push(s);
+                }
+            }
+        }
+
+        return [nonTerminateds, terminateds, completeds];
+    }
+
     private static Diff(from: string[], to: string[]) {
         const diff: string[] = [];
         for (const i of from) {
@@ -167,7 +193,8 @@ export class ChartParser implements IParser<Expression> {
         }
         return diff;
     }
-    private static getExpectSymbols(column: NonTerminatedParserState[]) {
+
+    private static GetExpectSymbols(column: NonTerminatedParserState[]): string[] {
         var expectSymbols = column
             .filter(x => x.NowPoint < x.Rule[1].length && !NonTerminatedParserState.IsChar(x.Rule[1][x.NowPoint]))
             .map(x => x.Rule[1][x.NowPoint]);
@@ -183,39 +210,7 @@ export class ChartParser implements IParser<Expression> {
         }
         ts.push(newItem);
     }
-
-    private static ClosureOn(input: ParserInput, symbol: string, from: number): readonly [NonTerminatedParserState[], TerminatedStates, ReduceItem[]] {
-        const nonTerminateds: NonTerminatedParserState[] = [];
-        const completeds: ReduceItem[] = [];
-        for (const rule of ExpGrammar.nonTerminated) {
-            if (rule[0] === symbol) {
-                nonTerminateds.push(NonTerminatedParserState.New(from, rule, input.Copy()));
-                if (rule[1].length == 0) {
-                    if (rule[2]) {
-                        var n = (NodeFactory[rule[0]] as FactoryWithTypeInfo)(rule[2], []);
-                    } else {
-                        var n = (NodeFactory[rule[0]] as Factory)([]);;
-                    }
-                    completeds.push({ From: from, LeftSymbol: symbol, Result: { Remain: input.Copy(), Result: n }, });
-                }
-            }
-        }
-        const terminateds: TerminatedStates = [];
-        for (const rule of ExpGrammar.terminated) {
-            if (rule[0] === symbol) {
-                const p = rule[1];
-                const t = TerminatedParserState.New(from, rule, p, input.Copy());
-                if (t.State == ParserWorkState.Succeed) {
-                    completeds.push( { From: from, LeftSymbol: symbol, Result: t.Result });
-                } else {
-                    terminateds.push(t);
-                }
-            }
-        }
-
-        return [nonTerminateds, terminateds, completeds];
-    }
-
+    
     public async asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<Expression>> {
         throw new Error('Not support');
     }

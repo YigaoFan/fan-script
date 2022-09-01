@@ -19,7 +19,7 @@ export class NonTerminatedParserState {
     private readonly mNodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[]; // 传到 factory 里时过滤掉 null
     /** now on @property Rule[NowPoint] left */
     public NowPoint: number;
-    private mStartInput: ParserInput;
+    private mInitalInput: ParserInput;
 
     public static New(from: number, rule: NonTerminatedRule, startInput: ParserInput) {
         // assert(rule[1].length != 0, 'NonTerminatedParserState rule cannot be empty');
@@ -30,16 +30,16 @@ export class NonTerminatedParserState {
         return this.From == that.From && this.Rule == that.Rule;
     }
 
-    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, startInput: ParserInput, nodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[] = []) {
+    private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, initalInput: ParserInput, nodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[] = []) {
         this.From = from;
         this.Rule = rule;
         this.NowPoint = nowPoint;
         this.mNodes = nodes;
-        this.mStartInput = startInput;
+        this.mInitalInput = initalInput;
     }
 
     public Copy(): NonTerminatedParserState {
-        return new NonTerminatedParserState(this.From, this.Rule, this.NowPoint, this.mStartInput.Copy(), [...this.mNodes]);
+        return new NonTerminatedParserState(this.From, this.Rule, this.NowPoint, this.mInitalInput.Copy(), [...this.mNodes]);
     }
 
     /** 
@@ -99,7 +99,7 @@ export class NonTerminatedParserState {
         }
         const usedNodes = this.mNodes.filter(notNull);
         const usedNodeResults = usedNodes.map(x => x!.Result);
-        const remain = this.IsEmptyRule ? this.mStartInput : this.mNodes[this.mNodes.length - 1]!.Remain;
+        const remain = this.IsEmptyRule ? this.mInitalInput : this.mNodes[this.mNodes.length - 1]!.Remain;
 
         if (this.Rule[2]) {
             return {
