@@ -171,7 +171,7 @@ const testParas = () => {
 const testFunc = () => {
     const fun = 'fun';
     {
-        const s = 'func f(a,){return a;}';
+        const s = 'func f (a,){return a;}';
         const ss = StringStream.New(s, 'func.fs');
         GenerateParserInputTable('parser-input.html', ss.Copy());
         const p = new ChartParser(fun, ';');

@@ -22,8 +22,8 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
     nonTerminated: [
         // ow还是有问题
         // ['cls', ['class', 'w', 'id', '{', 'w', 'funs', 'w', '}']],
-        ['fun', ['func', 'w', 'id', 'ow', '(', 'paras', ')', 'ow', '{', 'stmt', '}']], // TODO 加可选空白
-        ['paras', ['id', ',', 'paras']],
+        ['fun', ['func', 'w', 'id', 'ow', '(', 'ow', 'paras', 'ow', ')', 'ow', '{', 'stmt', '}']], // TODO 加可选空白
+        ['paras', ['id', 'ow', ',', 'ow', 'paras']], // bug 所在：reduce 之后没有再 closure，两者要可以互相触发，于是要有个机制看有没有引入新的 rule
         ['paras', []],
 
         ['stmt', ['return', 'w', 'exp', 'ow', ';'], 'ReturnStmt'],

@@ -2,11 +2,9 @@ import { AsyncParserInput, IAsyncInputStream, IInputStream, IParser, ParserInput
 import { ISyntaxNode } from "../ISyntaxNode";
 import { Expression } from "./Expression";
 import { log } from "console";
-import { InitialStart, NonTerminatedParserState, ParserWorkState, TerminatedParserState } from "./ParserState";
+import { InitialStart as Start, NonTerminatedParserState, ParserWorkState, TerminatedParserState } from "./ParserState";
 import { ExpGrammar, Factory, FactoryWithTypeInfo, Node, NodeFactory } from "./GrammarMap";
 import { ChartView } from "./ChartView";
-
-// TODO 写完看一下，我这里写得好像很长，课上的代码好像很短？对比一下
 
 interface IEqual {
     EqualTo(that: this): boolean;
@@ -28,7 +26,7 @@ export class ChartParser implements IParser<Expression> {
 
     @debug()
     public parse(input: IInputStream): ParserResult<Expression> {
-        var [thisNonTers, thisTers, thisComs] = ChartParser.ClosureOn(input, this.mRoot, InitialStart);
+        var [thisNonTers, thisTers, thisComs] = ChartParser.ClosureOn(input, this.mRoot, Start);
         this.mNonTerminatedStateChart.push(thisNonTers);
         this.mTerminatedStateChart = thisTers;
 
@@ -191,16 +189,14 @@ export class ChartParser implements IParser<Expression> {
         const completeds: ReduceItem[] = [];
         for (const rule of ExpGrammar.nonTerminated) {
             if (rule[0] === symbol) {
+                nonTerminateds.push(NonTerminatedParserState.New(from, rule, input.Copy()));
                 if (rule[1].length == 0) {
                     if (rule[2]) {
-                        var r = (NodeFactory[rule[0]] as FactoryWithTypeInfo)(rule[2], []);
+                        var n = (NodeFactory[rule[0]] as FactoryWithTypeInfo)(rule[2], []);
                     } else {
-                        var r = (NodeFactory[rule[0]] as Factory)([]);;
+                        var n = (NodeFactory[rule[0]] as Factory)([]);;
                     }
-                    completeds.push({ From: from, LeftSymbol: symbol, Result: { Remain: input.Copy(), Result: r }, });
-                    nonTerminateds.push(NonTerminatedParserState.New(from, rule, input.Copy()));
-                } else {
-                    nonTerminateds.push(NonTerminatedParserState.New(from, rule, input.Copy()));
+                    completeds.push({ From: from, LeftSymbol: symbol, Result: { Remain: input.Copy(), Result: n }, });
                 }
             }
         }
@@ -210,7 +206,7 @@ export class ChartParser implements IParser<Expression> {
                 const p = rule[1];
                 const t = TerminatedParserState.New(from, rule, p, input.Copy());
                 if (t.State == ParserWorkState.Succeed) {
-                    completeds.push( { From: from, LeftSymbol: symbol, Result: { Remain: input.Copy(), Result: t.Result!.Result },});
+                    completeds.push( { From: from, LeftSymbol: symbol, Result: t.Result });
                 } else {
                     terminateds.push(t);
                 }
