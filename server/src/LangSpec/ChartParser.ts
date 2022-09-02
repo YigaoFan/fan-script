@@ -62,7 +62,6 @@ export class ChartParser implements IParser<Expression> {
     public iter(input: ParserInput): boolean {
         const c = input.NextChar;
         if (c.Empty) {// 因为现在的 terminated parser在他最后一个位置就应该成功然后结束，而不是下一个空字符
-            // 上面的注释好像说错了
             return true;
         }
         const completeds: ReduceItem[] = [];
@@ -71,7 +70,6 @@ export class ChartParser implements IParser<Expression> {
         const len = this.mNonTerminatedStateChart.length;
         const lastColumn = this.mNonTerminatedStateChart[len - 1];
 
-        // reduce 和 closure 的顺序先后顺序该是什么样？TODO
         ChartParser.Reduce(completeds, this.mNonTerminatedStateChart);
         const newComs = ChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
         ChartParser.Reduce(newComs, this.mNonTerminatedStateChart);
@@ -118,10 +116,10 @@ export class ChartParser implements IParser<Expression> {
         return completedItems;
     }
 
-    private static Reduce(items: ReduceItem[], nonTerminatedStateChart: NonTerminatedParserState[][]) {
+    private static Reduce(reduceItems: ReduceItem[], nonTerminatedStateChart: NonTerminatedParserState[][]) {
         const chart = nonTerminatedStateChart;
         // log('char len', chart.length);
-        for (const item of items) {
+        for (const item of reduceItems) {
             const toMoveStates = chart[item.From].filter(x => x.Rule[1][x.NowPoint] === item.LeftSymbol).map(x => x.Copy());
             const moveResults = toMoveStates.map(x => x.MoveANonTerminated(item.LeftSymbol, item.Result));
             const insertPos = chart.length - 1;
@@ -129,7 +127,7 @@ export class ChartParser implements IParser<Expression> {
     
             const newItems = toMoveStates
                 .filter((_, i) => moveResults[i] === ParserWorkState.Succeed)
-                .map(x => ({ From: x.From, LeftSymbol: x.Rule[0], Result: x.Result }));
+                .map(x => ({ From: x.From, LeftSymbol: x.Rule[0], Result: x.Result, }));
             // log('char len before deep in', chart.length);
             ChartParser.Reduce(newItems, chart);
         }
