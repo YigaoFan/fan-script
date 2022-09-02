@@ -73,17 +73,11 @@ export class ChartParser implements IParser<Expression> {
         // 所以 expect symbol 要记录下
         // reduce 则还要关注 closure *新增*的项有没有可进一步的
         {
-            log('reduce outer');
-            do {
-                log('reduce inner');
-                reduceItems = ChartParser.Reduce(reduceItems, this.mNonTerminatedStateChart);
-            } while (reduceItems.length > 0);
+            const newAddedItems = ChartParser.Reduce(reduceItems, this.mNonTerminatedStateChart);
 
             const len = this.mNonTerminatedStateChart.length;
             const lastColumn = this.mNonTerminatedStateChart[len - 1];
-            log('start closure');
             reduceItems = ChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
-            log('end closure');
         }
         return false;
     }
@@ -131,51 +125,55 @@ export class ChartParser implements IParser<Expression> {
         const chart = nonTerminatedStateChart;
         // log('char len', chart.length);
         const newReduceItems: ReduceItem[] = [];
+        const newAddedItems: NonTerminatedParserState[] = [];
         for (const item of reduceItems) {
             const toMoveStates = chart[item.From].filter(x => x.Rule[1][x.NowPoint] === item.LeftSymbol).map(x => x.Copy());
             const moveResults = toMoveStates.map(x => x.MoveANonTerminated(item.LeftSymbol, item.Result));
             const insertPos = chart.length - 1;
-            // 这里添加的时候也要去重
+            // 这里添加的时候也要去重吗 TODO
             chart[insertPos].push(...toMoveStates);
+            newAddedItems.push(...toMoveStates);
     
             toMoveStates
                 .filter((_, i) => moveResults[i] === ParserWorkState.Succeed)
                 .forEach(x => newReduceItems.push({ From: x.From, LeftSymbol: x.Rule[0], Result: x.Result, }));
         }
-        ChartParser.Reduce(newReduceItems, chart);// return new added items
+        ChartParser.Reduce(newReduceItems, chart);
+        return newAddedItems;
     }
     
-    private static Closure(searchedSymbols: string[], totalNonTers: NonTerminatedParserState[], lastNewAddNonTers: NonTerminatedParserState[], terminateds: TerminatedStates, from: number, input: ParserInput): ReduceItem[] {
-        const completeds: ReduceItem[] = [];
+    private static Closure(searchedSymbols: string[], totalNonTers: NonTerminatedParserState[], lastNewAddNonTers: NonTerminatedParserState[], terminateds: TerminatedStates, from: number, input: ParserInput): [NonTerminatedParserState[], TerminatedStates,]  {
         if (lastNewAddNonTers.length == 0) {
-            return completeds;
+            return [[], []];
         }
         var newSyms = ChartParser.GetExpectSymbols(lastNewAddNonTers);
         newSyms = ChartParser.Diff(newSyms, searchedSymbols);
-        const newNons: NonTerminatedParserState [] = [];
+        const newNons: NonTerminatedParserState[] = [];
+        const newTers: TerminatedStates = [];
         for (const s of newSyms) {
-            var [thisNonTers, thisTers, thisComs] = ChartParser.ClosureOn(input, s, from);
-            completeds.push(...thisComs);
-            thisNonTers = thisNonTers.filter(x => !totalNonTers.some(y => x.EqualTo(y)));
-            thisNonTers.forEach(x => totalNonTers.push(x));
-            newNons.push(...thisNonTers);
-            thisTers.forEach(x => ChartParser.AddIfNotExist(terminateds, x));
+            var [nonTers, ters] = ChartParser.ClosureOn(input, s, from);
+            nonTers = nonTers.filter(x => !totalNonTers.some(y => x.EqualTo(y)));
+            nonTers.forEach(x => totalNonTers.push(x));
+            newNons.push(...nonTers);
+            ters = ters.filter(x => !terminateds.some(y => x.EqualTo(y)));
+            ters.forEach(x => terminateds.push(x));
+            newTers.push(...ters);
         }
 
         completeds.push(...ChartParser.Closure([...searchedSymbols, ...newSyms], totalNonTers, newNons, terminateds, from, input));
         return completeds;
     }
 
-    private static ClosureOn(input: ParserInput, symbol: string, from: number): readonly [NonTerminatedParserState[], TerminatedStates, ReduceItem[]] {
+    private static ClosureOn(input: ParserInput, symbol: string, from: number): [NonTerminatedParserState[], TerminatedStates,] {
         const nonTerminateds: NonTerminatedParserState[] = [];
         const completeds: ReduceItem[] = [];
         for (const rule of ExpGrammar.nonTerminated) {
             if (rule[0] === symbol) {
                 const s = NonTerminatedParserState.New(from, rule, input.Copy());
                 nonTerminateds.push(s);
-                if (s.Completed) {
-                    completeds.push({ From: from, LeftSymbol: symbol, Result: s.Result, });
-                }
+                // if (s.State == ParserWorkState.Succeed) {
+                //     completeds.push({ From: from, LeftSymbol: symbol, Result: s.Result, });
+                // }
             }
         }
         const terminateds: TerminatedStates = [];
@@ -183,15 +181,15 @@ export class ChartParser implements IParser<Expression> {
             if (rule[0] === symbol) {
                 const p = rule[1];
                 const s = TerminatedParserState.New(from, rule, p, input.Copy());
-                if (s.State == ParserWorkState.Succeed) {
-                    completeds.push({ From: from, LeftSymbol: symbol, Result: s.Result, });
-                } else {
+                // if (s.State == ParserWorkState.Succeed) {
+                //     completeds.push({ From: from, LeftSymbol: symbol, Result: s.Result, });
+                // } else {
                     terminateds.push(s);
-                }
+                // }
             }
         }
 
-        return [nonTerminateds, terminateds, completeds];
+        return [nonTerminateds, terminateds];
     }
 
     private static Diff(from: string[], to: string[]) {

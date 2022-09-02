@@ -73,6 +73,10 @@ export class NonTerminatedParserState {
         return this.NowPoint === this.Rule[1].length;
     }
 
+    public get State(): ParserWorkState.Pending | ParserWorkState.Succeed {
+        return this.NowPoint === this.Rule[1].length ? ParserWorkState.Succeed : ParserWorkState.Pending;
+    }
+
     /** Note: Copy firstly then call this method */
     public MoveANonTerminated(symbol: string, node: ParserResult<ISyntaxNode> | ParserResult<null>): ParserWorkState {
         if (symbol !== this.Rule[1][this.NowPoint]) {
@@ -181,6 +185,17 @@ export class TerminatedParserState<T> {
             return ParserWorkState.Succeed;
         }
         return ParserWorkState.Pending;
+    }
+
+    public get Completed(): boolean {
+        if (!this.mParserResult) {
+            return true;
+        }
+
+        if (this.mNeedShiftCharCounter > 0) {
+            return false;
+        }
+        return true;
     }
 
     public get State(): ParserWorkState {
