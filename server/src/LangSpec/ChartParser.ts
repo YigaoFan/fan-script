@@ -64,16 +64,27 @@ export class ChartParser implements IParser<Expression> {
         if (c.Empty) {// 因为现在的 terminated parser在他最后一个位置就应该成功然后结束，而不是下一个空字符
             return true;
         }
-        const completeds: ReduceItem[] = [];
-        completeds.push(...this.ShiftOnNonTerminated(c, input.Copy()));
-        completeds.push(...this.ShiftOnTerminated());
-        const len = this.mNonTerminatedStateChart.length;
-        const lastColumn = this.mNonTerminatedStateChart[len - 1];
-
-        ChartParser.Reduce(completeds, this.mNonTerminatedStateChart);
-        const newComs = ChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
-        ChartParser.Reduce(newComs, this.mNonTerminatedStateChart);
+        var reduceItems: ReduceItem[] = [];
+        reduceItems.push(...this.ShiftOnNonTerminated(c, input.Copy()));
+        reduceItems.push(...this.ShiftOnTerminated());
         
+        // 以这里的思路为主，reduce 那里思路为辅：
+        // reduce 给最后一列新增项，closure 除 reduce 后的第一次外，主要关注新增的项有没有增加 expect symbol
+        // 所以 expect symbol 要记录下
+        // reduce 则还要关注 closure *新增*的项有没有可进一步的
+        {
+            log('reduce outer');
+            do {
+                log('reduce inner');
+                reduceItems = ChartParser.Reduce(reduceItems, this.mNonTerminatedStateChart);
+            } while (reduceItems.length > 0);
+
+            const len = this.mNonTerminatedStateChart.length;
+            const lastColumn = this.mNonTerminatedStateChart[len - 1];
+            log('start closure');
+            reduceItems = ChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
+            log('end closure');
+        }
         return false;
     }
 
@@ -119,18 +130,19 @@ export class ChartParser implements IParser<Expression> {
     private static Reduce(reduceItems: ReduceItem[], nonTerminatedStateChart: NonTerminatedParserState[][]) {
         const chart = nonTerminatedStateChart;
         // log('char len', chart.length);
+        const newReduceItems: ReduceItem[] = [];
         for (const item of reduceItems) {
             const toMoveStates = chart[item.From].filter(x => x.Rule[1][x.NowPoint] === item.LeftSymbol).map(x => x.Copy());
             const moveResults = toMoveStates.map(x => x.MoveANonTerminated(item.LeftSymbol, item.Result));
             const insertPos = chart.length - 1;
+            // 这里添加的时候也要去重
             chart[insertPos].push(...toMoveStates);
     
-            const newItems = toMoveStates
+            toMoveStates
                 .filter((_, i) => moveResults[i] === ParserWorkState.Succeed)
-                .map(x => ({ From: x.From, LeftSymbol: x.Rule[0], Result: x.Result, }));
-            // log('char len before deep in', chart.length);
-            ChartParser.Reduce(newItems, chart);
+                .forEach(x => newReduceItems.push({ From: x.From, LeftSymbol: x.Rule[0], Result: x.Result, }));
         }
+        ChartParser.Reduce(newReduceItems, chart);// return new added items
     }
     
     private static Closure(searchedSymbols: string[], totalNonTers: NonTerminatedParserState[], lastNewAddNonTers: NonTerminatedParserState[], terminateds: TerminatedStates, from: number, input: ParserInput): ReduceItem[] {
