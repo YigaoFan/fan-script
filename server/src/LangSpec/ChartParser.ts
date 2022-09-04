@@ -1,14 +1,9 @@
-import { AsyncParserInput, IAsyncInputStream, IInputStream, IParser, ParserInput, ParserResult, Text, AsyncParserResult, debug } from "../IParser";
+import { AsyncParserInput, IInputStream, IParser, ParserInput, ParserResult, Text, AsyncParserResult, debug } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { Expression } from "./Expression";
-import { log } from "console";
 import { InitialStart as Start, NonTerminatedParserState, ParserWorkState, TerminatedParserState } from "./ParserState";
-import { ExpGrammar, Factory, FactoryWithTypeInfo, Node, NodeFactory } from "./GrammarMap";
+import { ExpGrammar, Node, } from "./GrammarMap";
 import { ChartView } from "./ChartView";
-
-interface IEqual {
-    EqualTo(that: this): boolean;
-}
 
 export type TerminatedStates = TerminatedParserState<null | ISyntaxNode>[];
 type ReduceItem = { From: number, LeftSymbol: string, Result: ParserResult<ISyntaxNode | null> };
@@ -30,13 +25,8 @@ export class ChartParser implements IParser<Expression> {
         this.mNonTerminatedStateChart.push(nonTers);
         this.mTerminatedStateChart = ters;
 
-        // 这里讲道理也要 reduce 一下
         ChartParser.LoopReduceClosureUtilNoNewAdded(this.mNonTerminatedStateChart,
-            this.mTerminatedStateChart, [], input);// 这里传 [] 可能会有问题
-        // const len = this.mNonTerminatedStateChart.length;
-        // const lastColumn = this.mNonTerminatedStateChart[len - 1];
-        // const coms = ChartParser.Closure([], lastColumn, lastColumn , this.mTerminatedStateChart, len - 1, input.Copy());
-        // ChartParser.Reduce(thisComs.concat(coms), this.mNonTerminatedStateChart);
+            this.mTerminatedStateChart, [], input);
 
         const view = new ChartView(input.Copy());
         view.Snapshot(this.mTerminatedStateChart, this.mNonTerminatedStateChart);
@@ -211,12 +201,6 @@ export class ChartParser implements IParser<Expression> {
                     newTers.push(x);
                 // }
             }
-            // nonTers = nonTers.filter(x => !totalNonTers.some(y => x.EqualTo(y)));
-            // nonTers.forEach(x => totalNonTers.push(x));
-            // newNons.push(...nonTers);// 但可能这里有重复的
-            // ters = ters.filter(x => !terminateds.some(y => x.EqualTo(y)));
-            // ters.forEach(x => terminateds.push(x));
-            // newTers.push(...ters);
         }
 
         const [remainNonTers, remainTers] = ChartParser.Closure([...searchedSymbols, ...newSyms], totalNonTers, newNons, terminateds, from, input);
@@ -227,14 +211,10 @@ export class ChartParser implements IParser<Expression> {
 
     private static ClosureOn(input: ParserInput, symbol: string, from: number): [NonTerminatedParserState[], TerminatedStates,] {
         const nonTerminateds: NonTerminatedParserState[] = [];
-        // const completeds: ReduceItem[] = [];
         for (const rule of ExpGrammar.nonTerminated) {
             if (rule[0] === symbol) {
                 const s = NonTerminatedParserState.New(from, rule, input.Copy());
                 nonTerminateds.push(s);
-                // if (s.State == ParserWorkState.Succeed) {
-                //     completeds.push({ From: from, LeftSymbol: symbol, Result: s.Result, });
-                // }
             }
         }
         const terminateds: TerminatedStates = [];
@@ -242,11 +222,7 @@ export class ChartParser implements IParser<Expression> {
             if (rule[0] === symbol) {
                 const p = rule[1];
                 const s = TerminatedParserState.New(from, rule, p, input.Copy());
-                // if (s.State == ParserWorkState.Succeed) {
-                //     completeds.push({ From: from, LeftSymbol: symbol, Result: s.Result, });
-                // } else {
-                    terminateds.push(s);
-                // }
+                terminateds.push(s);
             }
         }
 
@@ -269,15 +245,6 @@ export class ChartParser implements IParser<Expression> {
             .map(x => x.Rule[1][x.NowPoint]);
         expectSymbols = [...new Set(expectSymbols)];// remove duplicates
         return expectSymbols;
-    }
-
-    private static AddIfNotExist<T extends IEqual>(ts: T[], newItem: T) {
-        for (const i of ts) {
-            if (i.EqualTo(newItem)) {
-                return;
-            }
-        }
-        ts.push(newItem);
     }
     
     public async asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<Expression>> {
