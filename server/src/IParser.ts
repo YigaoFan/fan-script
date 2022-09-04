@@ -1,7 +1,6 @@
 import { formatParserResult, log, } from './util';
 import { HtmlLogger, } from './HtmlLogger';
 import { TimeBomb } from './TimeBomb';
-import { Signal } from './Signal';
 
 // stateful internal
 export interface IInputStream {
@@ -201,5 +200,4 @@ export const debug = function (enable: boolean = enableDebug) {
 export interface IParser<T> {
     // 分两套，parse 里面调用 parse，asyncParse 里调 asyncParse，两边的 input 也可以区分
     parse(input: ParserInput): ParserResult<T>;
-    asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<T>>;
 }

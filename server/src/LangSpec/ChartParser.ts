@@ -246,8 +246,4 @@ export class ChartParser implements IParser<Expression> {
         expectSymbols = [...new Set(expectSymbols)];// remove duplicates
         return expectSymbols;
     }
-    
-    public async asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<Expression>> {
-        throw new Error('Not support');
-    }
 }

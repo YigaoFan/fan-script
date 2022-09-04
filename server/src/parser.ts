@@ -29,26 +29,6 @@ export class WordParser<T> implements IParser<T> {
         this.mResultFactory = resultFactory;
     }
 
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<T>> {
-        let word = this.mWord;
-        const t = Text.Empty();
-        // log(`word parse "${word}"`);
-        for (let i = 0; i < word.length; i++) {
-            const c = await input.NextChar;
-            if (c.Equal(word[i])) {
-                t.Append(c);
-                continue;
-            }
-            logWith(Indent.SameToCurrent, `failed on ${i}, expect "${word[i]}", actual: "${c}"`);
-            return null;
-        }
-
-        return {
-            Result: this.mResultFactory(t),
-            Remain: input,
-        };
-    }
-
     @debug()
     public parse(input: ParserInput): ParserResult<T> {
         let word = this.mWord;
@@ -87,19 +67,6 @@ export class OneOfCharsParser<T> implements IParser<T> {
         this.mResultFactory = resultFactory;
     }
 
-    public async asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<T>> {
-        const c = await input.NextChar;
-        let chars = this.mChars;
-        log('chars', chars, 'c', c.Value);
-        if (chars.includes(c.Value)) {
-            return {
-                Result: this.mResultFactory(c),
-                Remain: input,
-            };
-        }
-        return null;
-    }
-
     @debug()
     public parse(input: ParserInput): ParserResult<T> {
         const c = input.NextChar;
@@ -125,12 +92,6 @@ class LazyParser<T> implements IParser<T> {
         this.mActualParserGentor = actualParserGentor;
     }
 
-    public async asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<T>> {
-        // log('lazy', this.mActualParserGentor);
-        const p = this.mActualParserGentor();
-        return await p.asyncParse(input);
-    }
-
     @debug()
     public parse(input: ParserInput): ParserResult<T> {
         // log('lazy', this.mActualParserGentor);
@@ -150,19 +111,6 @@ class NotParser<T> implements IParser<T> {
     constructor(chars: IIncludes, resultProcessor: (c: Text) => T) {
         this.mChars = chars;
         this.mResultFactory = resultProcessor;
-    }
-
-    public async asyncParse(input: AsyncParserInput): Promise<AsyncParserResult<T>> {
-        const c = await input.NextChar;
-        let chars = this.mChars;
-        if (!chars.includes(c.Value)) {
-            return {
-                Result: this.mResultFactory(c),
-                Remain: input,
-            };
-        } else {
-            return null;
-        }    
     }
 
     @debug()

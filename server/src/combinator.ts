@@ -15,24 +15,6 @@ class Combine<T1, T2, T3> implements IParser<T3> {
         this.mResultCombinator = resultCombinator;
     }
 
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<T3>> {
-        var parser1 = this.mParser1;
-        var parser2 = this.mParser2;
-        const r1 = await parser1.asyncParse(input);
-        if (r1 != null) {
-            // 这里面用 iter 的方式来迭代应该就不容易有 input 多次使用的问题了
-            const r2 = await parser2.asyncParse(r1.Remain);
-            if (r2 != null) {
-                const r3 = this.mResultCombinator(r1.Result, r2.Result);
-                return {
-                    Result: r3,
-                    Remain: r2.Remain,
-                };
-            }
-        }
-        return null;
-    }
-
     @debug()
     public parse(input: ParserInput): ParserResult<T3> {
         var parser1 = this.mParser1;
@@ -101,24 +83,6 @@ class Optional<T> implements IParser<Option<T>> {
         this.mParser = parser;
     }
 
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<Option<T>>> {
-        var parser = this.mParser;
-        const oldInput = input.Copy();
-        const r = await parser.asyncParse(input);
-        if (r == null) {
-            // 决定把 null 加入到类型中，因为针对每种 node 类型都构建一个对使用者来说默认值太麻烦了，
-            // 因为使用者完全可以拿到一个 parser，不知道里面解析的结果，这时如果想 optional 下怎么办呢
-            return {
-                Result: new Option(),// 这里蛮神奇的，typescript 如何知道 Option<undefined> 和 Option<T> 是兼容的类型？我这里也没有显式指定类型参数
-                Remain: oldInput,
-            };
-        }
-        return {
-            Result: new Option(r.Result),
-            Remain: r.Remain,
-        };
-    }
-
     @debug()
     public parse(input: ParserInput): ParserResult<Option<T>> {
         // console.trace('who call optional');
@@ -151,28 +115,6 @@ class OneOrMore<T, T1> implements IParser<T1> {
     constructor(parser: IParser<T>, resultConverter: (...ts: T[]) => T1) {
         this.mOption = optional(parser);
         this.mResultConverter = resultConverter;
-    }
-
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<T1>> {
-        var option = this.mOption;
-
-        let results: T[] = [];
-        for (; ;) {
-            // 因 optional 的原因，这里 r 必不可能是 null
-            const r = await option.asyncParse(input);
-            if (r!.Result.hasValue()) {
-                results.push(r!.Result.value);
-                input = r!.Remain;
-            } else {
-                if (results.length == 0) {
-                    return null;
-                }
-                return {
-                    Result: this.mResultConverter(...results),
-                    Remain: r!.Remain,
-                };
-            }
-        }
     }
 
     @debug()
@@ -213,15 +155,6 @@ class ZeroOrMore<T, T1> implements IParser<T1> {
         this.mResultConverter = resultConverter;
     }
 
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<T1>> {
-        // 因 optional 的原因，这里 r 必不可能是 null
-        var r = await this.asyncIter(input, []);
-        return {
-            Result: this.mResultConverter(...r.Result),
-            Remain: r.Remain,
-        };
-    }
-
     @debug()
     public parse(input: ParserInput): ParserResult<T1> {
         // 因 optional 的原因，这里 r 必不可能是 null
@@ -245,20 +178,6 @@ class ZeroOrMore<T, T1> implements IParser<T1> {
             };
         }
     }
-
-    private async asyncIter(input: AsyncParserInput, ts: T[]): Promise<{ Result: T[], Remain: AsyncParserInput }> {
-        const r = await this.mOption.asyncParse(input);
-        if (r!.Result.hasValue()) {
-            ts.push(r!.Result.value);
-            return await this.asyncIter(r!.Remain, ts);
-        } else {
-            return {
-                Result: ts,
-                Remain: r!.Remain,
-            };
-        }
-    }
-    
 }
 function zeroOrMore<T, T1>(parser: IParser<T>, resultConverter: (...ts: T[]) => T1): IParser<T1> {
     return new ZeroOrMore(parser, resultConverter);
@@ -275,28 +194,6 @@ class Or<T1, T2, T3> implements IParser<T3> {
         this.mOption1 = optional(parser1);
         this.mOption2 = optional(parser2);
         this.mResultProcessor = resultProcessor;
-    }
-
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<T3>> {
-        var option1 = this.mOption1.asyncParse.bind(this.mOption1);
-        var option2 = this.mOption2.asyncParse.bind(this.mOption2);
-
-        // 因 optional 的原因，这里 r 必不可能是 null
-        const r1 = await option1(input); // input may be changed internal, so not use below
-        if (r1!.Result.hasValue()) {
-            return {
-                Result: this.mResultProcessor(r1!.Result.value, null),
-                Remain: r1!.Remain,
-            };
-        }
-        const r2 = await option2(r1!.Remain);
-        if (r2!.Result.hasValue()) {
-            return {
-                Result: this.mResultProcessor(null, r2!.Result.value),
-                Remain: r2!.Remain,
-            };
-        }
-        return null;
     }
 
     @debug()
@@ -344,17 +241,6 @@ class Transform<T, T1> implements IParser<T1> {
         this.mTransformFunc = transformFunc;
     }
 
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<T1>> {
-        const r = await this.mParser.asyncParse(input);
-        if (r == null) {
-            return null;
-        }
-        return {
-            Result: this.mTransformFunc(r.Result),
-            Remain: r.Remain,
-        };
-    }
-
     @debug()
     public parse(input: ParserInput): ParserResult<T1> {
         // var p = this.mParser.parse; // 这样赋值会影响函数绑定到 this 啊，类似 C++ 直接保存成员函数地址！本来下面是调用 p 的，然后报了个 this undefine 的错
@@ -385,26 +271,6 @@ class EitherOf<T1, T2> implements IParser<T2> {
             return optional(x);
         });
         this.mResultProcessor = resultPrcessor;
-    }
-
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<T2>> {
-        const optionNum = this.mOptionParsers.length;
-        for (var i = 0; i < optionNum; i++) {
-            const p = this.mOptionParsers[i];
-            const oldInput = input.Copy();
-            const r = await p.asyncParse(input);
-            if (r!.Result.hasValue()) {
-                const result: (T1 | null)[] = Array(optionNum).fill(null);
-                result[i] = r!.Result.value;
-                return {
-                    Result: this.mResultProcessor(...result),
-                    Remain: r!.Remain,
-                };
-            } else {
-                input = oldInput;
-            }
-        }
-        return null;  
     }
 
     @debug()
@@ -442,12 +308,6 @@ class PrefixComment<T> implements IParser<T> {
     public constructor(parser: IParser<T>, comment: string) {
         this.mComment = comment;
         this.mParser = parser;
-    }
-
-    public async asyncParse(input: IAsyncInputStream): Promise<AsyncParserResult<T>> {
-        logWith(Indent.SameToNext, this.mComment);
-        const r = await this.mParser.asyncParse(input);
-        return r;
     }
 
     public parse(input: ParserInput): ParserResult<T> {
