@@ -14,7 +14,7 @@ export enum ParserWorkState {
 }
 
 export class NonTerminatedParserState {
-    public From: number;
+    public readonly From: number;
     public readonly Rule: NonTerminatedRule;
     private readonly mNodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[]; // 传到 factory 里时过滤掉 null
     /** now on @property Rule[NowPoint] left */
@@ -65,7 +65,7 @@ export class NonTerminatedParserState {
                 return ParserWorkState.Pending;
             }
         }
-        log(`move char expect ${destSymbol} actual ${char?.Result}`);
+        // log(`move char expect ${destSymbol} actual ${char?.Result}`);
         return ParserWorkState.Fail;
     }
 
@@ -75,6 +75,10 @@ export class NonTerminatedParserState {
 
     public get State(): ParserWorkState.Pending | ParserWorkState.Succeed {
         return this.NowPoint === this.Rule[1].length ? ParserWorkState.Succeed : ParserWorkState.Pending;
+    }
+
+    public get LeftSymbol(): string {
+        return this.Rule[0];
     }
 
     /** Note: Copy firstly then call this method */
@@ -139,7 +143,7 @@ export class NonTerminatedParserState {
 
 /** T cannot be undefined */
 export class TerminatedParserState<T> {
-    private mFrom: number;
+    public readonly From: number;
     public readonly Rule: TerminatedRule;
     private mParserResult: ParserResult<T>;
     private mNeedShiftCharCounter: number;
@@ -153,7 +157,7 @@ export class TerminatedParserState<T> {
     }
 
     private constructor(from: number, rule: TerminatedRule, result: ParserResult<T>, shiftCharCount: number) {
-        this.mFrom = from;
+        this.From = from;
         this.Rule = rule;
         this.mParserResult = result;
         this.mNeedShiftCharCounter = shiftCharCount;
@@ -164,8 +168,8 @@ export class TerminatedParserState<T> {
         return this.From == that.From && this.Rule == that.Rule;
     }
 
-    public get From(): number {
-        return this.mFrom;
+    public get LeftSymbol(): string {
+        return this.Rule[0];
     }
 
     public get Result(): ParserResult<T> {

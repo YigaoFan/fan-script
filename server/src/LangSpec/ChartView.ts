@@ -3,6 +3,7 @@ import { ParserInput } from "../IParser";
 import { TerminatedStates } from "./ChartParser";
 import { NonTerminatedParserState } from "./ParserState";
 import { split40PerArray } from '../ParserInputTable';
+import { log } from "../util";
 
 export class ChartView {
     private mInput: ParserInput;
@@ -53,23 +54,17 @@ export class ChartView {
         </tr>
     </table><p>`).join('')}
     <p></p>
-    ${this.mTerminatedShots.map((_, i) => `
+    ${this.mTerminatedShots.map((_, i) => { return `
     <table border="black">
         <tr>
             <th>${i}(${i == 0 ? '' : items[i - 1]})</th>
         </tr>
             <td style="white-space:pre-wrap; word-wrap:break-word; min-width:10px;">${this.mTerminatedShots[i].join('\n')}</td>
         <tr>
-            <td>
-                <table border="black">
-                    <tr>
-                        ${this.mNonTerminatedShots[i].map(y => `<td style="white-space:pre-wrap; word-wrap:break-word; min-width:10px;">${y.join('\n')}</td>`).join('')}
-                    </tr>
-                </table>
-            </td>
+            <td style="white-space:pre-wrap; word-wrap:break-word; min-width:10px;">${this.mNonTerminatedShots[i][i].map(y => y + '\n').join('')}</td>
         </tr>
     </table>
-    <p></p>`).join('')}
+    <p></p>`; }).join('')}
 </body>
 </html>`;
         writeFileSync(filename, html);

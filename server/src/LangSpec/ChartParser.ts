@@ -26,22 +26,27 @@ export class ChartParser implements IParser<Expression> {
 
     @debug()
     public parse(input: IInputStream): ParserResult<Expression> {
-        var [thisNonTers, thisTers, thisComs] = ChartParser.ClosureOn(input, this.mRoot, Start);
-        this.mNonTerminatedStateChart.push(thisNonTers);
-        this.mTerminatedStateChart = thisTers;
+        var [nonTers, ters] = ChartParser.ClosureOn(input, this.mRoot, Start);
+        this.mNonTerminatedStateChart.push(nonTers);
+        this.mTerminatedStateChart = ters;
 
-        const len = this.mNonTerminatedStateChart.length;
-        const lastColumn = this.mNonTerminatedStateChart[len - 1];
-        const coms = ChartParser.Closure([], lastColumn, lastColumn , this.mTerminatedStateChart, len - 1, input.Copy());
-        ChartParser.Reduce(thisComs.concat(coms), this.mNonTerminatedStateChart);
+        // 这里讲道理也要 reduce 一下
+        ChartParser.LoopReduceClosureUtilNoNewAdded(this.mNonTerminatedStateChart,
+            this.mTerminatedStateChart, [], input);// 这里传 [] 可能会有问题
+        // const len = this.mNonTerminatedStateChart.length;
+        // const lastColumn = this.mNonTerminatedStateChart[len - 1];
+        // const coms = ChartParser.Closure([], lastColumn, lastColumn , this.mTerminatedStateChart, len - 1, input.Copy());
+        // ChartParser.Reduce(thisComs.concat(coms), this.mNonTerminatedStateChart);
 
         const view = new ChartView(input.Copy());
         view.Snapshot(this.mTerminatedStateChart, this.mNonTerminatedStateChart);
         for (let i = 0; ; i++) {
-            log('iter', i);
-            const r = this.iter(input);            
-            log('iter', i, 'end');
-            view.Snapshot(this.mTerminatedStateChart, this.mNonTerminatedStateChart);
+            // log('iter', i);
+            const r = this.Iter(input);            
+            // log('iter', i, 'end');
+            if (!r) {
+                view.Snapshot(this.mTerminatedStateChart, this.mNonTerminatedStateChart);
+            }
 
             if (r) {
                 view.Close();
@@ -59,27 +64,57 @@ export class ChartParser implements IParser<Expression> {
     /**
      * @returns end or not
      */
-    public iter(input: ParserInput): boolean {
+    public Iter(input: ParserInput): boolean {
         const c = input.NextChar;
         if (c.Empty) {// 因为现在的 terminated parser在他最后一个位置就应该成功然后结束，而不是下一个空字符
             return true;
         }
-        var reduceItems: ReduceItem[] = [];
-        reduceItems.push(...this.ShiftOnNonTerminated(c, input.Copy()));
-        reduceItems.push(...this.ShiftOnTerminated());
+        var shiftCompleteItems: ReduceItem[] = [];
+        shiftCompleteItems.push(...this.ShiftOnNonTerminated(c, input.Copy()));
+        shiftCompleteItems.push(...this.ShiftOnTerminated());
         
         // 以这里的思路为主，reduce 那里思路为辅：
         // reduce 给最后一列新增项，closure 除 reduce 后的第一次外，主要关注新增的项有没有增加 expect symbol
         // 所以 expect symbol 要记录下
         // reduce 则还要关注 closure *新增*的项有没有可进一步的
-        {
-            const newAddedItems = ChartParser.Reduce(reduceItems, this.mNonTerminatedStateChart);
-
-            const len = this.mNonTerminatedStateChart.length;
-            const lastColumn = this.mNonTerminatedStateChart[len - 1];
-            reduceItems = ChartParser.Closure([], lastColumn, lastColumn, this.mTerminatedStateChart, len - 1, input.Copy());
-        }
+        ChartParser.LoopReduceClosureUtilNoNewAdded(this.mNonTerminatedStateChart,
+            this.mTerminatedStateChart, shiftCompleteItems, input);
         return false;
+    }
+
+    private static LoopReduceClosureUtilNoNewAdded(nonTerChar: NonTerminatedParserState[][], terChart: TerminatedStates, previousReduceItems: ReduceItem[], input: ParserInput) {
+        const len = nonTerChar.length;
+        const lastColumn = nonTerChar[len - 1];
+        for (let closureRange = lastColumn, reduceItems = previousReduceItems, searchedKeys: string[] = [], i = 0; ; i++) {
+            const newAddedNonsOfReduce = ChartParser.Reduce(reduceItems, nonTerChar);
+            reduceItems.length = 0;
+            // 这个判断还是说明调用这个函数对前面的步骤有一点要求
+            if (i != 0) {
+                closureRange = newAddedNonsOfReduce;
+            }
+
+            const [newAddedNonsOfClosure, newAddedTersOfClosure] = ChartParser.Closure(searchedKeys,
+                lastColumn, closureRange, terChart, len - 1, input.Copy());
+            reduceItems.push(...ChartParser.StatesToReduceItems(newAddedNonsOfClosure));
+            reduceItems.push(...ChartParser.StatesToReduceItems(newAddedTersOfClosure));
+            // log('reduce items len', reduceItems.length);
+
+            if (reduceItems.length == 0) {
+                // log('reduce items empty');
+                break;
+            }
+        }
+    }
+
+    private static StatesToReduceItems(states: { get State(): ParserWorkState; get From(): number; get LeftSymbol(): string; get Result(): ParserResult<ISyntaxNode | null>; toString(): string; }[]): ReduceItem[] {
+        const reduceItems: ReduceItem[] = [];
+        for (const s of states) {
+            // log('StatesToReduceItems check', s.toString(), s.State);
+            if (s.State == ParserWorkState.Succeed) {
+                reduceItems.push({ From: s.From, LeftSymbol: s.LeftSymbol, Result: s.Result, });
+            }
+        }
+        return reduceItems;
     }
 
     private ShiftOnNonTerminated(c: Text, input: IInputStream): ReduceItem[] {
@@ -122,12 +157,20 @@ export class ChartParser implements IParser<Expression> {
     }
 
     private static Reduce(reduceItems: ReduceItem[], nonTerminatedStateChart: NonTerminatedParserState[][]) {
+        // reduce item 好像也要对后来加入的项起作用。。。
+        // 不是，是要允许 ow 这种可以在 ter chart 中重复，这样才能让新加的起作用
+        if (reduceItems.length == 0) {
+            return [];
+        }
         const chart = nonTerminatedStateChart;
         // log('char len', chart.length);
         const newReduceItems: ReduceItem[] = [];
         const newAddedItems: NonTerminatedParserState[] = [];
         for (const item of reduceItems) {
+            // log('move', item);
+            // log('search move items in', chart[item.From].map(x => x.toString()));
             const toMoveStates = chart[item.From].filter(x => x.Rule[1][x.NowPoint] === item.LeftSymbol).map(x => x.Copy());
+            // log('found to move items', toMoveStates.map(x => x.toString()));
             const moveResults = toMoveStates.map(x => x.MoveANonTerminated(item.LeftSymbol, item.Result));
             const insertPos = chart.length - 1;
             // 这里添加的时候也要去重吗 TODO
@@ -138,35 +181,53 @@ export class ChartParser implements IParser<Expression> {
                 .filter((_, i) => moveResults[i] === ParserWorkState.Succeed)
                 .forEach(x => newReduceItems.push({ From: x.From, LeftSymbol: x.Rule[0], Result: x.Result, }));
         }
-        ChartParser.Reduce(newReduceItems, chart);
+        // log('new reduce items', newReduceItems);
+
+        const remainNewAddedItems = ChartParser.Reduce(newReduceItems, chart);
+        newAddedItems.push(...remainNewAddedItems);
         return newAddedItems;
     }
     
-    private static Closure(searchedSymbols: string[], totalNonTers: NonTerminatedParserState[], lastNewAddNonTers: NonTerminatedParserState[], terminateds: TerminatedStates, from: number, input: ParserInput): [NonTerminatedParserState[], TerminatedStates,]  {
-        if (lastNewAddNonTers.length == 0) {
+    private static Closure(searchedSymbols: string[], totalNonTers: NonTerminatedParserState[], closureRange: NonTerminatedParserState[], terminateds: TerminatedStates, from: number, input: ParserInput): [NonTerminatedParserState[], TerminatedStates,]  {
+        if (closureRange.length == 0) {
             return [[], []];
         }
-        var newSyms = ChartParser.GetExpectSymbols(lastNewAddNonTers);
+        var newSyms = ChartParser.GetExpectSymbols(closureRange);
         newSyms = ChartParser.Diff(newSyms, searchedSymbols);
         const newNons: NonTerminatedParserState[] = [];
         const newTers: TerminatedStates = [];
         for (const s of newSyms) {
             var [nonTers, ters] = ChartParser.ClosureOn(input, s, from);
-            nonTers = nonTers.filter(x => !totalNonTers.some(y => x.EqualTo(y)));
-            nonTers.forEach(x => totalNonTers.push(x));
-            newNons.push(...nonTers);
-            ters = ters.filter(x => !terminateds.some(y => x.EqualTo(y)));
-            ters.forEach(x => terminateds.push(x));
-            newTers.push(...ters);
+            for (const x of nonTers) {
+                if (!totalNonTers.some(y => x.EqualTo(y))) {
+                    totalNonTers.push(x);
+                    newNons.push(x);
+                }
+            }
+            for (const x of ters) {
+                // 思考下这里这样去掉限制会不会引发问题
+                // if (!terminateds.some(y => x.EqualTo(y))) {
+                    terminateds.push(x);
+                    newTers.push(x);
+                // }
+            }
+            // nonTers = nonTers.filter(x => !totalNonTers.some(y => x.EqualTo(y)));
+            // nonTers.forEach(x => totalNonTers.push(x));
+            // newNons.push(...nonTers);// 但可能这里有重复的
+            // ters = ters.filter(x => !terminateds.some(y => x.EqualTo(y)));
+            // ters.forEach(x => terminateds.push(x));
+            // newTers.push(...ters);
         }
 
-        completeds.push(...ChartParser.Closure([...searchedSymbols, ...newSyms], totalNonTers, newNons, terminateds, from, input));
-        return completeds;
+        const [remainNonTers, remainTers] = ChartParser.Closure([...searchedSymbols, ...newSyms], totalNonTers, newNons, terminateds, from, input);
+        newNons.push(...remainNonTers);
+        newTers.push(...remainTers);
+        return [newNons, newTers,];
     }
 
     private static ClosureOn(input: ParserInput, symbol: string, from: number): [NonTerminatedParserState[], TerminatedStates,] {
         const nonTerminateds: NonTerminatedParserState[] = [];
-        const completeds: ReduceItem[] = [];
+        // const completeds: ReduceItem[] = [];
         for (const rule of ExpGrammar.nonTerminated) {
             if (rule[0] === symbol) {
                 const s = NonTerminatedParserState.New(from, rule, input.Copy());
