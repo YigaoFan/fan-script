@@ -13,7 +13,7 @@ export class ChartParser implements IParser<Expression> {
     private mNonTerminatedStateChart: NonTerminatedParserState[][];
     private mRoot: Node;
 
-    public constructor(root: Node, endChar: string) {
+    public constructor(root: Node) {
         this.mTerminatedStateChart = [];
         this.mNonTerminatedStateChart = [];
         this.mRoot = root;
