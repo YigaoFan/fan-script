@@ -1,21 +1,9 @@
-import { makeWordParser, oneOf, lazy, } from "../parser";
-import {
-    from,
-    optional,
-    id,
-    nullize,
-    selectLeft,
-    selectRight,
-    or,
-} from "../combinator";
+import { oneOf, } from "../parser";
+import { from, id, } from "../combinator";
 import { IParser, Text, Position, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { combine, stringify, } from "../util";
 
-// TODO 把下面这个函数整理到 util 里去
-// export const combine2String = (s1: string, s2: string): string => {
-//     return s1 + s2;
-// };
 const capAlphabets = Array.from(Array(26)).map((_, i) => i + 65).map(x => String.fromCharCode(x));
 const alphabets = Array.from(Array(26)).map((_, i) => i + 65 + 32).map(x => String.fromCharCode(x));
 const nums = Array.from(Array(10)).map((_, i) => i.toString());

@@ -1,13 +1,11 @@
-import { IParser, Position, Text, } from "../IParser";
-import { id, or, from, nullize, selectRight, optional, Option, eitherOf, } from "../combinator";
+import { Position, Text, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { number, Number, } from "./Number";
-import { string, String, } from "./String";
+import { Number, } from "./Number";
+import { String, } from "./String";
 import { Obj, } from "./Object";
 import { Array, } from "./Array";
 // import { consFunc, Func, } from "./Func";
-import { log, selectNotNull, stringify } from "../util";
-import { lazy } from "../parser";
+import { stringify } from "../util";
 import { assert } from "console";
 import { Func } from "./Func";
 

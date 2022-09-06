@@ -1,23 +1,16 @@
-import { IParser, Position, Text, } from "../IParser";
-import { ISyntaxNode } from "../ISyntaxNode";
+import { assert } from "console";
 import {
-    from,
-    optional,
-    id,
-    nullize,
-    selectLeft,
-    selectRight,
-    or,
-    Option,
-    eitherOf,
+    from, id,
+    nullize, Option, optional, selectLeft,
+    selectRight
 } from "../combinator";
-import { lazy, makeWordParser, oneOf } from "../parser";
-import { asArray, combine, log, selectNotNull, selectNotNullIn2DifferentType, stringify } from "../util";
-import { Whitespace, whitespace } from "./Whitespace";
+import { Position, Text } from "../IParser";
+import { ISyntaxNode } from "../ISyntaxNode";
+import { makeWordParser } from "../parser";
+import { asArray, stringify } from "../util";
 import { Identifier, identifier } from "./Identifier";
 import { Statement } from "./Statement";
-import { DeleteExpression, Expression, } from "./Expression";
-import { assert } from "console";
+import { whitespace } from "./Whitespace";
 
 export class Func implements ISyntaxNode {
     private mName?: Identifier;

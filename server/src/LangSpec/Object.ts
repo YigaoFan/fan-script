@@ -1,14 +1,11 @@
 import { assert } from "console";
-import { id, or, from, nullize, selectRight, optional, eitherOf, selectLeft, } from "../combinator";
-import { IParser, Position, Text, } from "../IParser";
+import { Position, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { makeWordParser, oneOf, lazy, } from "../parser";
-import { asArray, selectNotNullIn2DifferentType, stringify, } from "../util";
+import { stringify } from "../util";
 import { Expression } from "./Expression";
 // import { Func } from "./Func";
-import { Identifier, identifier, } from "./Identifier";
-import { String, string, } from "./String";
-import { whitespace } from "./Whitespace";
+import { Identifier } from "./Identifier";
+import { String } from "./String";
 
 export class Pairs implements ISyntaxNode {
     private mPairs: Pair[];

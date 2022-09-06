@@ -1,16 +1,11 @@
-import { makeWordParser, oneOf, lazy, not, } from "../parser";
 import {
-    from,
-    optional,
-    id,
-    nullize,
-    selectLeft,
-    selectRight,
-    or,
+    from, id,
+    nullize, or, selectLeft
 } from "../combinator";
-import { IParser, ParserResult, Position, Text, } from "../IParser";
-import { ISyntaxNode, } from '../ISyntaxNode';
-import { combine, selectNotNull, stringify, } from '../util';
+import { IParser, Position, Text } from "../IParser";
+import { ISyntaxNode } from '../ISyntaxNode';
+import { makeWordParser, not } from "../parser";
+import { combine, selectNotNull, stringify } from '../util';
 
 // leftWith 和 rightWith 容易在 IParser<T> 的 T 中引入 NoOption
 // 有没有 NoOption 只有业务层知道

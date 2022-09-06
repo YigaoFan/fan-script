@@ -40,7 +40,7 @@ export class WordParser<T> implements IParser<T> {
                 t.Append(c);
                 continue;
             }
-            log(`failed on ${i}, expect "${word[i]}", actual: "${c}"`);
+            // log(`failed on ${i}, expect "${word[i]}", actual: "${c}"`);
             return null;
         }
 

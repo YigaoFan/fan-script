@@ -1,10 +1,7 @@
-import { assert } from "console";
 import { CounterStream } from "../CounterStream";
-import { AsyncParserInput, IParser, ParserInput, ParserResult, Text } from "../IParser";
+import { IParser, ParserInput, ParserResult, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { log, } from "../util";
-import { Factory, FactoryWithTypeInfo, NodeFactory, NonTerminatedRule, TerminatedRule } from "./GrammarMap";
-import { ExpGrammar } from "./GrammarMap";
+import { ExpGrammar, Factory, FactoryWithTypeInfo, NodeFactory, NonTerminatedRule, TerminatedRule } from "./GrammarMap";
 
 export const InitialStart = 0;
 export enum ParserWorkState {

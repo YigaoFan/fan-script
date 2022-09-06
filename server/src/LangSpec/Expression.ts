@@ -1,12 +1,10 @@
-import { id, or, from, nullize, selectRight, optional, eitherOf, selectLeft, } from "../combinator";
-import { IParser, Text, Position, } from "../IParser";
-import { makeWordParser, oneOf, lazy, } from "../parser";
+import { from, } from "../combinator";
+import { Text, Position, } from "../IParser";
+import { oneOf, } from "../parser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { Identifier, identifier } from "./Identifier";
+import { Identifier, } from "./Identifier";
 import { Literal, } from "./Literal";
-import { asArray, exchangeParas, log, selectNotNull, stringify } from "../util";
-import { whitespace } from "./Whitespace";
-// import { Func, leftParen, rightParen } from "./Func";
+import { stringify } from "../util";
 import { assert } from "console";
 
 export abstract class Expression implements ISyntaxNode {
