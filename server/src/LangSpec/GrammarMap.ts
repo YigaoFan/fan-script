@@ -107,7 +107,7 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
 
 export type Factory = (nodes: (ISyntaxNode | Text)[]) => ISyntaxNode;
 export type FactoryWithTypeInfo = (nodeTypeInfo: string, nodes: (ISyntaxNode | Text)[]) => ISyntaxNode;
-export const NodeFactory: { [key: string]: Factory | FactoryWithTypeInfo; } = {
+export const NodeFactory: { [n in Node]: Factory | FactoryWithTypeInfo; } = {
     exp: Expression.New,
     literal: Literal.New,
     object: Obj.New,
@@ -123,5 +123,28 @@ export const NodeFactory: { [key: string]: Factory | FactoryWithTypeInfo; } = {
     stmt: Statement.New,
     paras: Paras.New,
     fun: Func.New,
-    // cls: Class.New,
+    retStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
+        throw new Error("Function not implemented.");
+    },
+    ifStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
+        throw new Error("Function not implemented.");
+    },
+    returnStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
+        throw new Error("Function not implemented.");
+    },
+    expStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
+        throw new Error("Function not implemented.");
+    },
+    varStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
+        throw new Error("Function not implemented.");
+    },
+    invocationCircle: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
+        throw new Error("Function not implemented.");
+    },
+    afterIdInExpStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
+        throw new Error("Function not implemented.");
+    },
+    cls: function (nodes: (Text | ISyntaxNode)[]): ISyntaxNode {
+        throw new Error("Function not implemented.");
+    }
 };
