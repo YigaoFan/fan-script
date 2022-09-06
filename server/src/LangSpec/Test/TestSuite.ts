@@ -11,6 +11,7 @@ import { log } from '../../util';
 // import { func } from '../Func';
 import { identifier } from '../Identifier';
 import { ChartParser } from '../ChartParser';
+import { Node } from '../GrammarMap';
 
 const tests: (() => void)[] = [];
 
@@ -33,126 +34,62 @@ const testClass = () => {
     }
 };
 
-const testIdentifier = async () => {
-    {
-        const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
-        const ss = AsyncStringStream.New(s, 'func.fs');
-        const sss = SignalStringStream.New(ss);
-        const pr = identifier.asyncParse(sss);
-        sss.Signal();
-        sss.Signal();
-        await pr.then((r) => {
-            log('check id a');
-            assert(r != null);
-            assert(r!.Result.Value === 'a');
-        }, (r) => log('faild', r));        
-    }
-
-    // {
-    //     const s = StringStream.New('a', 'id.fs');
-    //     const r = identifier.parse(s);
-    //     assert(r !== null);
-    //     assert(r!.Result.Value === 'a');
-    // }
-
-    // {
-    //     const s = StringStream.New('a1abc', 'id.fs');
-    //     const r = identifier.parse(s);
-    //     assert(r !== null);
-    //     assert(r!.Result.Value === 'a1abc');
-    // }
-
-    // {
-    //     const s = StringStream.New('_', 'id.fs');
-    //     const r = identifier.parse(s);
-    //     assert(r !== null);
-    //     assert(r!.Result.Value === '_');
-    // }
-
-    // {
-    //     const s = StringStream.New('_1', 'id.fs');
-    //     const r = identifier.parse(s);
-    //     assert(r !== null);
-    //     assert(r!.Result.Value === '_1');
-    // }
+const testIdentifier = () => {
+    const testUnit = (code: string) => {
+        const s = StringStream.New(code, 'id.fs');
+        const r = identifier.parse(s);
+        assert(r !== null);
+        assert(r!.Result.Value === code);
+    };
+    testUnit('a');
+    testUnit('a1abc');
+    testUnit('_');
+    testUnit('_1');
 };
 
 const testNumber = () => {
     // TODO
 };
 
+const testUnit = (root: Node, code: string) => {
+    const ss = StringStream.New(code, 'func.fs');
+    const p = new ChartParser(root);
+    const r = p.parse(ss);
+    // log('parse result', r);
+    assert(r != null);
+};
 const testExp = () => {
     const exp = 'exp';
-    // 目前还不支持加空格
-    {
-        // id
-        const s = 'a';// id parser 还没 parse 完，mapparser 就退出了
-        const ss = StringStream.New(s, 'func.fs');
-        const p = new ChartParser(exp, ';');
-        const r = p.parse(ss);
-        log('parse result', r);
-        assert(r != null);
-    }
-    {
-        // string
-        const s = '"abc"';
-        const ss = StringStream.New(s, 'func.fs');
-        GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(exp, ';');
-        try {
-            const r = p.parse(ss);
-            assert(r != null);
-        } finally {
-            htmlLogger.Close();
-        }
-    }
-    {
-        // refinement
-        const s = 'a.b';
-        const ss = StringStream.New(s, 'func.fs');
-        GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(exp, ';');
-        try {
-            const r = p.parse(ss);
-            assert(r != null);
-        } finally {
-            htmlLogger.Close();
-        }
-    }
-    {
-        // multiple refinement
-        const s = 'a.b.c';
-        const ss = StringStream.New(s, 'func.fs');
-        GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(exp, ';');
-        try {
-            const r = p.parse(ss);
-            assert(r != null);
-        } finally {
-            htmlLogger.Close();
-        }
-    }
+
+    testUnit(exp, 'a');
+    testUnit(exp, '"abc"');
+    
+    testUnit(exp, 'a.b');
+    testUnit(exp, 'a.b.c');
+
+    testUnit(exp, '[]');
+    testUnit(exp, '[a,]');
+    testUnit(exp, '[a,b,]');
+    testUnit(exp, '[ ]');
+    testUnit(exp, '[a, ]');
+    testUnit(exp, '[a,b, ]');
+    testUnit(exp, '[]');
+    testUnit(exp, '[ a,]');
+    testUnit(exp, '[ a, b,]');
+
+    testUnit(exp, '{}');
+    testUnit(exp, '{ a: b, }');
+    testUnit(exp, '{ "a": b, }');
+    testUnit(exp, '{ "a": c+d, }');
+    testUnit(exp, '{ "a" : c +  d, }');
+
+    testUnit(exp, '(a)');
 };
 
 const testStmt = () => {
     const stmts = 'stmt';
-    {
-        const s = 'return a;';
-        const ss = StringStream.New(s, 'func.fs');
-        const p = new ChartParser(stmts, ';');
-        const r = p.parse(ss);
-        log('parse result', r);
-        assert(r != null);
-    }
-
-    {
-        const s = 'return a.b.c;';
-        const ss = StringStream.New(s, 'func.fs');
-        const p = new ChartParser(stmts, ';');
-        const r = p.parse(ss);
-        log('parse result', r);
-        assert(r != null);
-    }
+    testUnit(stmts,'return a;');
+    testUnit(stmts, 'return a.b.c;');
 };
 
 const testParas = () => {
@@ -161,9 +98,9 @@ const testParas = () => {
         const s = '';
         const ss = StringStream.New(s, 'func.fs');
         GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(paras, ';');
+        const p = new ChartParser(paras);
         const r = p.parse(ss);
-        log('parse result', r);
+        // log('parse result', r);
         assert(r != null);
     }
 };
@@ -174,9 +111,9 @@ const testFunc = () => {
         const s = 'func f (a,){return a;}';
         const ss = StringStream.New(s, 'func.fs');
         GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(fun, ';');
+        const p = new ChartParser(fun);
         const r = p.parse(ss);
-        log('parse result', r);
+        // log('parse result', r);
         assert(r != null);
     }
 
@@ -272,11 +209,11 @@ const testFunc = () => {
 export const test = function() {
     // Error.stackTraceLimit = Infinity;
     // testClass();
-    // await testIdentifier();
+    // testIdentifier();
     // testParas();
-    testFunc();
+    // testFunc();
     // htmlLogger.Close();
-    // testExp();
+    testExp();
     // testStmt();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全
