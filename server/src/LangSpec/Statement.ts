@@ -12,11 +12,15 @@ export abstract class Statement implements ISyntaxNode {
     abstract Contains(p: Position): boolean;
     abstract get Valid(): boolean;
     abstract toString(): string;
+    // TODO 这里试下这种新的构造过程，即不用构造，可以的话推广到 Literal 那里，可以免除一些类型定义
     public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ISyntaxNode {
         switch (typeInfo) {
             case 'ReturnStmt':
-                assert(args.length === 3);
-                return ReturnStmt.New(args[1] as Expression);
+            case 'VarStmt':
+            case 'IfStmt':
+            case 'ExpStmt':
+                assert(args.length === 1);
+                return args[0] as Statement;
         }
         throw new Error(`not support type info: ${typeInfo}`);
     }
@@ -25,7 +29,8 @@ export abstract class Statement implements ISyntaxNode {
 export class ReturnStmt implements Statement {
     private mExp: Expression;
 
-    public static New(exp: Expression): ReturnStmt {
+    public static New(args: (ISyntaxNode | Text)[]): ReturnStmt {
+        const exp: Expression = args[1] as Expression;
         return new ReturnStmt(exp);
     }
 
@@ -52,6 +57,7 @@ export class ReturnStmt implements Statement {
         });
     }
 }
+
 export class VarStmt implements Statement {
     private mVars?: (readonly [Identifier, Expression?])[];
 
@@ -379,14 +385,18 @@ class Refine_ExpStmtSubNode extends ExpStmtSubNode {
     }
 }
 
-class ExpStmt implements Statement {
-    private mRoot?: ExpStmtSubNode | DeleteExpression;
+export class ExpStmt implements Statement {
+    private mRoot?: ExpStmtSubNode;
 
-    public static New(root: ExpStmtSubNode | DeleteExpression) {
+    public static New(args: (ISyntaxNode | Text)[]): ExpStmt {
+
+    }
+
+    public static New(root: ExpStmtSubNode) {
         return new ExpStmt(root);
     }
 
-    public constructor(root: ExpStmtSubNode | DeleteExpression) {
+    public constructor(root: ExpStmtSubNode) {
         this.mRoot = root;
     }
 
@@ -399,7 +409,7 @@ class ExpStmt implements Statement {
 
     public toString(): string {
         return stringify({
-            root: this.mRoot?.toString(),
+            root: this.mRoot?.toString(),// 好像是因为这种 toString 误用了，所以 log 里出来转义符号太多了，之后看能不能去掉
         });
     }
 }

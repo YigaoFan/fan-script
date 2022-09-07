@@ -9,12 +9,12 @@ import { identifier } from "./Identifier";
 import { Literal } from "./Literal";
 import { number } from "./Number";
 import { Obj, Pairs, Pair, Key, Value } from "./Object";
-import { ReturnStmt, Statement } from "./Statement";
+import { ExpStmt, ReturnStmt, Statement } from "./Statement";
 import { string } from "./String";
 import { whitespace } from "./Whitespace";
 
 export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
-    | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'retStmt' | 'fun' 
+    | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'fun' 
     | 'stmt' | 'paras' | 'cls' | 'ifStmt' | 'returnStmt' | 'expStmt' | 'varStmt'
     | 'invocationCircle' | 'afterIdInExpStmt';
 export type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
@@ -27,21 +27,22 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['paras', ['id', 'ow', ',', 'ow', 'paras']], // bug 所在：reduce 之后没有再 closure，两者要可以互相触发，于是要有个机制看有没有引入新的 rule
         ['paras', []],
 
-        ['stmt', ['returnStmt']],//这里变了，stmt.new 那里要改一下
-        ['stmt', ['exp', 'ow', ';']],// 这种这样加分号会不会有问题？
-        ['stmt', ['varStmt', 'ow', ';'], 'VarStmt'],
-        ['stmt', ['ifStmt'], 'IfStmt'],
-        ['stmt', ['expStmt', 'ow', ';'], 'ExpStmt'],
-        ['varStmt', ['var', 'w', 'id', 'ow', '=', 'ow', 'exp']], // TODO
-        ['returnStmt', ['return', 'w', 'exp', 'ow', ';'], 'ReturnStmt'],
+        ['stmt', ['returnStmt'], 'ReturnStmt'],
+        // ['stmt', ['exp', 'ow', ';']],// 这种这样加分号会不会有问题？另，加这个主要是为了支持 delete statement
+        // ['stmt', ['varStmt'], 'VarStmt'],
+        // ['stmt', ['ifStmt'], 'IfStmt'],
+        ['stmt', ['expStmt'], 'ExpStmt'],
+        // ['varStmt', ['var', 'w', 'id', 'ow', '=', 'ow', 'exp', 'ow', ';']], // TODO
+        // ['varStmt', ['var', 'w', 'id', 'ow', ';']], // TODO
+        ['returnStmt', ['return', 'w', 'exp', 'ow', ';']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block', 'ow', 'else', 'ow', 'block']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block']],
-        ['expStmt', ['id', 'ow', 'afterIdInExpStmt']],
+        ['expStmt', ['id', 'ow', 'afterIdInExpStmt', 'ow', ';']],
 
-        ['afterIdInExpStmt', ['=', 'ow', 'exp']],
+        ['afterIdInExpStmt', ['=', 'ow', 'exp'], 'Assign_ExpStmtSubNode'],
         ['afterIdInExpStmt', ['=', 'ow', 'expStmt']],
-        ['afterIdInExpStmt', ['+=', 'ow', 'exp']],// handle +=
-        ['afterIdInExpStmt', ['-=', 'ow', 'exp']],// handle -=
+        ['afterIdInExpStmt', ['+=', 'ow', 'exp'], 'AddAssign_ExpStmtSubNode'],// handle +=
+        ['afterIdInExpStmt', ['-=', 'ow', 'exp'], 'MinusAssign_ExpStmtSubNode'],// handle -=
         ['afterIdInExpStmt', ['invocationCircle']],
         ['afterIdInExpStmt', ['invocationCircle', 'ow', 'refinement', 'ow', 'afterIdInExpStmt']],
         ['afterIdInExpStmt', ['refinement', 'ow', 'afterIdInExpStmt']],
@@ -123,18 +124,11 @@ export const NodeFactory: { [n in Node]: Factory | FactoryWithTypeInfo; } = {
     stmt: Statement.New,
     paras: Paras.New,
     fun: Func.New,
-    retStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
-        throw new Error("Function not implemented.");
-    },
     ifStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
         throw new Error("Function not implemented.");
     },
-    returnStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
-        throw new Error("Function not implemented.");
-    },
-    expStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
-        throw new Error("Function not implemented.");
-    },
+    returnStmt: ReturnStmt.New,
+    expStmt: ExpStmt.New,
     varStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
         throw new Error("Function not implemented.");
     },

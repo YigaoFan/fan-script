@@ -87,9 +87,10 @@ const testExp = () => {
 };
 
 const testStmt = () => {
-    const stmts = 'stmt';
-    testUnit(stmts,'return a;');
-    testUnit(stmts, 'return a.b.c;');
+    const stmt = 'stmt';
+    testUnit(stmt,'return a;');
+    testUnit(stmt, 'return a.b.c;');
+    testUnit(stmt, 'return a().b.c;');
 };
 
 const testParas = () => {
@@ -212,8 +213,7 @@ export const test = function() {
     // testIdentifier();
     // testParas();
     // testFunc();
-    // htmlLogger.Close();
-    testExp();
-    // testStmt();
+    // testExp();
+    testStmt();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全
