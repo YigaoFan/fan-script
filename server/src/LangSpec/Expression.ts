@@ -369,7 +369,7 @@ export class DeleteExpression implements Expression {
     private mObject?: Expression;
     private mRefinement?: Refinement;
 
-    public static New(newKeyword: Text, object: Expression, refinement: Refinement): DeleteExpression {
+    public static New(deleteKeyword: Text, object: Expression, refinement: Refinement): DeleteExpression {
         return new DeleteExpression(object, refinement);
     }
 

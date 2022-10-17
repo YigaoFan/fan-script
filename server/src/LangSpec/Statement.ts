@@ -4,7 +4,7 @@ import { Position, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser } from "../parser";
 import { stringify } from "../util";
-import { DeleteExpression, Expression } from "./Expression";
+import { DeleteExpression, Expression, Invocation, Refinement } from "./Expression";
 import { Identifier } from "./Identifier";
 import { whitespace } from "./Whitespace";
 
@@ -16,11 +16,16 @@ export abstract class Statement implements ISyntaxNode {
     public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ISyntaxNode {
         switch (typeInfo) {
             case 'ReturnStmt':
+                assert(args.length == 1);
+                return args[0] as ReturnStmt;
             case 'VarStmt':
             case 'IfStmt':
             case 'ExpStmt':
-                assert(args.length === 1);
-                return args[0] as Statement;
+                assert(args.length == 1);
+                return args[0] as ExpStmt;
+            case 'DeleteStmt':
+                assert(args.length == 1);
+                return args[0] as DeleteStmt;
         }
         throw new Error(`not support type info: ${typeInfo}`);
     }
@@ -38,17 +43,12 @@ export class ReturnStmt implements Statement {
         this.mExp = exp;
     }
 
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+    
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
-    }
-
-    public static SetExp(statement: ReturnStmt, result: Expression) {
-        const s = statement;
-        s.mExp = result;
-        return s;
     }
 
     public toString(): string {
@@ -98,6 +98,35 @@ export class VarStmt implements Statement {
         throw new Error("Method not implemented.");
     }
     get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+}
+
+export class DeleteStmt implements Statement {
+    private mObject: Expression;
+    private mRefinement: Refinement;
+
+    public static New(args: (ISyntaxNode | Text)[]): DeleteStmt {
+        // const deleteKeyword: Text = args[0];
+        const object: Expression = args[1] as Expression;
+        const refinement: Refinement = args[2] as Refinement;
+        return new DeleteStmt(object, refinement);
+    }
+
+    private constructor(object: Expression, refinement: Refinement) {
+        this.mObject = object;
+        this.mRefinement = refinement;
+    }
+
+    public toString(): string {
+        return stringify({});
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
 }
@@ -198,206 +227,270 @@ class ForStmt implements Statement {
 }
 
 // 每个结点只表示自己有的信息，不携带前后结点的信息
-abstract class ExpStmtSubNode implements ISyntaxNode {
-    abstract Contains(p: Position): boolean;
-    abstract get Valid(): boolean;
+export abstract class ExpStmtSubNode implements ISyntaxNode {
+    public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ExpStmtSubNode {
+        switch (typeInfo) {
+            case 'Assign_ExpStmtSubNode':
+                assert(args.length == 2);
+                return Assign_ExpStmtSubNode.New(args[1] as Expression);
+            case 'ContinuousAssign_ExpStmtSubNode':
+                assert(args.length == 2);
+                return ContinuousAssign_ExpStmtSubNode.New(args[1] as ExpStmt);
+            case 'AddAssign_ExpStmtSubNode':
+                assert(args.length == 2);
+                return AddAssign_ExpStmtSubNode.New(args[1] as Expression);
+            case 'MinusAssign_ExpStmtSubNode':
+                assert(args.length == 2);
+                return MinusAssign_ExpStmtSubNode.New(args[1] as Expression);
+            case 'Invoke_ExpStmtSubNode':
+                assert(args.length == 1);
+                return Invoke_ExpStmtSubNode.New(args[0] as InvocationCircle);
+            case 'InvokeRefineThen_ExpStmtSubNode':
+                assert(args.length == 3);
+                return InvokeRefineThen_ExpStmtSubNode.New(args[0] as InvocationCircle,
+                    args[1] as Refinement, args[2] as ExpStmtSubNode);
+            case 'RefineThen_ExpStmtSubNode':
+                assert(args.length == 2);
+                return RefineThen_ExpStmtSubNode.New(args[0] as Refinement,
+                    args[1] as ExpStmtSubNode);
+        }
+        throw new Error(`not support type info: ${typeInfo}`);
+    }
+
+    public abstract Contains(p: Position): boolean;
+    public abstract get Valid(): boolean;
+    public abstract CrawlSubClassStruct(): Object;
     /** default implementation */
     public toString(): string {
-        var subObj = this.CrawlSubClassStruct();
-        return stringify({
-            ...subObj,
-            rightNode: this.mRightNode?.toString(),
-        });
-    }
-    protected mRightNode?: ExpStmtSubNode;
-    protected CrawlSubClassStruct(): Object {
-        return {};
-    }
-
-    /**
-     * Set right node, return current work node.
-     * @returns current work node. 
-     * If right node set successful(right is not undefined), current work node will move forward to this right node.
-     */
-    public static SetRightReturnCurrent(node: ExpStmtSubNode, right?: ExpStmtSubNode) {
-        if (right) {
-            node.mRightNode = right;
-            return right;
-        }
-        return node;
+        var obj = this.CrawlSubClassStruct();
+        return stringify(obj);
     }
 }
 
-/**
- * For place start with Option parser(not sure parse result), and we need a head, so this class
- */
-class Empty_ExpStmtSubNode extends ExpStmtSubNode {
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-    public static New() {
-        const n = new Empty_ExpStmtSubNode();
-        return n;
-    }
-}
+class Assign_ExpStmtSubNode implements ExpStmtSubNode {
+    private mExp: Expression;
 
-class Name_ExpStmtSubNode extends ExpStmtSubNode {
-    private mName?: Identifier;
-
-    public static New(name: Identifier): Name_ExpStmtSubNode {
-        return new Name_ExpStmtSubNode(name);
+    public static New(expression: Expression): Assign_ExpStmtSubNode {
+        return new Assign_ExpStmtSubNode(expression);
     }
 
-    public constructor(name: Identifier) {
-        super();
-        this.mName = name;
-    }
-
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-    protected CrawlSubClassStruct(): Object {
-        return {
-            name: this.mName?.toString(),
-        };
-    }
-}
-
-class Expression_ExpStmtSubNode extends ExpStmtSubNode {
-    private mExp?: Expression;
-
-    public static New(expression: Expression): Expression_ExpStmtSubNode {
-        return new Expression_ExpStmtSubNode(expression);
-    }
-
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
 
-    public constructor(expression: Expression) {
-        super();
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    private constructor(expression: Expression) {
         this.mExp = expression;
     }
 
-    protected CrawlSubClassStruct(): Object {
+    public CrawlSubClassStruct(): Object {
         return {
             exp: this.mExp?.toString(),
         };
     }
 }
 
-class Assign_ExpStmtSubNode extends ExpStmtSubNode {
-    public static New(): Assign_ExpStmtSubNode {
-        return new Assign_ExpStmtSubNode();
-    }
+class ContinuousAssign_ExpStmtSubNode implements ExpStmtSubNode {
+    private mExpStmt: ExpStmt;
 
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-}
-
-class AddAssign_ExpStmtSubNode extends ExpStmtSubNode {
-    public static New() {
-        return new AddAssign_ExpStmtSubNode();
-    }
-
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-}
-
-class MinusAssign_ExpStmtSubNode extends ExpStmtSubNode {
-    public static New() {
-        return new MinusAssign_ExpStmtSubNode();
-    }
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-}
-
-class Invoke_ExpStmtSubNode extends ExpStmtSubNode {
-    private mArgs?: Expression[];
-
-    public static New() {
-        return new Invoke_ExpStmtSubNode();
-    }
-
-    public static SetArgs(node: Invoke_ExpStmtSubNode, args: Expression[]) {
-        node.mArgs = args;
-        return node;
-    }
-
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
 
-    protected CrawlSubClassStruct(): Object {
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public CrawlSubClassStruct(): Object {
         return {
-            args: this.mArgs?.map(x => x.toString()),
+            expStmt: this.mExpStmt.toString(),
+        };
+    }
+
+    public static New(expStmt: ExpStmt) {
+        return new ContinuousAssign_ExpStmtSubNode(expStmt);
+    }
+
+    private constructor(expStmt: ExpStmt) {
+        this.mExpStmt = expStmt;
+    }    
+}
+
+class AddAssign_ExpStmtSubNode implements ExpStmtSubNode {
+    private mExp: Expression;
+
+    public static New(expression: Expression): AddAssign_ExpStmtSubNode {
+        return new AddAssign_ExpStmtSubNode(expression);
+    }
+
+    private constructor(expression: Expression) {
+        this.mExp = expression;
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public CrawlSubClassStruct(): Object {
+        return {};
+    }
+}
+
+class MinusAssign_ExpStmtSubNode implements ExpStmtSubNode {
+    private mExp: Expression;
+
+    public static New(expression: Expression): MinusAssign_ExpStmtSubNode {
+        return new MinusAssign_ExpStmtSubNode(expression);
+    }
+
+    private constructor(expression: Expression) {
+        this.mExp = expression;
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public CrawlSubClassStruct(): Object {
+        // TODO change all
+        return {};
+    }
+}
+
+export class InvocationCircle implements ISyntaxNode {
+    private mInvocation: Invocation;
+    private mRemainInvocationCircle?: InvocationCircle;
+
+    public static New(args: (ISyntaxNode | Text)[]): InvocationCircle {
+        assert(args.length === 1 || args.length === 2);
+        return new InvocationCircle(args[0] as Invocation, args[1] as InvocationCircle);
+    }
+
+    private constructor(invocation: Invocation, remainInvocationCircle?: InvocationCircle) {
+        this.mInvocation = invocation;
+        this.mRemainInvocationCircle = remainInvocationCircle;
+    }
+    
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+    
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+    
+    public toString(): string {
+        throw new Error("Method not implemented.");
+    }
+}
+
+class Invoke_ExpStmtSubNode implements ExpStmtSubNode {
+    private mSubNode: InvocationCircle;
+
+    public static New(subNode: InvocationCircle): Invoke_ExpStmtSubNode {
+        return new Invoke_ExpStmtSubNode(subNode);
+    }
+
+    private constructor(subNode: InvocationCircle) {
+        this.mSubNode = subNode;
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public CrawlSubClassStruct(): Object {
+        return {
+            
         };
     }
 }
 
-class Refine_ExpStmtSubNode extends ExpStmtSubNode {
-    private mKey?: Expression;
+class InvokeRefineThen_ExpStmtSubNode implements ExpStmtSubNode {
+    private mInvocation: InvocationCircle;
+    private mRefinement: Refinement;
+    private mRemain: ExpStmtSubNode;
 
-    public static New() {
-        return new Refine_ExpStmtSubNode();
+    public static New(invocation: InvocationCircle, refinement: Refinement, remain: ExpStmtSubNode): InvokeRefineThen_ExpStmtSubNode {
+        return new InvokeRefineThen_ExpStmtSubNode(invocation, refinement, remain);
     }
 
-    public static SetKey(node: Refine_ExpStmtSubNode, key: Expression) {
-        node.mKey = key;
-        return node;
+    private constructor(subNode: InvocationCircle, refinement: Refinement, remain: ExpStmtSubNode) {
+        this.mInvocation = subNode;
+        this.mRefinement = refinement;
+        this.mRemain = remain;
     }
 
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
 
-    protected CrawlSubClassStruct(): Object {
+    public CrawlSubClassStruct(): Object {
         return {
-            key: this.mKey?.toString(),
+
+        };
+    }
+}
+
+class RefineThen_ExpStmtSubNode implements ExpStmtSubNode {
+    private mRefinement: Refinement;
+    private mRemain: ExpStmtSubNode;
+
+    public static New(refinement: Refinement, remain: ExpStmtSubNode): RefineThen_ExpStmtSubNode {
+        return new RefineThen_ExpStmtSubNode(refinement, remain);
+    }
+
+    private constructor(refinement: Refinement, remain: ExpStmtSubNode) {
+        this.mRefinement = refinement;
+        this.mRemain = remain;
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public CrawlSubClassStruct(): Object {
+        return {
+            
         };
     }
 }
 
 export class ExpStmt implements Statement {
-    private mRoot?: ExpStmtSubNode;
+    private mName: Identifier;
+    private mRemainExpStmtSubNode: ExpStmtSubNode;
 
     public static New(args: (ISyntaxNode | Text)[]): ExpStmt {
-
+        assert(args.length == 3);
+        return new ExpStmt(args[0] as Identifier, args[1] as ExpStmtSubNode);
     }
 
-    public static New(root: ExpStmtSubNode) {
-        return new ExpStmt(root);
-    }
-
-    public constructor(root: ExpStmtSubNode) {
-        this.mRoot = root;
+    public constructor(name: Identifier, remainExpStmtSubNode: ExpStmtSubNode) {
+        this.mName = name;
+        this.mRemainExpStmtSubNode = remainExpStmtSubNode;
     }
 
     Contains(p: Position): boolean {
@@ -409,10 +502,65 @@ export class ExpStmt implements Statement {
 
     public toString(): string {
         return stringify({
-            root: this.mRoot?.toString(),// 好像是因为这种 toString 误用了，所以 log 里出来转义符号太多了，之后看能不能去掉
+            name: this.mName.toString(),// 好像是因为这种 toString 误用了，所以 log 里出来转义符号太多了，之后看能不能去掉
+            remainExpStmtSubNode: this.mRemainExpStmtSubNode.toString(),
         });
     }
 }
+
+enum AssignOperatorKind {
+    Assign,
+    AddAssign,
+    MinusAssign,
+}
+
+export class AssignOperator implements ISyntaxNode {
+    private mOperator: AssignOperatorKind;
+
+    public static New(operator: Text) {
+        let op: AssignOperatorKind;
+        switch (operator.Value) {
+            case '=':
+                op = AssignOperatorKind.Assign;
+                break;
+            case '+=':
+                op = AssignOperatorKind.AddAssign;
+                break;
+            case '-=':
+                op = AssignOperatorKind.MinusAssign;
+                break;
+            default:
+                throw new Error(`not handle operator ${operator.Value}`);
+        }
+        return new AssignOperator(op);
+    }
+
+    private constructor(operator: AssignOperatorKind) {
+        this.mOperator = operator;
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public toString(): string {
+        switch (this.mOperator) {
+            case AssignOperatorKind.Assign:
+                return '=';
+            case AssignOperatorKind.AddAssign:
+                return '+=';
+            case AssignOperatorKind.MinusAssign:
+                return '-=';
+            default:
+                throw new Error(`not handle operator ${this.mOperator}`);
+        }
+    }    
+}
+
 
 export const leftBrace = from(makeWordParser('{', id)).leftWith(optional(whitespace), selectRight).rightWith(optional(whitespace), selectLeft).raw;
 export const rightBrace = from(makeWordParser('}', id)).leftWith(optional(whitespace), selectRight).rightWith(optional(whitespace), selectLeft).raw;

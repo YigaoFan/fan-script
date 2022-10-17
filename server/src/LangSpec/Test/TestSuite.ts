@@ -1,14 +1,10 @@
 import { assert } from 'console';
 import { readFileSync } from 'fs';
 import path = require('path');
-import { AsyncStringStream } from '../../AsyncStringStream';
 import { htmlLogger } from '../../IParser';
 import { GenerateParserInputTable } from '../../ParserInputTable';
-import { SignalStringStream } from '../../SignalStringStream';
 import { StringStream } from '../../StringStream';
 import { log } from '../../util';
-// import { classs } from '../Class';
-// import { func } from '../Func';
 import { identifier } from '../Identifier';
 import { ChartParser } from '../ChartParser';
 import { Node } from '../GrammarMap';
@@ -88,9 +84,20 @@ const testExp = () => {
 
 const testStmt = () => {
     const stmt = 'stmt';
+    // return statement
     testUnit(stmt,'return a;');
     testUnit(stmt, 'return a.b.c;');
     testUnit(stmt, 'return a().b.c;');
+    testUnit(stmt, 'return a().b().c();');
+    testUnit(stmt, 'return [a, b, c,];');
+    // expression statement
+    testUnit(stmt, 'a = b;');
+    testUnit(stmt, 'a += b;');
+    testUnit(stmt, 'a -= b;');
+    testUnit(stmt, 'a.b();');
+    testUnit(stmt, 'a.b().c = d;');
+    // delete statement
+    testUnit(stmt, 'delete a.b.c;');
 };
 
 const testParas = () => {
@@ -126,14 +133,14 @@ const testFunc = () => {
     // }
 
     // {
-    //     const s = 'func f(a1, a2) { }';
+    //     const s = 'func f(a1, a2,) { }';
     //     const ss = StringStream.New(s, 'func.fs');
     //     const r = func.parse(ss);
     //     assert(r !== null);
     // }
 
     // {
-    //     const s = 'func f(a1, a2){ }';
+    //     const s = 'func f(a1, a2,){ }';
     //     const ss = StringStream.New(s, 'func.fs');
     //     const r = func.parse(ss);
     //     assert(r !== null);
@@ -210,10 +217,10 @@ const testFunc = () => {
 export const test = function() {
     // Error.stackTraceLimit = Infinity;
     // testClass();
-    // testIdentifier();
+    testIdentifier();
     // testParas();
     // testFunc();
-    // testExp();
+    testExp();
     testStmt();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全

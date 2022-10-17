@@ -1,54 +1,67 @@
-import { from, nullize, optional } from "../combinator";
+import { from, id, nullize, optional } from "../combinator";
 import { IParser, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser } from "../parser";
 import { Items, Array, } from "./Array";
+import { Funcs } from "./Class";
 import { Args, Expression, infixOperator, Invocation, Keyword, prefixOperator, Refinement } from "./Expression";
-import { Func, Paras } from "./Func";
+import { Block, Func, Paras, Stmts } from "./Func";
 import { identifier } from "./Identifier";
 import { Literal } from "./Literal";
 import { number } from "./Number";
 import { Obj, Pairs, Pair, Key, Value } from "./Object";
-import { ExpStmt, ReturnStmt, Statement } from "./Statement";
+import { AssignOperator, DeleteStmt, ExpStmt, ExpStmtSubNode, InvocationCircle, ReturnStmt, Statement } from "./Statement";
 import { string } from "./String";
 import { whitespace } from "./Whitespace";
 
 export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'fun' 
     | 'stmt' | 'paras' | 'cls' | 'ifStmt' | 'returnStmt' | 'expStmt' | 'varStmt'
-    | 'invocationCircle' | 'afterIdInExpStmt';
+    | 'invocationCircle' | 'afterIdInExpStmt' | 'deleteStmt' | 'stmts' | 'block'
+    | 'funcs';
 export type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
-// TODO add space，只处理内部的空白，不处理两边的空白
+// add space，只处理内部的空白，不处理两边的空白
 export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
-        ['cls', ['class', 'w', 'id', '{', 'w', 'funs', 'w', '}']],
-        ['fun', ['func', 'w', 'id', 'ow', '(', 'ow', 'paras', 'ow', ')', 'ow', '{', 'stmt', '}']],
+        // ['doc', ['ow', 'cls', 'ow']],
+
+        ['cls', ['class', 'w', 'id', 'ow', '{', 'ow', 'funs', 'ow', '}']],
+
+        ['funcs', []],
+        ['funcs', ['func', 'ow', 'funcs']],
+
+        ['fun', ['func', 'w', 'id', 'ow', '(', 'ow', 'paras', 'ow', ')', 'ow', 'block']],
         ['paras', ['id', 'ow', ',', 'ow', 'paras']], // bug 所在：reduce 之后没有再 closure，两者要可以互相触发，于是要有个机制看有没有引入新的 rule
         ['paras', []],
 
         ['stmt', ['returnStmt'], 'ReturnStmt'],
-        // ['stmt', ['exp', 'ow', ';']],// 这种这样加分号会不会有问题？另，加这个主要是为了支持 delete statement
+        ['stmt', ['deleteStmt'], 'DeleteStmt'],
         // ['stmt', ['varStmt'], 'VarStmt'],
-        // ['stmt', ['ifStmt'], 'IfStmt'],
+        ['stmt', ['ifStmt'], 'IfStmt'],
         ['stmt', ['expStmt'], 'ExpStmt'],
         // ['varStmt', ['var', 'w', 'id', 'ow', '=', 'ow', 'exp', 'ow', ';']], // TODO
         // ['varStmt', ['var', 'w', 'id', 'ow', ';']], // TODO
         ['returnStmt', ['return', 'w', 'exp', 'ow', ';']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block', 'ow', 'else', 'ow', 'block']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block']],
+        ['deleteStmt', ['delete', 'w', 'exp', 'ow', 'refinement', 'ow', ';']],
         ['expStmt', ['id', 'ow', 'afterIdInExpStmt', 'ow', ';']],
+        
+        ['block', ['{', 'ow', 'stmts', 'ow', '}']],
+        ['stmts', []],
+        ['stmts', ['stmt', 'ow', 'stmts']],
 
         ['afterIdInExpStmt', ['=', 'ow', 'exp'], 'Assign_ExpStmtSubNode'],
-        ['afterIdInExpStmt', ['=', 'ow', 'expStmt']],
-        ['afterIdInExpStmt', ['+=', 'ow', 'exp'], 'AddAssign_ExpStmtSubNode'],// handle +=
-        ['afterIdInExpStmt', ['-=', 'ow', 'exp'], 'MinusAssign_ExpStmtSubNode'],// handle -=
-        ['afterIdInExpStmt', ['invocationCircle']],
-        ['afterIdInExpStmt', ['invocationCircle', 'ow', 'refinement', 'ow', 'afterIdInExpStmt']],
-        ['afterIdInExpStmt', ['refinement', 'ow', 'afterIdInExpStmt']],
+        ['afterIdInExpStmt', ['=', 'ow', 'expStmt'], 'ContinuousAssign_ExpStmtSubNode'],
+        ['afterIdInExpStmt', ['+=', 'ow', 'exp'], 'AddAssign_ExpStmtSubNode'],
+        ['afterIdInExpStmt', ['-=', 'ow', 'exp'], 'MinusAssign_ExpStmtSubNode'],
+        ['afterIdInExpStmt', ['invocationCircle'], 'Invoke_ExpStmtSubNode'],
+        ['afterIdInExpStmt', ['invocationCircle', 'ow', 'refinement', 'ow', 'afterIdInExpStmt'], 'InvokeRefineThen_ExpStmtSubNode'],
+        ['afterIdInExpStmt', ['refinement', 'ow', 'afterIdInExpStmt'], 'RefineThen_ExpStmtSubNode'],
         
         ['invocationCircle', ['invocation']],
-        ['invocationCircle', ['invocation', 'invocationCircle']],
+        ['invocationCircle', ['invocation', 'ow', 'invocationCircle']],
         
         ['exp', ['literal'], 'LiteralExpression'], // like 'LiteralExpression' is type info for node factory
         ['exp', ['id'], 'IdentifierExpression'],
@@ -93,6 +106,9 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['string', string],
         ['number', number],
         // ['func', func],
+        ['=', makeWordParser('=', AssignOperator.New)],
+        ['+=', makeWordParser('+=', AssignOperator.New)],
+        ['-=', makeWordParser('-=', AssignOperator.New)],
         ['new', makeWordParser('new', Keyword.New)],
         ['if', makeWordParser('if', Keyword.New)],
         ['else', makeWordParser('else', Keyword.New)],
@@ -124,6 +140,8 @@ export const NodeFactory: { [n in Node]: Factory | FactoryWithTypeInfo; } = {
     stmt: Statement.New,
     paras: Paras.New,
     fun: Func.New,
+    block: Block.New,
+    stmts: Stmts.New,
     ifStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
         throw new Error("Function not implemented.");
     },
@@ -132,13 +150,11 @@ export const NodeFactory: { [n in Node]: Factory | FactoryWithTypeInfo; } = {
     varStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
         throw new Error("Function not implemented.");
     },
-    invocationCircle: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
-        throw new Error("Function not implemented.");
-    },
-    afterIdInExpStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
-        throw new Error("Function not implemented.");
-    },
+    deleteStmt: DeleteStmt.New,
+    invocationCircle: InvocationCircle.New,
+    afterIdInExpStmt: ExpStmtSubNode.New,
+    funcs: Funcs.New,
     cls: function (nodes: (Text | ISyntaxNode)[]): ISyntaxNode {
         throw new Error("Function not implemented.");
-    }
+    },
 };

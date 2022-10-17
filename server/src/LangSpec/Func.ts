@@ -79,18 +79,79 @@ export class Paras implements ISyntaxNode {
         this.mParas = [];
     }
 
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+    
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+    
     public toString(): string {
         return stringify({
             paras: this.mParas.map(x => x.toString()),
         });
     }
+}
 
+export class Stmts implements ISyntaxNode {
+    private mStmt?: Statement;
+    private mRemainStmts?: Stmts;
+
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length == 2 || args.length == 0);
+        const s = new Stmts();
+        if (args.length == 2) {
+            s.mStmt = args[0] as Statement;
+            s.mRemainStmts = args[1] as Stmts;
+        }
+        return s;
+    }
+
+    private constructor() {
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public toString(): string {
+        return stringify({
+            
+        });
+    }
+}
+
+export class Block implements ISyntaxNode {
+    private mStmts: Stmts;
+
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length == 3);
+        const s = new Block(args[1] as Stmts);
+        return s;
+    }
+
+    private constructor(stmts: Stmts) {
+        this.mStmts = stmts;
+    }
+
+    public Contains(p: Position): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public get Valid(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    public toString(): string {
+        return stringify({
+
+        });
+    }
 }
 
 const blanks = whitespace;
