@@ -23,6 +23,7 @@ export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'va
 export type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
 // add space，只处理内部的空白，不处理两边的空白
+// allow one char parse unit in nonTerminated rule like (, {
 export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
         ['doc', ['ow', 'cls', 'ow']],
