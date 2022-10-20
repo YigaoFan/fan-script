@@ -15,17 +15,17 @@ import { whitespace } from "./Whitespace";
 export class Func implements ISyntaxNode {
     private mName?: Identifier;
     private mParas: Paras;
-    private mBlock: Statement[];
+    private mBlock: Block;
 
     public static New(args: (ISyntaxNode | Text)[]) {
-        assert(args.length === 8);
-        return new Func(args[1] as Identifier, args[3] as Paras, args[6] as Statement);
+        assert(args.length == 6);
+        return new Func(args[1] as Identifier, args[3] as Paras, args[6] as Block);
     }
 
-    private constructor(name: Identifier, paras: Paras, stmt: Statement) {
+    private constructor(name: Identifier, paras: Paras, block: Block) {
         this.mName = name;
         this.mParas = paras;
-        this.mBlock = [stmt];
+        this.mBlock = block;
     }
 
     public static SetName(func: Func, name: Identifier) {
@@ -33,30 +33,17 @@ export class Func implements ISyntaxNode {
         return func;
     }
 
-    public static SetParameters(func: Func, parameters: Option<Paras>) {
-        if (parameters.hasValue()) {
-            func.mParas = parameters.value;
-        }
-        return func;
-    }
-
-    public static SetBlock(func: Func, block: Statement[]) {
-        func.mBlock = block;
-        return func;
-    }
-
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
 
     public toString(): string {
         return stringify({
-            name: this.mName?.toString(),
-            parars: this.mParas?.toString(),
-            block: this.mBlock?.map(x => x.toString()),
+            
         });
     }
 }

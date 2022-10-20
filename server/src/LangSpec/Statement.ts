@@ -5,6 +5,7 @@ import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser } from "../parser";
 import { stringify } from "../util";
 import { DeleteExpression, Expression, Invocation, Refinement } from "./Expression";
+import { Block } from "./Func";
 import { Identifier } from "./Identifier";
 import { whitespace } from "./Whitespace";
 
@@ -19,7 +20,11 @@ export abstract class Statement implements ISyntaxNode {
                 assert(args.length == 1);
                 return args[0] as ReturnStmt;
             case 'VarStmt':
+                assert(args.length == 1);
+                return args[0] as VarStmt;
             case 'IfStmt':
+                assert(args.length == 1);
+                return args[0] as IfStmt;
             case 'ExpStmt':
                 assert(args.length == 1);
                 return args[0] as ExpStmt;
@@ -59,45 +64,28 @@ export class ReturnStmt implements Statement {
 }
 
 export class VarStmt implements Statement {
-    private mVars?: (readonly [Identifier, Expression?])[];
+    private mVarName: Identifier;
+    private mExp?: Expression;
 
-    public static New(): VarStmt {
-        return new VarStmt();
+    public static New(args: (ISyntaxNode | Text)[]): VarStmt {
+        assert(args.length == 3 || args.length == 5);
+        return new VarStmt(args[1] as Identifier, args[3] as Expression);
     }
 
-    public static AddVar(statement: VarStmt, oneVar: readonly [Identifier, Expression?]) {
-        var s = statement;
-        if (!s.mVars) {
-            s.mVars = [];
-        }
-        s.mVars!.push(oneVar);
-        return s;
+    private constructor(varName: Identifier, expression?: Expression) {
+        this.mVarName = varName;
+        this.mExp = expression;
     }
 
-    public static AddVars(statement: VarStmt, vars: Option<(readonly [Identifier, Expression?])[]>) {
-        var s = statement;
-        if (!vars.hasValue()) {
-            return s;
-        }
-        if (!s.mVars) {
-            s.mVars = [];
-        }
-        for (const i of vars.value) {
-            s.mVars!.push(i);
-        }
-        return s;
-    }
     public toString(): string {
-        return stringify(this.mVars?.map(x => stringify({
-            name: x[0].toString(),
-            exp: x[1]?.toString(),
-        })));
+        return stringify({});
     }
 
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
 }
@@ -131,47 +119,33 @@ export class DeleteStmt implements Statement {
     }
 }
 
-class IfStmt implements Statement {
-    private mCondExp?: Expression;
-    private mBlock?: Statement[];
-    private mElseBlock?: Statement[];
+export class IfStmt implements Statement {
+    private mCond: Expression;
+    private mBlock: Block;
+    private mElseBlock?: Block;
     // 每个节点都该有个准入条件，方便补全时判断是否已经进入节点，或者有个判断当前节点是否进入的方法
     // 目前是创造了节点都已经进入了
-    public static New() {
-        return new IfStmt();
-    }
-    // TODO use decorator to generate this kind method
-    public static SetCond(statement: IfStmt, expression: Expression) {
-        statement.mCondExp = expression;
-        return statement;
+    public static New(args: (ISyntaxNode | Text)[]) {
+        assert(args.length == 7 || args.length == 5);
+        return new IfStmt(args[2] as Expression, args[4] as Block, args[6] as Block);
     }
 
-    public static SetBlock(statement: IfStmt, block: Statement[]) {
-        statement.mElseBlock = block;
-        return statement;
+    public constructor(cond: Expression, block: Block, elseBlock: Block) {
+        this.mCond = cond;
+        this.mBlock = block;
+        this.mElseBlock = elseBlock;
     }
 
-    public static SetElseBlock(statement: IfStmt, elseBlock: Option<Statement[]>) {
-        if (elseBlock.hasValue()) {
-            statement.mElseBlock = elseBlock.value;
-        }
-        return statement;
-    }
-
-    public constructor() {
-    }
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
 
     public toString(): string {
         return stringify({
-            cond: this.mCondExp?.toString(),
-            block: this.mBlock?.map(x => x.toString()),
-            elseBlock: this.mElseBlock?.map(x => x.toString()),
         });
     }
 }
@@ -180,30 +154,10 @@ class ForStmt implements Statement {
     private mInitExp?: Expression;
     private mCondExp?: Expression;
     private mUpdateExp?: Expression;
-    private mBlock?: Statement[];
+    private mBlock?: Block;
 
     public static New(): ForStmt {
         return new ForStmt();
-    }
-
-    public static SetInit(statement: ForStmt, expression: Expression) {
-        statement.mInitExp = expression;
-        return statement;
-    }
-
-    public static SetCond(statement: ForStmt, expression: Expression) {
-        statement.mCondExp = expression;
-        return statement;
-    }
-
-    public static SetUpdate(statement: ForStmt, expression: Expression) {
-        statement.mUpdateExp = expression;
-        return statement;
-    }
-
-    public static SetBlock(statement: ForStmt, block: Statement[]) {
-        statement.mBlock = block;
-        return statement;
     }
 
     public constructor() {
@@ -218,10 +172,6 @@ class ForStmt implements Statement {
 
     public toString(): string {
         return stringify({
-            init: this.mInitExp?.toString(),
-            cond: this.mCondExp?.toString(),
-            update: this.mUpdateExp?.toString(),
-            block: this.mBlock?.map(x => x.toString()),
         });
     }
 }

@@ -20,14 +20,29 @@ const readCodeFrom = (path: string) => {
 };
 
 const testClass = () => {
-    var c = readCodeFrom(path.resolve(__dirname, 'CodeSample/class.fs'));
-    var s = StringStream.New(c, 'class.fs');
-    GenerateParserInputTable('parser-input.html', s.Copy());
-    try {
-        // var o = classs.parse(s);
-    } finally {
-        htmlLogger.Close();
-    }
+    const cls = 'cls';
+    testUnit(cls, 
+    `class Calculator { 
+        func Add(a, b,) {
+            return a + b;
+        }
+        func Minus(a, b,) {
+            return a - b;
+        }
+    }`);
+};
+
+const testDoc = () => {
+    const doc = 'doc';
+    testUnit(doc, `
+    class Calculator { 
+        func Add(a, b,) {
+            return a + b;
+        }
+        func Minus(a, b,) {
+            return a - b;
+        }
+    }`);
 };
 
 const testIdentifier = () => {
@@ -80,10 +95,15 @@ const testExp = () => {
     testUnit(exp, '{ "a" : c +  d, }');
 
     testUnit(exp, '(a)');
+
+    testUnit(exp, 'func f(a,) { return a; }');
 };
 
 const testStmt = () => {
     const stmt = 'stmt';
+    // var statement
+    testUnit(stmt, 'var a;');
+    testUnit(stmt, 'var a = 1;');
     // return statement
     testUnit(stmt,'return a;');
     testUnit(stmt, 'return a.b.c;');
@@ -98,6 +118,11 @@ const testStmt = () => {
     testUnit(stmt, 'a.b().c = d;');
     // delete statement
     testUnit(stmt, 'delete a.b.c;');
+    // if statement
+    testUnit(stmt, 'if (b) { return a; }');
+    testUnit(stmt, 'if (a + b > c) { return a; }');
+    testUnit(stmt, 'if (a + b > c) { return a; } else { return c; }');
+    // 👆好像解析结果的表格里 termin 部分有些无用没删，non-termin 部分有重复
 };
 
 const testParas = () => {
@@ -115,112 +140,24 @@ const testParas = () => {
 
 const testFunc = () => {
     const fun = 'fun';
-    {
-        const s = 'func f (a,){return a;}';
-        const ss = StringStream.New(s, 'func.fs');
-        GenerateParserInputTable('parser-input.html', ss.Copy());
-        const p = new ChartParser(fun);
-        const r = p.parse(ss);
-        // log('parse result', r);
-        assert(r != null);
-    }
-
-    // {
-    //     const s = 'func f(a, b,) { }';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     const r = func.parse(ss);
-    //     assert(r !== null);
-    // }
-
-    // {
-    //     const s = 'func f(a1, a2,) { }';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     const r = func.parse(ss);
-    //     assert(r !== null);
-    // }
-
-    // {
-    //     const s = 'func f(a1, a2,){ }';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     const r = func.parse(ss);
-    //     assert(r !== null);
-    // }
-
-    // {
-    //     const s = 'func f(a1, a2){}';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     const r = func.parse(ss);
-    //     assert(r !== null);
-    // }
-
-    // {
-    //     const s = 'func f(a1, a2){ return a1 + a2; }';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     GenerateParserInputTable('parser-input.html', ss.Copy());
-    //     try {
-    //         const r = func.parse(ss);
-    //         assert(r !== null);
-    //     } finally {
-    //         htmlLogger.Close();
-    //     }    
-    // }
-
-    // {
-    //     const s = 'func f(a1, a2, a3){ return a1 + a2 +a3; }';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     GenerateParserInputTable('parser-input.html', ss.Copy());
-    //     try {
-    //         const r = func.parse(ss);
-    //         assert(r !== null);
-    //     } finally {
-    //         htmlLogger.Close();
-    //     }    
-    // }
-
-    // {
-    //     const s = 'func f(a1, a2, a3){ return a1 ? a2 :a3; }';
-    //     const ss = StringStream.New(s, 'func.fs');
-    //     GenerateParserInputTable('parser-input.html', ss.Copy());
-    //     try {
-    //         const r = func.parse(ss);
-    //         assert(r !== null);
-    //     } finally {
-    //         htmlLogger.Close();
-    //     }    
-    // }
-
-    {
-        // const s = 'func f(a1, a2, a3){ return a1.pro[a2][a3]; }'; // 目前 return 里的 exp 不支持这种复杂的 exp
-        // const ss = StringStream.New(s, 'func.fs');
-        // GenerateParserInputTable('parser-input.html', ss.Copy());
-        // try {
-        //     const r = func.parse(ss);
-        //     assert(r !== null);
-        // } finally {
-        //     htmlLogger.Close();
-        // }    
-    }
-
-    {
-        // const s = 'func f(a1, a2, a3){ var v; v = a1.pro[a2][a3](); return v; }';
-        // const ss = StringStream.New(s, 'func.fs');
-        // GenerateParserInputTable('parser-input.html', ss.Copy());
-        // try {
-        //     const r = func.parse(ss);
-        //     assert(r !== null);
-        // } finally {
-        //     htmlLogger.Close();
-        // }
-    }
+    // 要允许函数可以直接定义，不用非在 stmt 里 TODO
+    testUnit(fun, 'func f (){return 1;}');
+    testUnit(fun, 'func f (a,){return a;}');
+    testUnit(fun, 'func min(a, b,){ if (a < b) { return a; } else { return b; }}');
+    testUnit(fun, 'func f(a1, a2, a3,){ return a1 ? a2 :a3; }');
+    testUnit(fun, 'func f(a1, a2, a3, ){ return a1.pro[a2][a3]; }');
+    testUnit(fun, 'func f(a1, a2, a3, ){ var v; v = a1.pro[a2][a3](); return v; }');
+    testUnit(fun, 'func f(a1, a2, a3, ){ return func closure() { return a1 + a2 + a3; }; }');
 };
 
 export const test = function() {
     // Error.stackTraceLimit = Infinity;
-    // testClass();
     testIdentifier();
-    // testParas();
-    // testFunc();
+    testParas();
     testExp();
     testStmt();
+    testFunc();
+    testClass();
+    testDoc();
 };
 // 可能要实现受损区域分割，比如一个函数的右大括号没写，但不能影响别的函数的补全

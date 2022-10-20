@@ -3,14 +3,15 @@ import { IParser, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser } from "../parser";
 import { Items, Array, } from "./Array";
-import { Funcs } from "./Class";
+import { Class, Funcs } from "./Class";
+import { Document } from "./Document";
 import { Args, Expression, infixOperator, Invocation, Keyword, prefixOperator, Refinement } from "./Expression";
 import { Block, Func, Paras, Stmts } from "./Func";
 import { identifier } from "./Identifier";
 import { Literal } from "./Literal";
 import { number } from "./Number";
 import { Obj, Pairs, Pair, Key, Value } from "./Object";
-import { AssignOperator, DeleteStmt, ExpStmt, ExpStmtSubNode, InvocationCircle, ReturnStmt, Statement } from "./Statement";
+import { AssignOperator, DeleteStmt, ExpStmt, ExpStmtSubNode, IfStmt, InvocationCircle, ReturnStmt, Statement, VarStmt } from "./Statement";
 import { string } from "./String";
 import { whitespace } from "./Whitespace";
 
@@ -18,18 +19,18 @@ export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'va
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'fun' 
     | 'stmt' | 'paras' | 'cls' | 'ifStmt' | 'returnStmt' | 'expStmt' | 'varStmt'
     | 'invocationCircle' | 'afterIdInExpStmt' | 'deleteStmt' | 'stmts' | 'block'
-    | 'funcs';
+    | 'funcs' | 'doc';
 export type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
 // add space，只处理内部的空白，不处理两边的空白
 export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
-        // ['doc', ['ow', 'cls', 'ow']],
+        ['doc', ['ow', 'cls', 'ow']],
 
-        ['cls', ['class', 'w', 'id', 'ow', '{', 'ow', 'funs', 'ow', '}']],
+        ['cls', ['class', 'w', 'id', 'ow', '{', 'ow', 'funcs', 'ow', '}']],
 
         ['funcs', []],
-        ['funcs', ['func', 'ow', 'funcs']],
+        ['funcs', ['fun', 'ow', 'funcs']], // note: fun represent function
 
         ['fun', ['func', 'w', 'id', 'ow', '(', 'ow', 'paras', 'ow', ')', 'ow', 'block']],
         ['paras', ['id', 'ow', ',', 'ow', 'paras']], // bug 所在：reduce 之后没有再 closure，两者要可以互相触发，于是要有个机制看有没有引入新的 rule
@@ -37,11 +38,12 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
 
         ['stmt', ['returnStmt'], 'ReturnStmt'],
         ['stmt', ['deleteStmt'], 'DeleteStmt'],
-        // ['stmt', ['varStmt'], 'VarStmt'],
+        ['stmt', ['varStmt'], 'VarStmt'],
         ['stmt', ['ifStmt'], 'IfStmt'],
         ['stmt', ['expStmt'], 'ExpStmt'],
-        // ['varStmt', ['var', 'w', 'id', 'ow', '=', 'ow', 'exp', 'ow', ';']], // TODO
-        // ['varStmt', ['var', 'w', 'id', 'ow', ';']], // TODO
+
+        ['varStmt', ['var', 'w', 'id', 'ow', '=', 'ow', 'exp', 'ow', ';']],
+        ['varStmt', ['var', 'w', 'id', 'ow', ';']],
         ['returnStmt', ['return', 'w', 'exp', 'ow', ';']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block', 'ow', 'else', 'ow', 'block']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block']],
@@ -78,7 +80,7 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['literal', ['number'], 'NumberLiteral'],
         ['literal', ['object'], 'ObjectLiteral'],
         ['literal', ['array'], 'ArrayLiteral'],
-        // ['literal', ['func'], 'FuncLiteral'],
+        ['literal', ['fun'], 'FuncLiteral'],
 
         ['object', ['{', 'ow', 'pairs', 'ow', '}']],
         ['pairs', []],
@@ -105,7 +107,6 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['infix-operator', infixOperator],
         ['string', string],
         ['number', number],
-        // ['func', func],
         ['=', makeWordParser('=', AssignOperator.New)],
         ['+=', makeWordParser('+=', AssignOperator.New)],
         ['-=', makeWordParser('-=', AssignOperator.New)],
@@ -142,19 +143,14 @@ export const NodeFactory: { [n in Node]: Factory | FactoryWithTypeInfo; } = {
     fun: Func.New,
     block: Block.New,
     stmts: Stmts.New,
-    ifStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
-        throw new Error("Function not implemented.");
-    },
+    ifStmt: IfStmt.New,
     returnStmt: ReturnStmt.New,
     expStmt: ExpStmt.New,
-    varStmt: function (nodes: (ISyntaxNode | Text)[]): ISyntaxNode {
-        throw new Error("Function not implemented.");
-    },
+    varStmt: VarStmt.New,
     deleteStmt: DeleteStmt.New,
     invocationCircle: InvocationCircle.New,
     afterIdInExpStmt: ExpStmtSubNode.New,
     funcs: Funcs.New,
-    cls: function (nodes: (Text | ISyntaxNode)[]): ISyntaxNode {
-        throw new Error("Function not implemented.");
-    },
+    cls: Class.New,
+    doc: Document.New,
 };
