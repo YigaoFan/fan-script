@@ -5,6 +5,7 @@ import { stringify } from "../util";
 import { Expression } from "./Expression";
 // import { Func } from "./Func";
 import { Identifier } from "./Identifier";
+import { Literal } from "./Literal";
 import { String } from "./String";
 
 export class Pairs implements ISyntaxNode {
@@ -128,7 +129,7 @@ export class Value implements ISyntaxNode {
     }    
 }
 
-export class Obj implements ISyntaxNode {
+export class Obj implements Literal {
     private mPairs?: Pairs;
 
     public static New(args: (ISyntaxNode | Text)[]): Obj {

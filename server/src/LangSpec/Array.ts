@@ -4,8 +4,9 @@ import { ISyntaxNode } from "../ISyntaxNode";
 import { stringify } from "../util";
 // import { Func } from "./Func";
 import { assert } from "console";
+import { Literal } from "./Literal";
 
-export class Array implements ISyntaxNode {
+export class Array implements Literal {
     private mItems?: Items;
 
     public static New(args: (ISyntaxNode | Text)[]): Array {

@@ -6,6 +6,7 @@ import { IParser, Position, Text } from "../IParser";
 import { ISyntaxNode } from '../ISyntaxNode';
 import { makeWordParser, not } from "../parser";
 import { combine, selectNotNull, stringify } from '../util';
+import { Literal } from "./Literal";
 
 // leftWith 和 rightWith 容易在 IParser<T> 的 T 中引入 NoOption
 // 有没有 NoOption 只有业务层知道
@@ -28,7 +29,7 @@ const genString = (delimiter: string): IParser<String> => {
 };
 
 // 这里测试的时候可能需要多次转义来测试，毕竟读取和在代码里用字符串字面量表示不一样
-export class String implements ISyntaxNode {
+export class String implements Literal {
     private mText?: Text;
 
     public static New(): String {

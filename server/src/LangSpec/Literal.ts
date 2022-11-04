@@ -19,15 +19,15 @@ export abstract class Literal implements ISyntaxNode {
         assert(args.length === 1);
         switch (typeInfo) {
             case 'StringLiteral':
-                return StringLiteral.New(args[0] as String);
+                return args[0] as String;
             case 'NumberLiteral':
-                return NumberLiteral.New(args[0] as Number);
+                return args[0] as Number;
             case 'ObjectLiteral':
-                return ObjectLiteral.New(args[0] as Obj);
+                return args[0] as Obj;
             case 'ArrayLiteral':
-                return ArrayLiteral.New(args[0] as Array);
+                return args[0] as Array;
             case 'FuncLiteral':
-                return FuncLiteral.New(args[0] as Func);
+                return args[0] as Func;
         }
         throw new Error(`not support type info: ${typeInfo}`);
     }
@@ -36,110 +36,6 @@ export abstract class Literal implements ISyntaxNode {
 // 下面这些类型感觉都没有必要，可以像 stmt 那里那样去掉
 // 不过有个东西需要留意，一个东西是字面量数字类型和数字类型是不一样的，这里可能要注意的是：
 // 一个是静态类型检查，一个是处于解析的时候的类型判断
-class NumberLiteral implements Literal {
-    private mNum: Number;
-
-    // 先用下面这种麻烦的方法写着，之后再看有没有简便的方法
-    public static New(num: Number): NumberLiteral {
-        return new NumberLiteral(num);
-    }
-
-    public constructor(num: Number) {
-        this.mNum = num;
-    }
-    
-    public toString(): string {
-        return stringify(this.mNum);
-    }
-
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-}
-
-class StringLiteral implements Literal {
-    private mStr: String;
-
-    public static New(str: String): StringLiteral {
-        return new StringLiteral(str);
-    }
-
-    public constructor(str: String) {
-        this.mStr = str;
-    }
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-
-    public toString(): string {
-        return this.mStr.toString();
-    }
-}
-
-class ObjectLiteral implements Literal {
-    private mObj: Obj;
-
-    public static New(obj: Obj): ObjectLiteral {
-        return new ObjectLiteral(obj);
-    }
-
-    public constructor(obj: Obj) {
-        this.mObj = obj;
-    }
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-
-    public toString(): string {
-        return this.mObj.toString();
-    }
-}
-
-class ArrayLiteral implements Literal {
-    private mArray: Array;
-
-    public static New(array: Array): ArrayLiteral {
-        return new ArrayLiteral(array);
-    }
-
-    public constructor(array: Array) {
-        this.mArray = array;
-    }
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-}
-
-class FuncLiteral implements Literal {
-    private mFunc: Func;
-
-    public static New(func: Func): FuncLiteral {
-        return new FuncLiteral(func);
-    }
-
-    public constructor(func: Func) {
-        this.mFunc = func;
-    }
-    Contains(p: Position): boolean {
-        throw new Error("Method not implemented.");
-    }
-    get Valid(): boolean {
-        throw new Error("Method not implemented.");
-    }
-}
 
 //     // IParser<StringLiteral> 为什么可以赋值给 IParser<ILiteral>
 

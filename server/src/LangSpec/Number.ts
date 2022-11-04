@@ -3,6 +3,7 @@ import { IParser, Text, Position, } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, oneOf, lazy, } from "../parser";
 import { combine, selectNotNull, } from "../util";
+import { Literal } from "./Literal";
 
 const zero = '0';
 const oneToNine = '123456789';
@@ -24,7 +25,7 @@ const exponent = from(oneOf('eE', id))
                     .rightWith(from(oneOf(zeroToNine, id)).oneOrMore(combine).raw, (l, r) => ([l, r] as const))
                     .raw;
 
-export class Number implements ISyntaxNode {
+export class Number implements Literal {
     private mInteger: Text;
     private mFraction: Option<Text>;
     private mExponent: Option<readonly [Option<Text>, Text]>;

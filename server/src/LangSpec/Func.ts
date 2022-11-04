@@ -9,10 +9,11 @@ import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser } from "../parser";
 import { asArray, stringify } from "../util";
 import { Identifier, identifier } from "./Identifier";
+import { Literal } from "./Literal";
 import { Statement } from "./Statement";
 import { whitespace } from "./Whitespace";
 
-export class Func implements ISyntaxNode {
+export class Func implements Literal {
     private mName?: Identifier;
     private mParas: Paras;
     private mBlock: Block;
