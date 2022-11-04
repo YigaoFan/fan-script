@@ -3,7 +3,6 @@ import {
     nullize, or, selectLeft
 } from "../combinator";
 import { IParser, Position, Text } from "../IParser";
-import { ISyntaxNode } from '../ISyntaxNode';
 import { makeWordParser, not } from "../parser";
 import { combine, selectNotNull, stringify } from '../util';
 import { Literal } from "./Literal";

@@ -1,6 +1,5 @@
 import { id, or, from, nullize, selectRight, optional, Option, } from "../combinator";
 import { IParser, Text, Position, } from "../IParser";
-import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, oneOf, lazy, } from "../parser";
 import { combine, selectNotNull, } from "../util";
 import { Literal } from "./Literal";

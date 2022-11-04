@@ -2,7 +2,6 @@ import { Position, Text, } from "../IParser";
 import { Expression, } from "./Expression";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { stringify } from "../util";
-// import { Func } from "./Func";
 import { assert } from "console";
 import { Literal } from "./Literal";
 

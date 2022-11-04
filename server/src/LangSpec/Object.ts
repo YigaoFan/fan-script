@@ -3,7 +3,6 @@ import { Position, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { stringify } from "../util";
 import { Expression } from "./Expression";
-// import { Func } from "./Func";
 import { Identifier } from "./Identifier";
 import { Literal } from "./Literal";
 import { String } from "./String";
