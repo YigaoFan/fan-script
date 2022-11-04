@@ -33,6 +33,9 @@ export abstract class Literal implements ISyntaxNode {
     }
 }
 
+// 下面这些类型感觉都没有必要，可以像 stmt 那里那样去掉
+// 不过有个东西需要留意，一个东西是字面量数字类型和数字类型是不一样的，这里可能要注意的是：
+// 一个是静态类型检查，一个是处于解析的时候的类型判断
 class NumberLiteral implements Literal {
     private mNum: Number;
 
