@@ -42,7 +42,8 @@ const testDoc = () => {
         func Minus(a, b,) {
             return a - b;
         }
-    }`);
+    }
+    `);
 };
 
 const testIdentifier = () => {
@@ -123,6 +124,8 @@ const testStmt = () => {
     testUnit(stmt, 'if (a + b > c) { return a; }');
     testUnit(stmt, 'if (a + b > c) { return a; } else { return c; }');
     // 👆好像解析结果的表格里 termin 部分有些无用没删，non-termin 部分有重复
+    // for statement not support ++i
+    testUnit(stmt, 'for (var i = 0; i < 10; i += 1;) { c += i; }');
 };
 
 const testParas = () => {
@@ -153,7 +156,7 @@ const testFunc = () => {
 export const test = function() {
     // Error.stackTraceLimit = Infinity;
     testIdentifier();
-    testParas();
+    // testParas();
     testExp();
     testStmt();
     testFunc();

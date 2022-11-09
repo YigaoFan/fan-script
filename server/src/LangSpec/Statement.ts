@@ -31,6 +31,9 @@ export abstract class Statement implements ISyntaxNode {
             case 'DeleteStmt':
                 assert(args.length == 1);
                 return args[0] as DeleteStmt;
+            case 'ForStmt':
+                assert(args.length == 1);
+                return args[0] as ForStmt;
         }
         throw new Error(`not support type info: ${typeInfo}`);
     }
@@ -150,23 +153,29 @@ export class IfStmt implements Statement {
     }
 }
 
-class ForStmt implements Statement {
-    private mInitExp?: Expression;
-    private mCondExp?: Expression;
-    private mUpdateExp?: Expression;
-    private mBlock?: Block;
+export class ForStmt implements Statement {
+    private mInit: Statement;
+    private mCond: Expression;
+    private mUpdate: Statement;
+    private mBlock: Block;
 
-    public static New(): ForStmt {
-        return new ForStmt();
+    public static New(args: (ISyntaxNode | Text)[]): ForStmt {
+        assert(args.length == 8);
+        return new ForStmt(args[2] as Statement, args[3] as Expression, args[5] as Statement, args[7] as Block);
     }
 
-    public constructor() {
-
+    private constructor(init: Statement, cond: Expression, update: Statement, block: Block) {
+        this.mInit = init;
+        this.mCond = cond;
+        this.mUpdate = update;
+        this.mBlock = block;
     }
-    Contains(p: Position): boolean {
+    
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
 

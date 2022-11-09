@@ -11,13 +11,15 @@ import { identifier } from "./Identifier";
 import { Literal } from "./Literal";
 import { number } from "./Number";
 import { Obj, Pairs, Pair, Key, Value } from "./Object";
-import { AssignOperator, DeleteStmt, ExpStmt, ExpStmtSubNode, IfStmt, InvocationCircle, ReturnStmt, Statement, VarStmt } from "./Statement";
+import { AssignOperator, DeleteStmt, ExpStmt, ExpStmtSubNode, ForStmt, IfStmt, InvocationCircle, ReturnStmt, Statement, VarStmt } from "./Statement";
 import { string } from "./String";
 import { whitespace } from "./Whitespace";
 
+// 如何简化中间节点相关设施的定义过程
+// GrammarMap 在运转的过程中加入相应的机制来转换
 export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'fun' 
-    | 'stmt' | 'paras' | 'cls' | 'ifStmt' | 'returnStmt' | 'expStmt' | 'varStmt'
+    | 'stmt' | 'paras' | 'cls' | 'ifStmt' | 'returnStmt' | 'expStmt' | 'varStmt' | 'forStmt'
     | 'invocationCircle' | 'afterIdInExpStmt' | 'deleteStmt' | 'stmts' | 'block'
     | 'funcs' | 'doc';
 export type NonTerminatedRule = readonly [Node, (string | Node)[], string?];
@@ -42,12 +44,14 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['stmt', ['varStmt'], 'VarStmt'],
         ['stmt', ['ifStmt'], 'IfStmt'],
         ['stmt', ['expStmt'], 'ExpStmt'],
+        ['stmt', ['forStmt'], 'ForStmt'],
 
         ['varStmt', ['var', 'w', 'id', 'ow', '=', 'ow', 'exp', 'ow', ';']],
         ['varStmt', ['var', 'w', 'id', 'ow', ';']],
         ['returnStmt', ['return', 'w', 'exp', 'ow', ';']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block', 'ow', 'else', 'ow', 'block']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block']],
+        ['forStmt', ['for', 'ow', '(', 'ow', 'stmt', 'ow', 'exp', 'ow', ';', 'ow', 'stmt', 'ow', ')', 'ow', 'block']], // 第三项是 stmt，就要求分号结尾了，语法有点奇怪哈；还有这里的括号内的语法规定太宽松了
         ['deleteStmt', ['delete', 'w', 'exp', 'ow', 'refinement', 'ow', ';']],
         ['expStmt', ['id', 'ow', 'afterIdInExpStmt', 'ow', ';']],
         
@@ -113,6 +117,7 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['-=', makeWordParser('-=', AssignOperator.New)],
         ['new', makeWordParser('new', Keyword.New)],
         ['if', makeWordParser('if', Keyword.New)],
+        ['for', makeWordParser('for', Keyword.New)],
         ['else', makeWordParser('else', Keyword.New)],
         ['var', makeWordParser('var', Keyword.New)],
         ['delete', makeWordParser('delete', Keyword.New)],
@@ -146,6 +151,7 @@ export const NodeFactory: { [n in Node]: Factory | FactoryWithTypeInfo; } = {
     stmts: Stmts.New,
     ifStmt: IfStmt.New,
     returnStmt: ReturnStmt.New,
+    forStmt: ForStmt.New,
     expStmt: ExpStmt.New,
     varStmt: VarStmt.New,
     deleteStmt: DeleteStmt.New,

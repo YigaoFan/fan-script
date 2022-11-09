@@ -4,8 +4,6 @@ import { Number, } from "./Number";
 import { String, } from "./String";
 import { Obj, } from "./Object";
 import { Array, } from "./Array";
-// import { consFunc, Func, } from "./Func";
-import { stringify } from "../util";
 import { assert } from "console";
 import { Func } from "./Func";
 
