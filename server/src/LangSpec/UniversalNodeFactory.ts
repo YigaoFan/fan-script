@@ -86,7 +86,6 @@ export const UniversalNodeFactory = function (rule: NonTerminatedRule, nodes: (I
             const ns = this.Children;
             return stringify({
                 Type: n.Type,
-                // remove the 'null' TODO
                 Children: rule[1].map((n, i) => `${n}: ${ns[i] ? ns[i].toString() : 'null'}`),
             });
         },

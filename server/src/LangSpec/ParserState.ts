@@ -97,9 +97,10 @@ export class NonTerminatedParserState {
 
     public get Result(): ParserResult<ISyntaxNode> {
         function notNull(value: ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>): value is (ParserResult<Text> | ParserResult<ISyntaxNode>) {
-            if (value!.Result === null) {
-                return false;
-            }
+            // if (value!.Result === null) {
+            //     return false;
+            // }
+            // null is needed in AST node type
             return true;
         }
         const usedNodes = this.mNodes.filter(notNull);
