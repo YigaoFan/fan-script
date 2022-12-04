@@ -2,21 +2,14 @@ import { from, id, nullize, optional } from "../combinator";
 import { IParser, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser } from "../parser";
-import { Items, Array, } from "./Array";
-import { Class, Funcs } from "./Class";
-import { Document } from "./Document";
-import { Args, Expression, infixOperator, Invocation, Keyword, prefixOperator, Refinement } from "./Expression";
-import { Block, Func, Paras, Stmts } from "./Func";
+import { infixOperator, Keyword, prefixOperator, } from "./Expression";
 import { identifier } from "./Identifier";
-import { Literal } from "./Literal";
 import { number } from "./Number";
-import { Obj, Pairs, Pair, Key, Value } from "./Object";
-import { AssignOperator, DeleteStmt, ExpStmt, ExpStmtSubNode, ForStmt, IfStmt, InvocationCircle, ReturnStmt, Statement, VarStmt } from "./Statement";
+import { AssignOperator, } from "./Statement";
 import { string } from "./String";
+import { UniversalNode, UniversalNodeFactory } from "./UniversalNodeFactory";
 import { whitespace } from "./Whitespace";
 
-// 如何简化中间节点相关设施的定义过程
-// GrammarMap 在运转的过程中加入相应的机制来转换
 export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'value'
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'fun' 
     | 'stmt' | 'paras' | 'cls' | 'ifStmt' | 'returnStmt' | 'expStmt' | 'varStmt' | 'forStmt'
@@ -30,6 +23,7 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
     nonTerminated: [
         ['doc', ['ow', 'cls', 'ow']],
 
+        // property 默认是 private，method 默认是 public，目前更改不了权限
         ['cls', ['class', 'w', 'id', 'ow', '{', 'ow', 'funcs', 'ow', '}']],
 
         ['funcs', []],
@@ -130,34 +124,19 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
 };
 
 export type Factory = (nodes: (ISyntaxNode | Text)[]) => ISyntaxNode;
-export type FactoryWithTypeInfo = (nodeTypeInfo: string, nodes: (ISyntaxNode | Text)[]) => ISyntaxNode;
-export const NodeFactory: { [n in Node]: Factory | FactoryWithTypeInfo; } = {
-    exp: Expression.New,
-    literal: Literal.New,
-    object: Obj.New,
-    pairs: Pairs.New,
-    pair: Pair.New,
-    key: Key.New,
-    value: Value.New,
-    array: Array.New,
-    items: Items.New,
-    invocation: Invocation.New,
-    args: Args.New,
-    refinement: Refinement.New,
-    stmt: Statement.New,
-    paras: Paras.New,
-    fun: Func.New,
-    block: Block.New,
-    stmts: Stmts.New,
-    ifStmt: IfStmt.New,
-    returnStmt: ReturnStmt.New,
-    forStmt: ForStmt.New,
-    expStmt: ExpStmt.New,
-    varStmt: VarStmt.New,
-    deleteStmt: DeleteStmt.New,
-    invocationCircle: InvocationCircle.New,
-    afterIdInExpStmt: ExpStmtSubNode.New,
-    funcs: Funcs.New,
-    cls: Class.New,
-    doc: Document.New,
+const NodeFactoryRegistry: { [n in Node]?: Factory } & { UniversalNodeFactory: (rule: NonTerminatedRule, nodes: (ISyntaxNode | Text)[]) => UniversalNode; } = {
+    UniversalNodeFactory: UniversalNodeFactory,
 };
+
+class NodeFactory {
+    public Get(rule: NonTerminatedRule): Factory {
+        const node: Node = rule[0];
+        if (node in NodeFactoryRegistry) {
+            return NodeFactoryRegistry[node] as Factory;
+        }
+        // 要求 UniversalNode 高于 ISyntaxNode
+        return NodeFactoryRegistry.UniversalNodeFactory.bind(NodeFactoryRegistry.UniversalNodeFactory, rule);
+    }
+}
+
+export const nodeFactory = new NodeFactory();

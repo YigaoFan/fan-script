@@ -1,7 +1,7 @@
 import { CounterStream } from "../CounterStream";
 import { IParser, ParserInput, ParserResult, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { ExpGrammar, Factory, FactoryWithTypeInfo, NodeFactory, NonTerminatedRule, TerminatedRule } from "./GrammarMap";
+import { ExpGrammar, Factory, nodeFactory, NonTerminatedRule, TerminatedRule } from "./GrammarMap";
 
 export const InitialStart = 0;
 export enum ParserWorkState {
@@ -107,13 +107,14 @@ export class NonTerminatedParserState {
         const remain = this.IsEmptyRule ? this.mInitalInput : this.mNodes[this.mNodes.length - 1]!.Remain;
 
         if (this.Rule[2]) {
+            // TODO remove one of the branch
             return {
-                Result: (NodeFactory[this.Rule[0]] as FactoryWithTypeInfo)(this.Rule[2], usedNodeResults),
+                Result: (nodeFactory.Get(this.Rule) as Factory)(usedNodeResults),
                 Remain: remain,
             };
         } else {
             return {
-                Result: (NodeFactory[this.Rule[0]] as Factory)(usedNodeResults),
+                Result: (nodeFactory.Get(this.Rule) as Factory)(usedNodeResults),
                 Remain: remain,
             };
         }

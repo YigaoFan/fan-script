@@ -51,7 +51,6 @@ const testIdentifier = () => {
         const s = StringStream.New(code, 'id.fs');
         const r = identifier.parse(s);
         assert(r !== null);
-        assert(r!.Result.Value === code);
     };
     testUnit('a');
     testUnit('a1abc');
@@ -156,7 +155,7 @@ const testFunc = () => {
 export const test = function() {
     // Error.stackTraceLimit = Infinity;
     testIdentifier();
-    // testParas();
+    testParas();
     testExp();
     testStmt();
     testFunc();

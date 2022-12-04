@@ -1,6 +1,5 @@
 import { AsyncParserInput, IInputStream, IParser, ParserInput, ParserResult, Text, AsyncParserResult, debug } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { Expression } from "./Expression";
 import { InitialStart as Start, NonTerminatedParserState, ParserWorkState, TerminatedParserState } from "./ParserState";
 import { ExpGrammar, Node, } from "./GrammarMap";
 import { ChartView } from "./ChartView";
@@ -8,7 +7,7 @@ import { ChartView } from "./ChartView";
 export type TerminatedStates = TerminatedParserState<null | ISyntaxNode>[];
 type ReduceItem = { From: number, LeftSymbol: string, Result: ParserResult<ISyntaxNode | null> };
 /** 这个解析对象只能用一次，因为内部有状态 */
-export class ChartParser implements IParser<Expression> {
+export class ChartParser implements IParser<ISyntaxNode> {
     private mTerminatedStateChart: TerminatedStates;
     private mNonTerminatedStateChart: NonTerminatedParserState[][];
     private mRoot: Node;
@@ -20,7 +19,7 @@ export class ChartParser implements IParser<Expression> {
     }
 
     @debug()
-    public parse(input: IInputStream): ParserResult<Expression> {
+    public parse(input: IInputStream): ParserResult<ISyntaxNode> {
         var [nonTers, ters] = ChartParser.ClosureOn(input, this.mRoot, Start);
         this.mNonTerminatedStateChart.push(nonTers);
         this.mTerminatedStateChart = ters;

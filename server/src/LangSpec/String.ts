@@ -1,11 +1,11 @@
 import {
     from, id,
-    nullize, or, selectLeft
+    nullize, or, selectLeft, selectRight
 } from "../combinator";
 import { IParser, Position, Text } from "../IParser";
+import { IRange, ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, not } from "../parser";
 import { combine, selectNotNull, stringify } from '../util';
-import { Literal } from "./Literal";
 
 // leftWith 和 rightWith 容易在 IParser<T> 的 T 中引入 NoOption
 // 有没有 NoOption 只有业务层知道
@@ -21,34 +21,35 @@ const genString = (delimiter: string): IParser<String> => {
         selectNotNull))
         .zeroOrMore(combine)
         .raw;
-    return from(makeWordParser(delimiter, String.New))
-        .rightWith(content, String.SetContent)
+    return from(makeWordParser(delimiter, nullize))
+        .rightWith(content, selectRight)
         .rightWith(makeWordParser(delimiter, nullize), selectLeft)
+        .transform(String.New)
         .raw;
 };
 
 // 这里测试的时候可能需要多次转义来测试，毕竟读取和在代码里用字符串字面量表示不一样
-export class String implements Literal {
-    private mText?: Text;
+export class String implements ISyntaxNode {
+    private mText: Text;
 
-    public static New(): String {
-        return new String();
+    public static New(content: Text): String {
+        return new String(content);
     }
 
-    public static SetContent(s: String, content: Text) {
-        s.mText = content;
-        return s;
+    // TODO 转义的事情处理好了吗
+    private constructor(content: Text) {
+        this.mText = content;
     }
 
-    // 转义的事情处理好了吗
-    private constructor() {
+    public get Range(): IRange {
+        return this.mText.Range;
     }
 
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
 
-    get Valid(): boolean {
+    public get Valid(): boolean {
         return this.mText != null;
     }
 

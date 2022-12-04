@@ -1,6 +1,7 @@
 import { formatParserResult, log, } from './util';
 import { HtmlLogger, } from './HtmlLogger';
 import { TimeBomb } from './TimeBomb';
+import { IRange } from './ISyntaxNode';
 
 // stateful internal
 export interface IInputStream {
@@ -16,7 +17,7 @@ export interface IAsyncInputStream {
 
 export class Position {
     private readonly mLine: number;
-    private readonly mRow: number;
+    private readonly mColumn: number;
 
     static From(line: number, row: number): Position {
         return new Position(line, row);
@@ -24,19 +25,37 @@ export class Position {
 
     private constructor(line: number, row: number) {
         this.mLine = line;
-        this.mRow = row;
+        this.mColumn = row;
     }
 
     public Equal(line: number, row: number) {
-        return this.mLine == line && this.mRow == row;
+        return this.mLine == line && this.mColumn == row;
     }
 
-    get Line(): number {
+    public get Line(): number {
         return this.mLine;
     }
 
-    get Row(): number {
-        return this.mRow;
+    public get Column(): number {
+        return this.mColumn;
+    }
+
+    public NotBefore(that: Position): boolean {
+        if (this.mLine > that.mLine) {
+            return true;
+        } else if (this.mLine == that.mLine) {
+            return this.mColumn >= that.mColumn;
+        }
+        return false;
+    }
+
+    public NotAfter(that: Position): boolean {
+        if (this.mLine < that.mLine) {
+            return true;
+        } else if (this.mLine == that.mLine) {
+            return this.mColumn <= that.mColumn;
+        }
+        return false;
     }
 }
 
@@ -55,6 +74,10 @@ export class Char {
 
     public get Value(): string {
         return this.mChar;
+    }
+
+    public get Position(): Position {
+        return this.mPosition;
     }
 }
 
@@ -124,6 +147,16 @@ export class Text {
 
     public get Empty(): boolean {
         return this.mChars.length == 0;
+    }
+
+    public get Range(): IRange {
+        if (this.mChars.length == 0) {
+            throw new Error('empty chars in Text');
+        }
+        return {
+            Left: this.mChars[0].Position,
+            Right: this.mChars[this.mChars.length - 1].Position,
+        };
     }
 }
 

@@ -1,8 +1,8 @@
 import { id, or, from, nullize, selectRight, optional, Option, } from "../combinator";
 import { IParser, Text, Position, } from "../IParser";
+import { IRange, ISyntaxNode } from "../ISyntaxNode";
 import { makeWordParser, oneOf, lazy, } from "../parser";
-import { combine, selectNotNull, } from "../util";
-import { Literal } from "./Literal";
+import { combine, selectNotNull, stringify, } from "../util";
 
 const zero = '0';
 const oneToNine = '123456789';
@@ -24,7 +24,7 @@ const exponent = from(oneOf('eE', id))
                     .rightWith(from(oneOf(zeroToNine, id)).oneOrMore(combine).raw, (l, r) => ([l, r] as const))
                     .raw;
 
-export class Number implements Literal {
+export class Number implements ISyntaxNode {
     private mInteger: Text;
     private mFraction: Option<Text>;
     private mExponent: Option<readonly [Option<Text>, Text]>;
@@ -38,10 +38,33 @@ export class Number implements Literal {
         this.mFraction = fraction;
         this.mExponent = exponent;
     }
-    Contains(p: Position): boolean {
+
+    public get Range(): IRange {
+        const l = this.mInteger.Range.Left;
+        let r: Position;
+        if (this.mExponent.hasValue()) {
+            r = this.mExponent.value[1].Range.Right;
+        } else if (this.mFraction.hasValue()) {
+            r = this.mFraction.value.Range.Right;
+        } else {
+            r = this.mInteger.Range.Right;
+        }
+        return { Left: l , Right: r, };
+    }
+
+    public toString(): string {
+        return stringify({
+            integer: this.mInteger.toString(),
+            fraction: this.mFraction.toString(),
+            exponent: this.mExponent.toString(),
+        });
+    }
+
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
 }

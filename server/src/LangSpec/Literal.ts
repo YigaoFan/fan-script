@@ -1,35 +1,8 @@
 import { Position, Text, } from "../IParser";
-import { ISyntaxNode } from "../ISyntaxNode";
+import { IRange, ISyntaxNode } from "../ISyntaxNode";
 import { Number, } from "./Number";
 import { String, } from "./String";
-import { Obj, } from "./Object";
-import { Array, } from "./Array";
 import { assert } from "console";
-import { Func } from "./Func";
-
-export abstract class Literal implements ISyntaxNode {
-    abstract Contains(p: Position): boolean;
-    abstract get Valid(): boolean;
-    abstract toString(): string;
-    // ['constructor']: new (...args: ConstructorParameters<typeof ILiteral>) => this;
-
-    public static New(typeInfo: string, args: (ISyntaxNode | Text)[]): ISyntaxNode {
-        assert(args.length === 1);
-        switch (typeInfo) {
-            case 'StringLiteral':
-                return args[0] as String;
-            case 'NumberLiteral':
-                return args[0] as Number;
-            case 'ObjectLiteral':
-                return args[0] as Obj;
-            case 'ArrayLiteral':
-                return args[0] as Array;
-            case 'FuncLiteral':
-                return args[0] as Func;
-        }
-        throw new Error(`not support type info: ${typeInfo}`);
-    }
-}
 
 // 下面这些类型感觉都没有必要，可以像 stmt 那里那样去掉
 // 不过有个东西需要留意，一个东西是字面量数字类型和数字类型是不一样的，这里可能要注意的是：

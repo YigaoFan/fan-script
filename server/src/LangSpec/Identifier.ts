@@ -1,7 +1,7 @@
 import { oneOf, } from "../parser";
 import { from, id, } from "../combinator";
 import { IParser, Text, Position, } from "../IParser";
-import { ISyntaxNode } from "../ISyntaxNode";
+import { IRange, ISyntaxNode } from "../ISyntaxNode";
 import { combine, stringify, } from "../util";
 
 const capAlphabets = Array.from(Array(26)).map((_, i) => i + 65).map(x => String.fromCharCode(x));
@@ -11,7 +11,7 @@ const possibleFirstChars = alphabets.concat(capAlphabets).concat(['_']);
 const possibleLaterChars = possibleFirstChars.concat(nums);
 
 export class Identifier implements ISyntaxNode {
-    private mText?: Text;
+    private mText: Text;
     public static New(text: Text): Identifier {
         return new Identifier(text);
     }
@@ -20,24 +20,21 @@ export class Identifier implements ISyntaxNode {
         this.mText = text;
     }
 
+    public get Range(): IRange {
+        return this.mText.Range;
+    }
+
     public toString(): string {
         return stringify({
             text: this.mText?.toString(), 
         });
     }
 
-    // For test, may delete future
-    public get Value(): string {
-        if (this.mText) {
-            return this.mText.toString();
-        }
-        throw new Error('text not exist in Identifier');
-    }
-
-    Contains(p: Position): boolean {
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+    
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
 }

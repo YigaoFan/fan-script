@@ -1,20 +1,27 @@
 import { makeWordParser, oneOf, lazy, } from "../parser";
 import { from, } from "../combinator";
-import { ISyntaxNode } from "../ISyntaxNode";
+import { IRange, ISyntaxNode } from "../ISyntaxNode";
 import { Position } from "../IParser";
 import { log } from "../util";
 
 const spaces = [' ', '\t', '\n'];
 export class Whitespace implements ISyntaxNode {
-    Contains(p: Position): boolean {
+    public get Range(): IRange {
+        throw new Error("whitespace not implemente range.");
+    }
+
+    public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
-    get Valid(): boolean {
+
+    public get Valid(): boolean {
         throw new Error("Method not implemented.");
     }
+
     public toString(): string {
         return '#this is whitespace#';
     }
+    
     public static New() {
         return new Whitespace();
     }
