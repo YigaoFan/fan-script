@@ -15,7 +15,7 @@ export class AsyncStringStream implements IAsyncInputStream {
                 continue;
             } else {
                 chars.push(Char.New(c, nowPos));
-                nowPos = Position.From(nowPos.Line, nowPos.Row + 1);
+                nowPos = Position.From(nowPos.Line, nowPos.Column + 1);
             }
         }
 
