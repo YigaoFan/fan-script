@@ -33,21 +33,21 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['paras', ['id', 'ow', ',', 'ow', 'paras']], // bug 所在：reduce 之后没有再 closure，两者要可以互相触发，于是要有个机制看有没有引入新的 rule
         ['paras', []],
 
-        ['stmt', ['returnStmt'], 'ReturnStmt'],
-        ['stmt', ['deleteStmt'], 'DeleteStmt'],
-        ['stmt', ['varStmt'], 'VarStmt'],
+        ['stmt', ['returnStmt', ';'], 'ReturnStmt'],
+        ['stmt', ['deleteStmt', ';'], 'DeleteStmt'],
+        ['stmt', ['varStmt', ';'], 'VarStmt'],
         ['stmt', ['ifStmt'], 'IfStmt'],
-        ['stmt', ['expStmt'], 'ExpStmt'],
+        ['stmt', ['expStmt', ';'], 'ExpStmt'],
         ['stmt', ['forStmt'], 'ForStmt'],
 
-        ['varStmt', ['var', 'w', 'id', 'ow', '=', 'ow', 'exp', 'ow', ';']],
-        ['varStmt', ['var', 'w', 'id', 'ow', ';']],
-        ['returnStmt', ['return', 'w', 'exp', 'ow', ';']],
+        ['varStmt', ['var', 'w', 'id', 'ow', '=', 'ow', 'exp', 'ow']],
+        ['varStmt', ['var', 'w', 'id', 'ow']],
+        ['returnStmt', ['return', 'w', 'exp', 'ow']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block', 'ow', 'else', 'ow', 'block']],
         ['ifStmt', ['if', 'ow', '(', 'ow', 'exp', 'ow', ')', 'ow', 'block']],
-        ['forStmt', ['for', 'ow', '(', 'ow', 'stmt', 'ow', 'exp', 'ow', ';', 'ow', 'stmt', 'ow', ')', 'ow', 'block']], // 第三项是 stmt，就要求分号结尾了，语法有点奇怪哈；还有这里的括号内的语法规定太宽松了
-        ['deleteStmt', ['delete', 'w', 'exp', 'ow', 'refinement', 'ow', ';']],
-        ['expStmt', ['id', 'ow', 'afterIdInExpStmt', 'ow', ';']],
+        ['forStmt', ['for', 'ow', '(', 'ow', 'varStmt' | 'expStmt', 'ow', ';', 'ow', 'exp', 'ow', ';', 'ow', 'stmt', 'ow', ')', 'ow', 'block']], // 第三项是 stmt，就要求分号结尾了，语法有点奇怪哈；还有这里的括号内的语法规定太宽松了
+        ['deleteStmt', ['delete', 'w', 'exp', 'ow', 'refinement', 'ow']],
+        ['expStmt', ['id', 'ow', 'afterIdInExpStmt', 'ow']],
         
         ['block', ['{', 'ow', 'stmts', 'ow', '}']],
         ['stmts', []],
@@ -75,6 +75,7 @@ export const ExpGrammar: { nonTerminated: NonTerminatedRule[], terminated: Termi
         ['exp', ['new', 'w', 'exp', 'ow', 'invocation'], 'NewExpression'],
         ['exp', ['delete', 'w', 'exp', 'ow', 'refinement'], 'DeleteExpression'],
 
+        // boolean 也算字面量 TODO
         ['literal', ['string'], 'StringLiteral'],
         ['literal', ['number'], 'NumberLiteral'],
         ['literal', ['object'], 'ObjectLiteral'],
