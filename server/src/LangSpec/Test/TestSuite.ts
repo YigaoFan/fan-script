@@ -125,6 +125,7 @@ const testStmt = () => {
     // 👆好像解析结果的表格里 termin 部分有些无用没删，non-termin 部分有重复
     // for statement not support ++i
     testUnit(stmt, 'for (var i = 0; i < 10; i += 1;) { c += i; }');
+    testUnit(stmt, 'for (var i = 0; i < 10; i += 1;) { if (i < 5) { log("below 5",); } }');
 };
 
 const testParas = () => {
