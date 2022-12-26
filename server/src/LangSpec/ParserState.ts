@@ -1,7 +1,7 @@
 import { CounterStream } from "../CounterStream";
 import { IParser, ParserInput, ParserResult, Text } from "../IParser";
 import { ISyntaxNode } from "../ISyntaxNode";
-import { ExpGrammar, Factory, nodeFactory, NonTerminatedRule, TerminatedRule } from "./GrammarMap";
+import { Grammar, Factory, nodeFactory, NonTerminatedRule, TerminatedRule } from "./GrammarMap";
 
 export const InitialStart = 0;
 export enum ParserWorkState {
@@ -24,7 +24,7 @@ export class NonTerminatedParserState {
     }
 
     public EqualTo(that: NonTerminatedParserState): boolean {
-        return this.From == that.From && this.Rule == that.Rule;
+        return this.From == that.From && this.Rule == that.Rule && this.NowPoint == that.NowPoint;
     }
 
     private constructor(from: number, rule: NonTerminatedRule, nowPoint: number, initalInput: ParserInput, nodes: (ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>)[] = []) {
@@ -106,19 +106,11 @@ export class NonTerminatedParserState {
         const usedNodes = this.mNodes.filter(notNull);
         const usedNodeResults = usedNodes.map(x => x!.Result);
         const remain = this.IsEmptyRule ? this.mInitalInput : this.mNodes[this.mNodes.length - 1]!.Remain;
-
-        if (this.Rule[2]) {
-            // TODO remove one of the branch
-            return {
-                Result: (nodeFactory.Get(this.Rule) as Factory)(usedNodeResults),
-                Remain: remain,
-            };
-        } else {
-            return {
-                Result: (nodeFactory.Get(this.Rule) as Factory)(usedNodeResults),
-                Remain: remain,
-            };
-        }
+        
+        return {
+            Result: (nodeFactory.Get(this.Rule) as Factory)(usedNodeResults),
+            Remain: remain,
+        };
     }
 
     private AddSub(s: ParserResult<Text> | ParserResult<ISyntaxNode> | ParserResult<null>) {
@@ -127,8 +119,8 @@ export class NonTerminatedParserState {
 
     /** Judge if @arg symbol is char, not the left of a rule */
     public static IsChar(symbol: string): boolean {
-        return (!ExpGrammar.terminated.map(x => x[0]).includes(symbol))
-            && (!ExpGrammar.nonTerminated.map(x => x[0] as string).includes(symbol));
+        return (!Grammar.terminated.map(x => x[0]).includes(symbol))
+            && (!Grammar.nonTerminated.map(x => x[0] as string).includes(symbol));
     }
 
     public toString(): string {
@@ -200,7 +192,7 @@ export class TerminatedParserState<T> {
         }
         return true;
     }
-
+    // TODO 这上下两个函数是否重复？
     public get State(): ParserWorkState {
         if (!this.mParserResult) {
             return ParserWorkState.Fail;

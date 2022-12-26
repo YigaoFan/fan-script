@@ -6,7 +6,7 @@ import { Node, NonTerminatedRule } from "./GrammarMap";
 
 export interface UniversalNode extends ISyntaxNode {
     Rule: NonTerminatedRule,
-    Type: Node[],
+    Type: string[],
     Children: (ISyntaxNode | Text)[],
 };
 

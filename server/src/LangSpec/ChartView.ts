@@ -50,7 +50,7 @@ export class ChartView {
             ${x.map(y => `<th>${y}</th>`).join('')}
         </tr>
         <tr>
-            ${x.map((_, i) => `<td>${i + j * 40}</td>`).join('')}
+            ${x.map((_, i) => `<td>${i + j * 40 + 1}</td>`).join('')}
         </tr>
     </table><p>`).join('')}
     <p></p>

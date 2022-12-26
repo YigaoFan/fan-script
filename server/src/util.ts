@@ -1,6 +1,13 @@
+import { appendFileSync } from "fs";
+import { format } from "util";
 import { Text } from "./IParser";
 import { ParserResult, } from "./IParser";
+
 export const log = console.log.bind(console);
+// export const log = function(...args: any[]) {
+//     appendFileSync('debug.log', format(...args), 'utf-8');
+//     appendFileSync('debug.log', '\n', 'utf-8');
+// };
 
 export const combine = function(...texts: Text[]) {
     return texts.reduce(Text.Combine, Text.Empty());
