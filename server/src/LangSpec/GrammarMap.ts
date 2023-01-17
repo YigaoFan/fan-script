@@ -18,11 +18,12 @@ export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'va
     | 'invocationCircle' | 'afterIdInExpStmt' | 'deleteStmt' | 'stmts' | 'block'
     | 'funcs' | 'doc';
 export type NonTerminatedRule = GeneratedRule;
-type InternalNonTerminatedRule = Rule<Node>;
+export type InternalNonTerminatedRule = Rule<Node>;
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
 // add space，只处理内部的空白，不处理两边的空白
 // allow one char parse unit in nonTerminated rule like (, {
-const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: TerminatedRule[] } = {
+// temp TODO remove below export
+export const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
         ['doc', ['ow', 'cls', 'ow']],
 
@@ -67,7 +68,7 @@ const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: Termina
         ['invocationCircle', ['invocation']],
         ['invocationCircle', ['invocation', 'ow', 'invocationCircle']],
         
-        ['exp', ['literal']], // like 'LiteralExpression' is type info for node factory
+        ['exp', ['literal']],
         ['exp', ['id']],
         ['exp', ['(', 'ow', 'exp', 'ow', ')']],
         ['exp', ['prefix-operator', 'ow', 'exp']],
@@ -145,4 +146,3 @@ class NodeFactory {
 
 export const Grammar: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = { terminated: grammar.terminated, nonTerminated: grammar.nonTerminated.map(x => translate(x)).flat() };
 export const nodeFactory = new NodeFactory();
-// log('grammar', JSON.stringify(Grammar.nonTerminated));

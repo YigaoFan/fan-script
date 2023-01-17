@@ -4,10 +4,46 @@ import { IRange, ISyntaxNode } from "../ISyntaxNode";
 import { stringify } from "../util";
 import { Node, NonTerminatedRule } from "./GrammarMap";
 
-export interface UniversalNode extends ISyntaxNode {
-    Rule: NonTerminatedRule,
-    Type: string[],
-    Children: (ISyntaxNode | Text)[],
+export class UniversalNode implements ISyntaxNode {
+    public Rule: NonTerminatedRule;
+    public Type: string[];
+    public Children: (ISyntaxNode | Text)[];
+    public constructor(rule: NonTerminatedRule, type: string[], children: (ISyntaxNode | Text)[]) {
+        this.Rule = rule;
+        this.Type = type;
+        this.Children = children;
+    }
+    public get Range(): IRange {
+        const ns = this.Children;
+        if (ns.length > 0) {
+            const left = ns[0].Range.Left;
+            const right = ns[ns.length - 1].Range.Right;
+            return { Left: left, Right: right, };
+        }
+        throw new Error('query node which not have children');
+    }
+    public Contains(p: Position): boolean {
+        const ns = this.Children;
+        if (ns.length > 0) {
+            const left = ns[0].Range.Left;
+            const right = ns[ns.length - 1].Range.Right;
+            if (p.NotBefore(left) && p.NotAfter(right)) {
+                return true;
+            }
+            return false;
+        }
+        throw new Error('query node which not have children');
+    }
+    public get Valid(): boolean {
+        throw new Error('not implement');
+    }
+    public toString(): string {
+        const ns = this.Children;
+        return stringify({
+            Type: this.Type,
+            Children: this.Rule[1].map((n, i) => `${n}: ${ns[i] ? ns[i].toString() : 'null'}`),
+        });
+    }
 };
 
 const f: (...args: never[]) => void = function(n: number) {
@@ -54,41 +90,10 @@ export const UniversalNodeFactory = function (rule: NonTerminatedRule, nodes: (I
     //     // maybe need to overload or add raw method
     //     return n;
     // }
-    const n = {
-        Rule: rule,
-        Type: [rule[0]],
-        Children: nodes,// 这里面可能包含的 null 也不需要在 chartParser 那边剔除了，直接在这里保留
-        get Range(): IRange {
-            const ns = this.Children;
-            if (ns.length > 0) {
-                const left = ns[0].Range.Left;
-                const right = ns[ns.length - 1].Range.Right;
-                return { Left: left, Right: right, };
-            }
-            throw new Error('query node which not have children'); 
-        },
-        Contains(p: Position): boolean {
-            const ns = this.Children;
-            if (ns.length > 0) {
-                const left = ns[0].Range.Left;
-                const right = ns[ns.length - 1].Range.Right;
-                if (p.NotBefore(left) && p.NotAfter(right)) {
-                    return true;
-                }
-                return false;
-            }
-            throw new Error('query node which not have children');
-        },
-        get Valid(): boolean {
-            throw new Error('not implement');
-        },
-        toString(): string {
-            const ns = this.Children;
-            return stringify({
-                Type: n.Type,
-                Children: rule[1].map((n, i) => `${n}: ${ns[i] ? ns[i].toString() : 'null'}`),
-            });
-        },
-    };
-    return n;
+    // const n = {
+    //     Rule: rule,
+    //     Type: [rule[0]],
+    //     Children: nodes,// 这里面可能包含的 null 也不需要在 chartParser 那边剔除了，直接在这里保留
+    // };// 上面这个可能含有 null？ TODO check
+    return new UniversalNode(rule, [rule[0]], nodes);
 };

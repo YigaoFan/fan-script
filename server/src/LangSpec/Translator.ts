@@ -3,9 +3,11 @@ import { log } from "../util";
 
 interface IUnit {
     getGenerator(): Generator<Option<string>>;
+    genIdName(): string;
+    toString(): string;
 }
 
-type Unit = IUnit | string;
+export type Unit = IUnit | string;
 
 class Or implements IUnit {
     public Option1: string;
@@ -16,9 +18,17 @@ class Or implements IUnit {
         this.Option2 = option2;
     }
 
+    public genIdName(): string {
+        return `${this.Option1}Or${this.Option2}`;
+    }
+
     public *getGenerator(): Generator<Option<string>> {
         yield new Option(this.Option1);
         yield new Option(this.Option2);
+    }
+
+    public toString(): string {
+        return `or(${this.Option1}, ${this.Option2})`;
     }
 }
 
@@ -35,7 +45,23 @@ const getGenerator = function*(unit: Unit): Generator<Option<string>> {
     if (typeof unit == 'string') {
         yield new Option(unit);
     } else {
-        yield* (unit as IUnit).getGenerator();
+        yield* unit.getGenerator();
+    }
+};
+
+export const genIdName = function (unit: Unit): string {
+    if (typeof unit == 'string') {
+        return unit;
+    } else {
+        return unit.genIdName();
+    }
+};
+
+export const toString = function (unit: Unit): string {
+    if (typeof unit == 'string') {
+        return unit;
+    } else {
+        return unit.toString();
     }
 };
 
