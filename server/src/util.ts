@@ -13,6 +13,10 @@ export const combine = function(...texts: Text[]) {
     return texts.reduce(Text.Combine, Text.Empty());
 };
 
+export const capitalizeFirstChar = function (s: string) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
 export const selectNotNull = <T>(...ts: (T | null)[]): T => {
     for (const t of ts) {
         if (t) {

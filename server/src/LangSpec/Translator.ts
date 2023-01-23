@@ -1,5 +1,5 @@
 import { Option } from "../combinator";
-import { log } from "../util";
+import { capitalizeFirstChar, log } from "../util";
 
 interface IUnit {
     getGenerator(): Generator<Option<string>>;
@@ -19,7 +19,7 @@ class Or implements IUnit {
     }
 
     public genIdName(): string {
-        return `${this.Option1}Or${this.Option2}`;
+        return `${this.Option1}Or${capitalizeFirstChar(this.Option2)}`;
     }
 
     public *getGenerator(): Generator<Option<string>> {

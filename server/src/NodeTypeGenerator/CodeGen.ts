@@ -1,7 +1,7 @@
 import { InternalNonTerminatedRule } from "../LangSpec/GrammarMap";
 import * as ts from 'typescript';
 import { genIdName, toString, } from "../LangSpec/Translator";
-import { log, stringify } from "../util";
+import { capitalizeFirstChar, log, stringify } from "../util";
 import { appendFileSync, exists, existsSync, unlinkSync } from "fs";
 import { assert } from "console";
 
@@ -20,9 +20,6 @@ const filter = function (node: string) {
 
     return true;
 };
-const capitalizeFirstChar = function (s: string) {
-    return s.charAt(0).toUpperCase() + s.slice(1);
-};
 
 const serializeRule = function (rule: InternalNonTerminatedRule) {
     if ('main' in rule[1]) {
@@ -38,11 +35,11 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
     if (existsSync(filename)) {
         unlinkSync(filename);
     }
-    const classes: Record<string, ((print: (node: ts.Node) => void, clsNamePostfix: string)=> void)[]> = {};
+    const classes: Record<string, ((print: (node: ts.Node) => void, clsNamePostfix: string, allTypeSet: Set<string>)=> string)[]> = {};
     for (const rule of grammar) {
         // const members: ts.ClassElement[] = [];
         // 这个 generator 还要涉及 translator 那边的语法
-        const memberGens: Record<string, ((print: (node: ts.ClassElement) => void, getterNamePostfix: string) => void)[]> = {};
+        const memberGens: Record<string, ((print: (node: ts.ClassElement) => void, getterNamePostfix: string, allTypeSet: Set<string>) => void)[]> = {};
         if ('main' in rule[1]) {
             
         } else {
@@ -52,50 +49,67 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
                 if (!filter(name)) {
                     continue;
                 }
-                const m = [ts.factory.createModifier(ts.SyntaxKind.PublicKeyword),];
-                const child = ts.factory.createPropertyAccessExpression(ts.factory.createThis(), 'Children');
-                const item = ts.factory.createElementAccessExpression(child, i);
-                const ret = ts.factory.createReturnStatement(item);
-                const b = ts.factory.createBlock([ret], false);
                 if (!(name in memberGens)) {
                     memberGens[name] = [];
                 }
-                memberGens[name].push((print: (node: ts.ClassElement) => void, postfix: string) => print(ts.factory.createGetAccessorDeclaration(undefined, m, name + postfix, [], undefined, b)));
+                memberGens[name].push((print: (node: ts.ClassElement) => void, postfix: string, allTypeSet: Set<string>) => {
+                    const m = [ts.factory.createModifier(ts.SyntaxKind.PublicKeyword),];
+                    const child = ts.factory.createPropertyAccessExpression(ts.factory.createThis(), 'Children');
+                    const item = ts.factory.createElementAccessExpression(child, i);
+                    // 其实下面可以支持下 or 这个运算符，但好麻烦。。。 TODO
+
+                    let returnType = capitalizeFirstChar(name);
+                    let expInRetStmt: ts.Expression = item;
+                    if (returnType == 'Object') { // conflict with ES Object type
+                        returnType = 'Object_0';
+                    }
+                    log('return type', returnType, returnType in allTypeSet);
+                    if (allTypeSet.has(returnType)) {
+                        const destType = ts.factory.createTypeReferenceNode(returnType);
+                        expInRetStmt = ts.factory.createAsExpression(item, destType);
+                    }
+                    const ret = ts.factory.createReturnStatement(expInRetStmt);
+                    const b = ts.factory.createBlock([ret], false);
+                    print(ts.factory.createGetAccessorDeclaration(undefined, m, name + postfix, [], undefined, b))
+                });
             }
         }
-        const members: ts.ClassElement[] = [];
-        for (const name in memberGens) {
-            const subs = memberGens[name];
-            assert(subs.length != 0, 'subclasses has no items');
-            const print = (node: ts.ClassElement) => {
-                members.push(node);
-            };
-            if (subs.length == 1) {
-                subs[0](print, '');
-            } else {
-                for (let i = 0; i < subs.length; i++) {
-                    const nodeGen = subs[i];
-                    nodeGen(print, `_${i}`);
-                }
-            }
-        }
+        
         const m = ts.factory.createModifier(ts.SyntaxKind.ExportKeyword);
         const b = ts.factory.createExpressionWithTypeArguments(ts.factory.createIdentifier('UniversalNode'), undefined);
         const ext = ts.factory.createHeritageClause(ts.SyntaxKind.ExtendsKeyword, [b]);
         let clsName = capitalizeFirstChar(rule[0]);
-        if (clsName == 'Object') {
+        if (clsName == 'Object') { // conflict with ES Object type
             clsName = 'Object_0';
         }
         if (!(clsName in classes)) {
             classes[clsName] = [];
         }
-        classes[clsName].push((print: (node: ts.Node)=> void, clsNamePostfix: string) => {
+        classes[clsName].push((print: (node: ts.Node)=> void, clsNamePostfix: string, allTypeSet: Set<string>) => {
             const r = ts.factory.createIdentifier('grammarRule');
             const ruleTag = ts.factory.createJSDocClassTag(r, serializeRule(rule));
             const comment = ts.factory.createJSDocComment('', [ruleTag]);
             print(comment);
-            const cls = ts.factory.createClassExpression(undefined, [m], clsName + clsNamePostfix, undefined, [ext], members)
+            const name = clsName + clsNamePostfix;
+            const members: ts.ClassElement[] = [];
+            for (const name in memberGens) {
+                const subs = memberGens[name];
+                assert(subs.length != 0, 'subclasses has no items');
+                const print = (node: ts.ClassElement) => {
+                    members.push(node);
+                };
+                if (subs.length == 1) {
+                    subs[0](print, '', allTypeSet);
+                } else {
+                    for (let i = 0; i < subs.length; i++) {
+                        const nodeGen = subs[i];
+                        nodeGen(print, `_${i}`, allTypeSet);
+                    }
+                }
+            }
+            const cls = ts.factory.createClassExpression(undefined, [m], name, undefined, [ext], members);
             print(cls);
+            return name;
         });
     }
     const resultFile = ts.createSourceFile(filename, "", ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
@@ -106,7 +120,6 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
         appendFileSync(filename, '\n');
     };
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-    // const base = ts.factory.createIdentifier('UniversalNodeFactory');
     const nb = ts.factory.createNamedImports([
         ts.factory.createImportSpecifier(false, undefined, ts.factory.createIdentifier('UniversalNode')),
     ]);
@@ -114,16 +127,25 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
     const ms = ts.factory.createStringLiteral('./UniversalNodeFactory');
     const imD = ts.factory.createImportDeclaration(undefined, undefined, imC, ms, undefined);
     print(imD);
+    const typeSet: Set<string> = new Set<string>(Object.keys(classes));
+    log('type set', typeSet);
     for (const name in classes) {
         const subClasses = classes[name];
         assert(subClasses.length != 0, 'subclasses has no items');
         if (subClasses.length == 1) {
-            subClasses[0](print, '');
+            subClasses[0](print, '', typeSet);
         } else {
+            const subTypeNames: string[] = [];
             for (let i = 0; i < subClasses.length; i++) {
                 const clsGen = subClasses[i];
-                clsGen(print, `_${i}`);
+                const subClsName = clsGen(print, `_${i}`, typeSet);
+                subTypeNames.push(subClsName);
             }
+            // create union type to alias type which has multiple sub types
+            const u = ts.factory.createUnionTypeNode(subTypeNames.map(x => ts.factory.createTypeReferenceNode(x)));
+            const m = ts.factory.createModifier(ts.SyntaxKind.ExportKeyword);
+            const unionType = ts.factory.createTypeAliasDeclaration(undefined, [m], capitalizeFirstChar(name), undefined, u);
+            print(unionType);
         }
     }
 };

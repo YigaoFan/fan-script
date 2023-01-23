@@ -16,7 +16,7 @@ export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'va
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'fun' 
     | 'stmt' | 'paras' | 'cls' | 'ifStmt' | 'returnStmt' | 'expStmt' | 'varStmt' | 'forStmt'
     | 'invocationCircle' | 'afterIdInExpStmt' | 'deleteStmt' | 'stmts' | 'block'
-    | 'funcs' | 'doc';
+    | 'funcs' | 'doc' | 'boolean';
 export type NonTerminatedRule = GeneratedRule;
 export type InternalNonTerminatedRule = Rule<Node>;
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
@@ -33,6 +33,7 @@ export const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: 
         ['funcs', []],
         ['funcs', ['fun', 'ow', 'funcs']], // note: fun represent function
 
+        // func is reserved for keyword, so use fun
         ['fun', ['func', 'w', 'id', 'ow', '(', 'ow', 'paras', 'ow', ')', 'ow', 'block']],
         ['paras', ['id', 'ow', ',', 'ow', 'paras']], // bug 所在：reduce 之后没有再 closure，两者要可以互相触发，于是要有个机制看有没有引入新的 rule
         ['paras', []],
@@ -79,13 +80,14 @@ export const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: 
         ['exp', ['new', 'w', 'exp', 'ow', 'invocation']],
         ['exp', ['delete', 'w', 'exp', 'ow', 'refinement']],
 
-        // boolean 也算字面量 TODO
         ['literal', ['string']],
+        ['literal', ['boolean']],
         ['literal', ['number']],
         ['literal', ['object']],
         ['literal', ['array']],
         ['literal', ['fun']],
 
+        ['boolean', [or('true', 'false')]],
         ['object', ['{', 'ow', 'pairs', 'ow', '}']],
         ['pairs', []],
         ['pairs', ['pair', 'ow', ',', 'ow', 'pairs']],
@@ -106,6 +108,8 @@ export const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: 
         ['refinement', ['[', 'ow', 'exp', 'ow', ']']],
     ],
     terminated: [
+        ['true', makeWordParser('true', Keyword.New)],
+        ['false', makeWordParser('false', Keyword.New)],
         ['id', identifier],
         ['prefix-operator', prefixOperator],
         ['infix-operator', infixOperator],
