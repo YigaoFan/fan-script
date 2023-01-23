@@ -90,11 +90,12 @@ const EvalForStmt = function (forStmt: ForStmt, env: Env, continuations: OnlyRet
                     const forBreak = (): void => {
                         continuations.nextStep(env);
                     };
-                    Eval(block, envAfterInit, {
+                    EvalBlock(block, envAfterInit, {
+                        blockEnd: forContinue,
+                    }, {
                         return: continuations.return,
                         continue: forContinue,
                         break: forBreak,
-                        blockEnd: forContinue,
                     });
                 } else {
                     continuations.nextStep(env);
@@ -164,3 +165,4 @@ const Apply = function (func: Fun, args: Value[], env: Env, continuations: OnlyR
         EvalBlock(func.block, childEnv, { blockEnd: () => continuations.return(defaultReturnValue), }, { return: continuations.return, });    
     }});
 };
+// 检查下所有单独使用 Eval 的地方，可能 conts 有问题
