@@ -6,7 +6,7 @@ import { Identifier } from '../LangSpec/Identifier';
 import { AfterIdInExpStmt, AfterIdInExpStmt_0, AfterIdInExpStmt_1, AfterIdInExpStmt_2, AfterIdInExpStmt_3, AfterIdInExpStmt_4, AfterIdInExpStmt_5, AfterIdInExpStmt_6, Args, Array, Block, Boolean, Cls, Exp, ExpStmt, Exp_0, ForStmt, Fun, Funcs, Funcs_0, Funcs_1, IfStmt, IfStmt_0, IfStmt_1, Invocation, InvocationCircle, InvocationCircle_0, InvocationCircle_1, Items, Items_0, Items_1, Key, Key_0, Key_1, Object_0, Pair, Pairs, Pairs_0, Pairs_1, Paras, Paras_0, Paras_1, Refinement, Refinement_0, Refinement_1, ReturnStmt, Stmt, Stmts, Stmts_0, Stmts_1, Stmt_0, Stmt_1, Stmt_2, Stmt_3, Stmt_4, Stmt_5, VarStmt, VarStmt_0, VarStmt_1, } from '../LangSpec/NodeDef';
 import { Number } from '../LangSpec/Number';
 import { string, String } from '../LangSpec/String';
-import { Arr, Env, EvaledFun as EvaledFunc, Obj, Value, ValueRef, } from './Env';
+import { Arr, Env, EvaledFun as EvaledFunc, Obj, Value, LNamedVarValueRef, IValueRef, RValueRef, LObjInnerValueRef, } from './Env';
 
 const EvalRule = [
     // Select(1),
@@ -24,7 +24,7 @@ type continuationTypes = 'return' | 'nextStep';
 // };
 
 export type OnlyReturnCont = {
-    return: (arg: Value) => void;
+    return: (arg: IValueRef) => void;
 };
 type OnlyNextStepCont = {
     nextStep: (env: Env) => void; // last step have effect on next step env
@@ -34,7 +34,7 @@ type OnlyBlockEndCont = {
 };
 type Continuations = {
     // 下面这个？是不是用得有问题，我想的效果存在即有值，不是会存在 undefined 的情况
-    return?: (arg: Value) => void; // 这里的参数要不要有 cont？ TODO check，应该只要返回值吧，写到了就知道了
+    return?: (arg: IValueRef) => void; // 这里的参数要不要有 cont？ TODO check，应该只要返回值吧，写到了就知道了
     nextStep?: (env: Env) => void;
     break?: (conts: OnlyReturnCont) => void; // but break or forStmt doesn't have effect on next step's env, so break is not same as nextStep
     continue?: () => void;
@@ -89,22 +89,22 @@ const EvalExp = function (exp: Exp, env: Env, retCont: OnlyReturnCont): void {
 };
 
 const EvalString = function (str: String, env: Env, retCont: OnlyReturnCont): void {
-    retCont.return(str.Content.Value);
+    retCont.return(RValueRef.New(str.Content.Value));
 };
 
 const EvalBoolean = function (boolean: Boolean, env: Env, retCont: OnlyReturnCont): void {
-    retCont.return((boolean.trueOrFalse as Keyword).Text == 'true');
+    retCont.return(RValueRef.New((boolean.trueOrFalse as Keyword).Text == 'true'));
 };
 
 const EvalNumber = function (num: Number, env: Env, retCont: OnlyReturnCont): void {
-    retCont.return(num.Value);
+    retCont.return(RValueRef.New(num.Value));
 };
 
 const EvalKey = function (key: Key, env: Env, retCont: OnlyReturnCont): void {
     if (key instanceof Key_0) {
         EvalString(key.string as String, env, retCont);
     } else if (key instanceof Key_1) {
-       retCont.return((key.id as Identifier).Text);
+        retCont.return(RValueRef.New((key.id as Identifier).Text));
     } else {
         throw new Error('encounter unknown type in EvalKey');
     }
@@ -112,14 +112,16 @@ const EvalKey = function (key: Key, env: Env, retCont: OnlyReturnCont): void {
 
 const EvalPair = function (pair: Pair, env: Env, retCont: OnlyReturnCont): void {
     EvalKey(pair.key, env, {
-        return: (k: Value) => {
+        return: (keyRef) => {
+            const k = keyRef.Value;
             assert(typeof k == 'string', 'return value of EvalKey is not a string');
             const key = k as string;
             EvalExp(pair.value, env, {
-                return: (v: Value) => {
+                return: (valueRef) => {
+                    const v = valueRef.Value;
                     const evaledPair: Record<typeof key, Value> = {};
                     evaledPair[key] = v;
-                    retCont.return(evaledPair);
+                    retCont.return(RValueRef.New(evaledPair));
                 },
             },);
         },
@@ -128,14 +130,16 @@ const EvalPair = function (pair: Pair, env: Env, retCont: OnlyReturnCont): void 
 
 export const EvalPairs_1 = function (pairs: Pairs_1, env: Env, retCont: OnlyReturnCont): void {
     EvalPair(pairs.pair, env, {
-        return: (pair: Value) => {
+        return: (pairRef) => {
+            const pair = pairRef.Value;
             assert(typeof pair == 'object', 'return value of EvalPair is not a object');
             const typedPair = pair as Obj;
             EvalPairs(pairs.pairs, env, {
-                return: (remainPairs: Value) => {                    
+                return: (remainPairsRef) => {                    
+                    const remainPairs = remainPairsRef.Value;
                     assert(typeof remainPairs == 'object', 'return value of EvalPair is not a object');
                     const typedRemainPairs = remainPairs as Obj;
-                    retCont.return({ ...typedPair, ...typedRemainPairs, });
+                    retCont.return(RValueRef.New({ ...typedPair, ...typedRemainPairs, }));
                 }
             });
         }
@@ -143,43 +147,47 @@ export const EvalPairs_1 = function (pairs: Pairs_1, env: Env, retCont: OnlyRetu
 };
 
 export const EvalPairs_0 = function (pairs: Pairs_0, env: Env, retCont: OnlyReturnCont): void {
-    retCont.return({});
+    retCont.return(RValueRef.New({}));
 };
 
-// const EvalPairs = function (pairs: Pairs, env: Env, retCont: OnlyReturnCont): void {
-//     if (pairs instanceof Pairs_0) {
-//         EvalPairs_0(pairs, env, retCont);
-//     } else if (pairs instanceof Pairs_1) {
-//         EvalPairs_1(pairs, env, retCont);
-//     } else {
-//         throw new Error('encounter unknown type in EvalPairs');
-//     }
-// };
+const EvalPairs = function (pairs: Pairs, env: Env, retCont: OnlyReturnCont): void {
+    // TODO generate
+};
 
 const EvalObject = function (obj: Object_0, env: Env, retCont: OnlyReturnCont): void {
     EvalPairs(obj.pairs, env, retCont);
 };
 
 export const EvalItems_0 = function (items: Items_0, env: Env, retCont: OnlyReturnCont): void {
-    retCont.return([]);
+    retCont.return(RValueRef.New([]));
 };
 
 export const EvalItems_1 = function (items: Items_1, env: Env, retCont: OnlyReturnCont): void {
     EvalExp(items.exp, env, {
-        return: (item: Value) => {
+        return: (itemRef) => {
+            const item = itemRef.Value; 
             assert(typeof item == 'object', 'return value of EvalItems_1 is not a object');
             const typedItem = item as Arr;
             EvalItems(items.items, env, {
-                return: (remainItems: Value) => {
+                return: (remainItemsRef) => {
+                    const remainItems = remainItemsRef.Value;
                     assert(typeof remainItems == 'object', 'return value of EvalItems_1 is not a object');
                     const typedRemainItems = remainItems as Arr;
-                    retCont.return([...typedItem, ...typedRemainItems]);
+                    retCont.return(RValueRef.New([...typedItem, ...typedRemainItems]));
                 }
             });
         }
     });
 };
-
+const EvalItems = function (obj: Items, env: Env, retCont: OnlyReturnCont,) {
+    if (obj instanceof Items_0) {
+        EvalItems_0(obj, env, retCont,);
+    } else if (obj instanceof Items_1) {
+        EvalItems_1(obj, env, retCont,);
+    } else {
+        throw new Error('encounter unknown type in EvalItems');
+    }
+};
 const EvalArray = function (array: Array, env: Env, retCont: OnlyReturnCont): void {
     EvalItems(array.items, env, retCont);
 };
@@ -203,7 +211,8 @@ const EvalForStmt = function (forStmt: ForStmt, env: Env, nextStepCont: OnlyNext
             // 当然要，凡是涉及程序里执行的逻辑流都要用 CPS 风格
 
             EvalExp(cond, envAfterInit, {
-                return: (condResult: Value) => {
+                return: (condResultRef) => {
+                    const condResult = condResultRef.Value;
                     if (typeof condResult != 'boolean') {
                         throw new Error('cond result type is not boolean');
                     }
@@ -236,7 +245,8 @@ const EvalIfStmt = function (ifStmt: IfStmt, env: Env, nextStepCont: OnlyNextSte
     const cond = ifStmt.exp;
     if (ifStmt instanceof IfStmt_0) {
         EvalExp(cond, env, {
-            return: (condResult: Value) => {
+            return: (condResultRef) => {
+                const condResult = condResultRef.Value;
                 if (typeof condResult != 'boolean') {
                     throw new Error('cond result type is not boolean');
                 }
@@ -249,7 +259,8 @@ const EvalIfStmt = function (ifStmt: IfStmt, env: Env, nextStepCont: OnlyNextSte
         });
     } else if (ifStmt instanceof IfStmt_1) {
         EvalExp(cond, env, {
-            return: (condResult: Value) => {
+            return: (condResultRef) => {
+                const condResult = condResultRef.Value;
                 if (typeof condResult != 'boolean') {
                     throw new Error('cond result type is not boolean');
                 }
@@ -267,9 +278,7 @@ const EvalIfStmt = function (ifStmt: IfStmt, env: Env, nextStepCont: OnlyNextSte
 
 const EvalReturnStmt = function (stmt: ReturnStmt, env: Env, nextStepCont: OnlyNextStepCont, otherConts: Continuations) {
     assert(otherConts.return, 'return continuation should be passed');
-    EvalExp(stmt.exp, env, { return: (value: Value) => {
-        otherConts.return!(value);
-    }});    
+    EvalExp(stmt.exp, env, { return: otherConts.return! });    
 };
 const EvalStmt_0 = function (stmt: Stmt_0, env: Env, nextStepCont: OnlyNextStepCont, otherConts: Continuations) {
     EvalReturnStmt(stmt.returnStmt, env, nextStepCont, otherConts);
@@ -277,7 +286,8 @@ const EvalStmt_0 = function (stmt: Stmt_0, env: Env, nextStepCont: OnlyNextStepC
 
 const EvalVarStmt_0 = function (stmt: VarStmt_0, env: Env, nextStepCont: OnlyNextStepCont, otherConts: Continuations) {
     EvalExp(stmt.exp, env, {
-        return: (value: Value) => {
+        return: (valueRef) => {
+            const value = valueRef.Value;
             env.Add((stmt.id as Identifier).Text, value);
             nextStepCont.nextStep(env);
         }
@@ -300,29 +310,34 @@ const EvalArgs = function (args: Args, env: Env, returnCont: OnlyReturnCont) {
 // 整理下这些 Eval 函数的位置 TODO
 const EvalInvocation = function (obj: Invocation, fun: EvaledFunc, env: Env, returnCont: OnlyReturnCont) {
     EvalArgs(obj.args, env, {
-        return: (args) => {
+        return: (argsRef) => {
+            const args = argsRef.Value;
             assert(typeof args == 'object', 'args should be Value[](alias Arr)');
             Apply(fun.Func, args as Arr, fun.Env, returnCont);
+            // 这里涉及调用函数传引用，思考下来是和 js 一样
         }
     });
 };
 
-const EvalRefinement_0 = function (refinement: Refinement_0, obj: Value, env: Env, returnCont: OnlyReturnCont) {
+const EvalRefinement_0 = function (refinement: Refinement_0, valueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
     const propertyName = (refinement.id as Identifier).Text;
+    const obj = valueRef.Value;
     if (typeof obj != 'object') {
         throw new Error('obj is not a object');
     }
     if (!(propertyName in obj)) {
         throw new Error(`${propertyName} not found in obj`);
     }
-    returnCont.return((obj as Obj)[propertyName]);
+    returnCont.return(LObjInnerValueRef.New(obj as Obj, propertyName));
 };
-const EvalRefinement_1 = function (refinement: Refinement_1, obj: Value, env: Env, returnCont: OnlyReturnCont) {
+const EvalRefinement_1 = function (refinement: Refinement_1, valueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
+    const obj = valueRef.Value;
     if (typeof obj != 'object') {
         throw new Error('obj is not a object');
     }
     EvalExp(refinement.exp, env, {
-        return(arg) {
+        return(argRef) {
+            const arg = argRef.Value;
             if (typeof arg != 'string' && typeof arg != 'number') {
                 throw new Error('index of refinement should be string or number');
             }
@@ -330,88 +345,89 @@ const EvalRefinement_1 = function (refinement: Refinement_1, obj: Value, env: En
             if (!(propertyName in obj)) {
                 throw new Error(`${propertyName} not found in obj`);
             }
-            returnCont.return((obj as Obj)[propertyName]);
+            returnCont.return(LObjInnerValueRef.New(obj as Obj, propertyName));
         },
     });
 };
-const EvalRefinement = function (refinement: Refinement, obj: Value, env: Env, returnCont: OnlyReturnCont) {
+const EvalRefinement = function (refinement: Refinement, valueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
 
 };
 // 编译器代码错误用 assert，用户语法使用错误用 if-throw? TODO 检查下代码
-const EvalInvocationCircle_1 = function (obj: InvocationCircle_1, value: Value, env: Env, returnCont: OnlyReturnCont) {
+const EvalInvocationCircle_1 = function (obj: InvocationCircle_1, valueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
+    const value = valueRef.Value;
     if (typeof value == 'object' && 'Func' in value && 'Env' in value) {
         const fun = value as EvaledFunc;
         EvalInvocation(obj.invocation, fun, env, {
-            return(arg) {
-                EvalInvocationCircle(obj.invocationCircle, arg, env, returnCont);
+            return(valueRef) {
+                EvalInvocationCircle(obj.invocationCircle, valueRef, env, returnCont);
             },
         });
         return;
     }
     throw new Error('value is not callable');    
 };
-const EvalInvocationCircle_0 = function (obj: InvocationCircle_0, value: Value, env: Env, returnCont: OnlyReturnCont) {
-    returnCont.return(value);
+const EvalInvocationCircle_0 = function (obj: InvocationCircle_0, valueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
+    returnCont.return(valueRef);
 };
-const EvalInvocationCircle = function (obj: InvocationCircle, value: Value, env: Env, returnCont: OnlyReturnCont) {
+const EvalInvocationCircle = function (obj: InvocationCircle, valueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
     // TODO generate
 };
 
-const EvalAfterIdInExpStmt_0 = function (obj: AfterIdInExpStmt_0, id: Identifier, env: Env, returnCont: OnlyReturnCont) {
+const EvalAfterIdInExpStmt_0 = function (obj: AfterIdInExpStmt_0, leftPartValueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
     EvalExp(obj.exp, env, {
-        return(value) {
-            env.Update(id.Text, value);
-            returnCont.return(value);
+        return(valueRef) {
+            leftPartValueRef.Value = valueRef.Value; // 这里要不要 .Value 出来然后赋 TODO
+            returnCont.return(leftPartValueRef);
         },
     });
 };
-const EvalAfterIdInExpStmt_1 = function (obj: AfterIdInExpStmt_1, id: Identifier, env: Env, returnCont: OnlyReturnCont) {
+const EvalAfterIdInExpStmt_1 = function (obj: AfterIdInExpStmt_1, leftPartValueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
     EvalExpStmt(obj.expStmt, env, {
-        return(value) {
-            env.Update(id.Text, value);
-            returnCont.return(value);
+        return(valueRef) {
+            leftPartValueRef.Value = valueRef.Value; // 这里要不要 .Value 出来然后赋 TODO
+            returnCont.return(leftPartValueRef);
         },
     });
 };
-const EvalAfterIdInExpStmt_2 = function (obj: AfterIdInExpStmt_2, id: Identifier, env: Env, returnCont: OnlyReturnCont) {
+const EvalAfterIdInExpStmt_2 = function (obj: AfterIdInExpStmt_2, leftPartValueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
     EvalExp(obj.exp, env, {
-        return: (value) => {
-            if (typeof value != 'number') {
+        return: (incrementRef) => {
+            const increment = incrementRef.Value;
+            if (typeof increment != 'number') {
                 throw new Error('right of += should be a number');
             }
-            const oldValue = env.Lookup(id.Text);
+            const oldValue = leftPartValueRef.Value;
             if (typeof oldValue != 'number') {
                 throw new Error('left of += should be a number');
             }
-            const newValue = oldValue + value;
-            env.Update(id.Text, newValue);
-            returnCont.return(newValue);
+            const newValue = oldValue + increment;
+            leftPartValueRef.Value = newValue;
+            returnCont.return(leftPartValueRef);
         }
     });
 };
-const EvalAfterIdInExpStmt_3 = function (obj: AfterIdInExpStmt_3, id: Identifier, env: Env, returnCont: OnlyReturnCont) {
+const EvalAfterIdInExpStmt_3 = function (obj: AfterIdInExpStmt_3, leftPartValueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
     EvalExp(obj.exp, env, {
-        return: (value) => {
-            if (typeof value != 'number') {
+        return: (decrementRef) => {
+            const decrement = decrementRef.Value;
+            if (typeof decrement != 'number') {
                 throw new Error('right of -= should be a number');
             }
-            const oldValue = env.Lookup(id.Text);
+            const oldValue = leftPartValueRef.Value;
             if (typeof oldValue != 'number') {
                 throw new Error('left of -= should be a number');
             }
-            const newValue = oldValue - value;
-            env.Update(id.Text, newValue);
-            returnCont.return(newValue);
+            const newValue = oldValue - decrement;
+            leftPartValueRef.Value = newValue;
+            returnCont.return(leftPartValueRef);
         }
     });
 };
-const EvalAfterIdInExpStmt_4 = function (obj: AfterIdInExpStmt_4, id: Identifier, env: Env, returnCont: OnlyReturnCont) {
-    const f = env.Lookup(id.Text);
-    EvalInvocationCircle(obj.invocationCircle, f, env, returnCont);
+const EvalAfterIdInExpStmt_4 = function (obj: AfterIdInExpStmt_4, leftPartValueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
+    EvalInvocationCircle(obj.invocationCircle, leftPartValueRef, env, returnCont);
 };
-const EvalAfterIdInExpStmt_5 = function (obj: AfterIdInExpStmt_5, id: Identifier, env: Env, returnCont: OnlyReturnCont) {
-    const f = env.Lookup(id.Text);
-    EvalInvocationCircle(obj.invocationCircle, f, env, {
+const EvalAfterIdInExpStmt_5 = function (obj: AfterIdInExpStmt_5, leftPartValueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
+    EvalInvocationCircle(obj.invocationCircle, leftPartValueRef, env, {
         return(o) {
             EvalRefinement(obj.refinement, o, env, {
                 return(value) {
@@ -422,15 +438,14 @@ const EvalAfterIdInExpStmt_5 = function (obj: AfterIdInExpStmt_5, id: Identifier
     });
 };
 
-const EvalAfterIdInExpStmt_6 = function (obj: AfterIdInExpStmt_6, id: Identifier, env: Env, returnCont: OnlyReturnCont) {
-    const o = env.Lookup(id.Text);
-    EvalRefinement(obj.refinement, o, env, {
-        return(value) {
-            EvalAfterIdInExpStmt(obj.afterIdInExpStmt, value, env, returnCont);
+const EvalAfterIdInExpStmt_6 = function (obj: AfterIdInExpStmt_6, leftPartValueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
+    EvalRefinement(obj.refinement, leftPartValueRef, env, {
+        return(valueRef) {
+            EvalAfterIdInExpStmt(obj.afterIdInExpStmt, valueRef, env, returnCont);
         },
     });
 };
-const EvalAfterIdInExpStmt = function (obj: AfterIdInExpStmt, leftValueRef: ValueRef, env: Env, returnCont: OnlyReturnCont) {
+const EvalAfterIdInExpStmt = function (obj: AfterIdInExpStmt, leftPartValueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
     // TODO generate
 };
 /**
@@ -442,9 +457,9 @@ const EvalExpStmt = function (stmt: ExpStmt, env: Env, conts: OnlyNextStepCont |
     const v = env.LookupValueRefOf((stmt.id as Identifier).Text);
     
     EvalAfterIdInExpStmt(stmt.afterIdInExpStmt, v, env, {
-        return: (value) => {
+        return: (valueRef) => {
             if ('return' in conts) {
-                conts.return(value);
+                conts.return(valueRef);
             } else if ('nextStep' in conts) {
                 conts.nextStep(env);
             }
@@ -476,7 +491,7 @@ const EvalBlock = function (block: Block, env: Env, blockEndCont: OnlyBlockEndCo
 };
 
 const EvalParas_0 = function (paras: Paras_0, args: Value[], env: Env, conts: OnlyNextStepCont) {
-    const p = (paras.id as Identifier).Text;// TODO NodeDef 里 getter 把这些自定义类型给支持了
+    const p = (paras.id as Identifier).Text;// TODO NodeDef 里 getter 把这些自定义类型给支持了，加个自定义类型 map
     env.Add(p, args[0]);
     EvalParas(paras.paras, args.slice(1), env, conts);
 };
@@ -514,7 +529,8 @@ const Apply = function (func: Fun, args: Arr, env: Env, cont: OnlyReturnCont) {
     const childEnv = env.BornChildEnv();
     EvalParas(func.paras, args, env, { nextStep: (env) => {
         const defaultReturnValue = undefined;
-        EvalBlock(func.block, childEnv, { blockEnd: () => cont.return(defaultReturnValue), }, { return: cont.return, });    
+        EvalBlock(func.block, childEnv, { blockEnd: () => cont.return(RValueRef.New(defaultReturnValue)), },
+            { return: cont.return, });    
     }});
 };
 // 检查下所有单独使用 Eval 的地方，可能 conts 有问题

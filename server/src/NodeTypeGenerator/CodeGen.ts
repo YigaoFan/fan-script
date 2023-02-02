@@ -74,7 +74,6 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
                 });
             }
         }
-        
         const m = ts.factory.createModifier(ts.SyntaxKind.ExportKeyword);
         const b = ts.factory.createExpressionWithTypeArguments(ts.factory.createIdentifier('UniversalNode'), undefined);
         const ext = ts.factory.createHeritageClause(ts.SyntaxKind.ExtendsKeyword, [b]);
@@ -148,4 +147,58 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
             print(unionType);
         }
     }
+};
+
+export const GenDispatchFuncs = function (filename: string, funcInfos: [string, number, [string, string][]][]) {
+    if (existsSync(filename)) {
+        unlinkSync(filename);
+    }
+    appendFileSync(filename, 'import { Env } from "./Env";\n');
+    const importsFromNodeDef = new Set<string>();
+    const importsFromEvalRule = new Set<string>();
+    const funcDefs: string[] = [];
+
+    for (const x of funcInfos) {
+        const f = GenDispatchFunc(x[0], x[1], x[2], importsFromNodeDef, importsFromEvalRule);
+        funcDefs.push(f);
+    }
+    appendFileSync(filename, `import { ${Array.from(importsFromNodeDef).map(x => `${x}, `).join('')}} from "../LangSpec/NodeDef";\n`);
+    appendFileSync(filename, `import { ${Array.from(importsFromEvalRule).map(x => `${x}, `).join('')}} from "./EvalRule";\n`);
+
+    for (const f of funcDefs) {
+        appendFileSync(filename, f);
+        appendFileSync(filename, '\n');
+    }
+};
+
+/**
+ * @param paras [name, type]
+ */
+export const GenDispatchFunc = function (baseTypeName: string, subTypeCount: number, paras: [string, string][], importsFromNodeDef: Set<string>, importsFromEvalRule: Set<string>) {
+    const base = baseTypeName;
+    assert(subTypeCount > 1, 'dispatch need two sub types at least');
+    const subTypeNames = Array.from(Array(subTypeCount)).map((_, i) => `${baseTypeName}_${i}`);
+    const funcName = `Eval${base}`;
+    const GenDispatchItem = (subType: string) => {
+        const name = `Eval${subType}`;
+        importsFromEvalRule.add(name);
+        return `if (obj instanceof ${subType}) {
+        ${name}(obj,${paras.map(x => ` ${x[0]},`).join('')}); 
+    }`;
+    };
+    importsFromNodeDef.add(baseTypeName);
+    for (const x of subTypeNames) {
+        importsFromNodeDef.add(x);        
+    }
+    for (const x of paras) {
+        if (x[1] != 'Env') {
+            importsFromEvalRule.add(x[1]);
+        }
+    }
+    const def = `export const ${funcName} = function (obj: ${base},${paras.map(x => ` ${x[0]}: ${x[1]},`).join('')}) {
+    ${GenDispatchItem(subTypeNames[0])}${subTypeNames.slice(1).map(x => ` else ${GenDispatchItem(x)}`).join('')} else {
+        throw new Error('encounter unknown type in ${funcName}');
+    }
+};`;
+    return def;
 };

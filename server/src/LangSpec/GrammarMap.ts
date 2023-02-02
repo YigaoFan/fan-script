@@ -33,6 +33,7 @@ export const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: 
         ['funcs', []],
         ['funcs', ['fun', 'ow', 'funcs']], // note: fun represent function
 
+        // 其实这里 id 是可选的 TODO
         // func is reserved for keyword, so use fun
         ['fun', ['func', 'w', 'id', 'ow', '(', 'ow', 'paras', 'ow', ')', 'ow', 'block']],
         ['paras', ['id', 'ow', ',', 'ow', 'paras']], // bug 所在：reduce 之后没有再 closure，两者要可以互相触发，于是要有个机制看有没有引入新的 rule
@@ -66,7 +67,7 @@ export const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: 
         ['afterIdInExpStmt', ['invocationCircle', 'ow', 'refinement', 'ow', 'afterIdInExpStmt']],
         ['afterIdInExpStmt', ['refinement', 'ow', 'afterIdInExpStmt']],
         
-        ['invocationCircle', ['invocation']],
+        ['invocationCircle', []],
         ['invocationCircle', ['invocation', 'ow', 'invocationCircle']],
         
         ['exp', ['literal']],

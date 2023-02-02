@@ -39,6 +39,11 @@ export class Number implements ISyntaxNode {
         this.mExponent = exponent;
     }
 
+    public get Value(): number {
+        // TODO
+        throw new Error('not implement');
+    }
+
     public get Range(): IRange {
         const l = this.mInteger.Range.Left;
         let r: Position;

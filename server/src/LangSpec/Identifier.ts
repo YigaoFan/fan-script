@@ -24,9 +24,13 @@ export class Identifier implements ISyntaxNode {
         return this.mText.Range;
     }
 
+    public get Text(): string {
+        return this.mText.toString();
+    }
+
     public toString(): string {
         return stringify({
-            text: this.mText?.toString(), 
+            text: this.mText.toString(), 
         });
     }
 

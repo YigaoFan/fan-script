@@ -159,6 +159,10 @@ export class Keyword implements ISyntaxNode {
         this.mText = text;
     }
 
+    public get Text() {
+        return this.mText.Value;
+    }
+
     public get Range(): IRange {
         return this.mText.Range;
     }
