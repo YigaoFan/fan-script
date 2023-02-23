@@ -62,6 +62,7 @@ export class LNamedVarValueRef implements IValueRef {
         return this.mEnv.Lookup(this.mName);
     }    
 }
+
 export class LObjInnerValueRef implements IValueRef {
     private mObj: Obj;
     private mKey: string | number;
@@ -81,6 +82,7 @@ export class LObjInnerValueRef implements IValueRef {
         return this.mObj[this.mKey];
     }
 }
+
 export type Obj = { [key: string]: Value };
 export type Arr = Value[];
 export type EvaledFun = { Func: Fun, Env: Env, };

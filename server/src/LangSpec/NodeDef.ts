@@ -1,4 +1,7 @@
 import { UniversalNode } from "./UniversalNodeFactory";
+import { PrefixOperator } from "./Expression";
+import { InfixOperator } from "./Expression";
+import { Identifier } from "./Identifier";
 /**
  * @grammarRule ["doc",["ow","cls","ow"]]
  */
@@ -10,7 +13,7 @@ export class Doc extends UniversalNode {
  */
 export class Cls extends UniversalNode {
     public get class() { return this.Children[0]; }
-    public get id() { return this.Children[2]; }
+    public get id() { return this.Children[2] as Identifier; }
     public get funcs() { return this.Children[6] as Funcs; }
 }
 /**
@@ -31,7 +34,7 @@ export type Funcs = Funcs_0 | Funcs_1;
  */
 export class Fun extends UniversalNode {
     public get func() { return this.Children[0]; }
-    public get id() { return this.Children[2]; }
+    public get id() { return this.Children[2] as Identifier; }
     public get paras() { return this.Children[6] as Paras; }
     public get block() { return this.Children[10] as Block; }
 }
@@ -39,7 +42,7 @@ export class Fun extends UniversalNode {
  * @grammarRule ["paras",["id","ow",",","ow","paras"]]
  */
 export class Paras_0 extends UniversalNode {
-    public get id() { return this.Children[0]; }
+    public get id() { return this.Children[0] as Identifier; }
     public get paras() { return this.Children[4] as Paras; }
 }
 /**
@@ -55,42 +58,36 @@ export class Stmt_0 extends UniversalNode {
     public get returnStmt() { return this.Children[0] as ReturnStmt; }
 }
 /**
- * @grammarRule ["stmt",["deleteStmt",";"]]
- */
-export class Stmt_1 extends UniversalNode {
-    public get deleteStmt() { return this.Children[0] as DeleteStmt; }
-}
-/**
  * @grammarRule ["stmt",["varStmt",";"]]
  */
-export class Stmt_2 extends UniversalNode {
+export class Stmt_1 extends UniversalNode {
     public get varStmt() { return this.Children[0] as VarStmt; }
 }
 /**
  * @grammarRule ["stmt",["ifStmt"]]
  */
-export class Stmt_3 extends UniversalNode {
+export class Stmt_2 extends UniversalNode {
     public get ifStmt() { return this.Children[0] as IfStmt; }
 }
 /**
  * @grammarRule ["stmt",["expStmt",";"]]
  */
-export class Stmt_4 extends UniversalNode {
+export class Stmt_3 extends UniversalNode {
     public get expStmt() { return this.Children[0] as ExpStmt; }
 }
 /**
  * @grammarRule ["stmt",["forStmt"]]
  */
-export class Stmt_5 extends UniversalNode {
+export class Stmt_4 extends UniversalNode {
     public get forStmt() { return this.Children[0] as ForStmt; }
 }
-export type Stmt = Stmt_0 | Stmt_1 | Stmt_2 | Stmt_3 | Stmt_4 | Stmt_5;
+export type Stmt = Stmt_0 | Stmt_1 | Stmt_2 | Stmt_3 | Stmt_4;
 /**
  * @grammarRule ["varStmt",["var","w","id","ow","=","ow","exp","ow"]]
  */
 export class VarStmt_0 extends UniversalNode {
     public get var() { return this.Children[0]; }
-    public get id() { return this.Children[2]; }
+    public get id() { return this.Children[2] as Identifier; }
     public get exp() { return this.Children[6] as Exp; }
 }
 /**
@@ -98,7 +95,7 @@ export class VarStmt_0 extends UniversalNode {
  */
 export class VarStmt_1 extends UniversalNode {
     public get var() { return this.Children[0]; }
-    public get id() { return this.Children[2]; }
+    public get id() { return this.Children[2] as Identifier; }
 }
 export type VarStmt = VarStmt_0 | VarStmt_1;
 /**
@@ -149,7 +146,7 @@ export class DeleteStmt extends UniversalNode {
  * @grammarRule ["expStmt",["id","ow","afterIdInExpStmt","ow"]]
  */
 export class ExpStmt extends UniversalNode {
-    public get id() { return this.Children[0]; }
+    public get id() { return this.Children[0] as Identifier; }
     public get afterIdInExpStmt() { return this.Children[2] as AfterIdInExpStmt; }
 }
 /**
@@ -240,7 +237,7 @@ export class Exp_0 extends UniversalNode {
  * @grammarRule ["exp",["id"]]
  */
 export class Exp_1 extends UniversalNode {
-    public get id() { return this.Children[0]; }
+    public get id() { return this.Children[0] as Identifier; }
 }
 /**
  * @grammarRule ["exp",["(","ow","exp","ow",")"]]
@@ -249,17 +246,19 @@ export class Exp_2 extends UniversalNode {
     public get exp() { return this.Children[2] as Exp; }
 }
 /**
- * @grammarRule ["exp",["prefix-operator","ow","exp"]]
+ * @grammarRule ["exp",["prefixOperator","ow","exp"]]
  */
 export class Exp_3 extends UniversalNode {
+    public get prefixOperator() { return this.Children[0] as PrefixOperator; }
     public get exp() { return this.Children[2] as Exp; }
 }
 /**
- * @grammarRule ["exp",["exp","ow","infix-operator","ow","exp"]]
+ * @grammarRule ["exp",["exp","ow","infixOperator","ow","exp"]]
  */
 export class Exp_4 extends UniversalNode {
     public get exp_0() { return this.Children[0] as Exp; }
     public get exp_1() { return this.Children[4] as Exp; }
+    public get infixOperator() { return this.Children[2] as InfixOperator; }
 }
 /**
  * @grammarRule ["exp",["exp","ow","?","ow","exp","ow",":","ow","exp"]]
@@ -379,7 +378,7 @@ export class Key_0 extends UniversalNode {
  * @grammarRule ["key",["id"]]
  */
 export class Key_1 extends UniversalNode {
-    public get id() { return this.Children[0]; }
+    public get id() { return this.Children[0] as Identifier; }
 }
 export type Key = Key_0 | Key_1;
 /**
@@ -430,7 +429,7 @@ export type Args = Args_0 | Args_1;
  * @grammarRule ["refinement",[".","ow","id"]]
  */
 export class Refinement_0 extends UniversalNode {
-    public get id() { return this.Children[2]; }
+    public get id() { return this.Children[2] as Identifier; }
 }
 /**
  * @grammarRule ["refinement",["[","ow","exp","ow","]"]]

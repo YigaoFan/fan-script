@@ -5,14 +5,14 @@ import { IRange, ISyntaxNode } from "../ISyntaxNode";
 import { stringify } from "../util";
 import { assert } from "console";
 
-enum PrefixOperatorKind {
+export enum PrefixOperatorKind {
     Add = '+',
     Minus = '-',
-    TypeOf = 'typof -',
+    TypeOf = 'typof ',
     Not = '!',
 }
 
-class PrefixOperator implements ISyntaxNode {
+export class PrefixOperator implements ISyntaxNode {
     private mOperator: PrefixOperatorKind;
     private mOperatorText: Text;
 
@@ -54,12 +54,16 @@ class PrefixOperator implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
 
+    public get Kind() {
+        return this.mOperator;
+    }
+
     public toString(): string {
         return this.mOperator;
     }    
 }
 
-enum InfixOperatorKind {
+export enum InfixOperatorKind {
     Multiply = '*',
     Divide = '/',
     Remain = '%',
@@ -75,7 +79,7 @@ enum InfixOperatorKind {
     And = '&&',
 }
 
-class InfixOperator implements ISyntaxNode {
+export class InfixOperator implements ISyntaxNode {
     private mOperator: InfixOperatorKind;
     private mOperatorText: Text;
 
@@ -136,6 +140,10 @@ class InfixOperator implements ISyntaxNode {
         return this.mOperatorText.Range;
     }
 
+    public get Kind() {
+        return this.mOperator;
+    }
+
     public Contains(p: Position): boolean {
         throw new Error("Method not implemented.");
     }
@@ -182,6 +190,7 @@ export class Keyword implements ISyntaxNode {
     }
 }
 
+// TODO support typeof
 export const prefixOperator = from(oneOf(['typeof ', '+', '-', '!'], PrefixOperator.New)).prefixComment('parse prefix operato').raw;
 export const infixOperator = from(oneOf(['*', '/', '%', '+', '-', '>=', '<=', '>', '<', '==', '!=', '||', '&&'], InfixOperator.New)).raw;
 // 之后做补全会碰到一个问题：什么时候算进入到某个语法节点的范围，在这个范围内进行补全，在这个范围内，某些东西可能是不完整的

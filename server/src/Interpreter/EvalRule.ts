@@ -1,11 +1,12 @@
 import { assert } from 'console';
 import { Text } from '../IParser';
 import { ISyntaxNode } from '../ISyntaxNode';
-import { Keyword } from '../LangSpec/Expression';
+import { Calculate } from '../LangSpec/ArithEval';
+import { InfixOperatorKind, Keyword, PrefixOperatorKind } from '../LangSpec/Expression';
 import { Identifier } from '../LangSpec/Identifier';
-import { AfterIdInExpStmt, AfterIdInExpStmt_0, AfterIdInExpStmt_1, AfterIdInExpStmt_2, AfterIdInExpStmt_3, AfterIdInExpStmt_4, AfterIdInExpStmt_5, AfterIdInExpStmt_6, Args, Array, Block, Boolean, Cls, Exp, ExpStmt, Exp_0, ForStmt, Fun, Funcs, Funcs_0, Funcs_1, IfStmt, IfStmt_0, IfStmt_1, Invocation, InvocationCircle, InvocationCircle_0, InvocationCircle_1, Items, Items_0, Items_1, Key, Key_0, Key_1, Object_0, Pair, Pairs, Pairs_0, Pairs_1, Paras, Paras_0, Paras_1, Refinement, Refinement_0, Refinement_1, ReturnStmt, Stmt, Stmts, Stmts_0, Stmts_1, Stmt_0, Stmt_1, Stmt_2, Stmt_3, Stmt_4, Stmt_5, VarStmt, VarStmt_0, VarStmt_1, } from '../LangSpec/NodeDef';
+import { AfterIdInExpStmt, AfterIdInExpStmt_0, AfterIdInExpStmt_1, AfterIdInExpStmt_2, AfterIdInExpStmt_3, AfterIdInExpStmt_4, AfterIdInExpStmt_5, AfterIdInExpStmt_6, Args, Array, Block, Boolean, Cls, Exp, ExpStmt, Exp_0, Exp_2, Exp_3, Exp_4, Exp_5, Exp_6, Exp_7, Exp_8, Exp_9, ForStmt, Fun, Funcs, Funcs_0, Funcs_1, IfStmt, IfStmt_0, IfStmt_1, Invocation, InvocationCircle, InvocationCircle_0, InvocationCircle_1, Items, Items_0, Items_1, Key, Key_0, Key_1, Literal, Object_0, Pair, Pairs, Pairs_0, Pairs_1, Paras, Paras_0, Paras_1, Refinement, Refinement_0, Refinement_1, ReturnStmt, Stmt, Stmts, Stmts_0, Stmts_1, Stmt_0, Stmt_1, Stmt_2, Stmt_3, Stmt_4, Stmt_5, VarStmt, VarStmt_0, VarStmt_1, } from '../LangSpec/NodeDef';
 import { Number } from '../LangSpec/Number';
-import { string, String } from '../LangSpec/String';
+import { String } from '../LangSpec/String';
 import { Arr, Env, EvaledFun as EvaledFunc, Obj, Value, LNamedVarValueRef, IValueRef, RValueRef, LObjInnerValueRef, } from './Env';
 
 const EvalRule = [
@@ -13,11 +14,6 @@ const EvalRule = [
     // Select(1, 2).Then(Select(3)),
 ];
 const debug = console.log.bind(console);
-
-interface IEvalResult {
-
-}
-type continuationTypes = 'return' | 'nextStep';
 
 // type Continuations = {
 //     [t in continuationTypes]?: (...args: any[]) => void;
@@ -75,7 +71,7 @@ const Eval = function (node: ISyntaxNode | Text, env: Env, continuations: Contin
 // };
 
 // 外面调用时能传入超过 OnlyNextStepCont 接口规定的对象吗？
-const EvalFunc = function (func: Fun, env: Env, conts: OnlyNextStepCont) {
+const EvalFun = function (func: Fun, env: Env, conts: OnlyNextStepCont) {
     const n = func.id.toString(); // get function name, maybe toString not fit here TODO
     env.Add(n, { Func: func, Env: env, });
     conts.nextStep(env);
@@ -86,6 +82,11 @@ const EvalFunc = function (func: Fun, env: Env, conts: OnlyNextStepCont) {
  */
 const EvalExp = function (exp: Exp, env: Env, retCont: OnlyReturnCont): void {
     
+};
+
+const EvalId = function (id: Identifier, env: Env, retCont: OnlyReturnCont) {
+    const valueRef = env.LookupValueRefOf(id.Text);
+    retCont.return(valueRef);
 };
 
 const EvalString = function (str: String, env: Env, retCont: OnlyReturnCont): void {
@@ -192,6 +193,247 @@ const EvalArray = function (array: Array, env: Env, retCont: OnlyReturnCont): vo
     EvalItems(array.items, env, retCont);
 };
 
+const EvalLiteral = function (literal: Literal, env: Env, retCont: OnlyReturnCont): void {
+
+};
+const EvalExp_2 = function (exp: Exp_2, env: Env, retCont: OnlyReturnCont): void {
+    EvalExp(exp.exp, env, retCont);
+};
+const EvalExp_3 = function (exp: Exp_3, env: Env, retCont: OnlyReturnCont): void {
+    EvalExp(exp.exp, env, {
+        return(valueRef) {
+            switch (exp.prefixOperator.Kind) {
+                case PrefixOperatorKind.Add:
+                    if (typeof valueRef.Value != 'number') {
+                        throw new Error('+ operand is not number');
+                    }
+                    retCont.return(RValueRef.New(valueRef.Value));
+                    break;
+                case PrefixOperatorKind.Minus:
+                    if (typeof valueRef.Value != 'number') {
+                        throw new Error('- operand is not number');
+                    }
+                    retCont.return(RValueRef.New(-valueRef.Value));
+                    break;
+                case PrefixOperatorKind.Not:
+                    if (typeof valueRef.Value != 'boolean') {
+                        throw new Error('! operand is not boolean');
+                    }
+                    retCont.return(RValueRef.New(!valueRef.Value));
+                    break;
+                case PrefixOperatorKind.TypeOf:
+                    throw new Error('not support typeof operator');
+            }
+        },
+    });
+};
+
+type Operations = [InfixOperatorKind[], IValueRef[]];
+const IterateOperationIn = function (exp: Exp_4, env: Env, returnCont: { return: (operations: Operations) => void }) {
+    const ProcessSub = function (subExp: Exp, subReturnCont: typeof returnCont) {
+        if (subExp instanceof Exp_4) {
+            IterateOperationIn(subExp, env, {
+                return(part1) {
+                    subReturnCont.return(part1);
+                },
+            });
+        } else {
+            EvalExp(subExp, env, {
+                return(arg) {
+                    subReturnCont.return([[], [arg]]);
+                },
+            });
+        }
+    };
+
+    ProcessSub(exp.exp_0, {
+        return(operations0) {
+            ProcessSub(exp.exp_1, {
+                return(operations1) {
+                    const operators = [...operations0[0], exp.infixOperator.Kind, ...operations1[0]];
+                    const operands = [...operations0[1], ...operations1[1]];
+                    returnCont.return([operators, operands]);
+                },
+            });
+        },
+    });
+};
+
+const EvalExp_4 = function (exp: Exp_4, env: Env, returnCont: OnlyReturnCont) {
+    const priorityMap: Record<number, InfixOperatorKind[]> = {
+        0: [InfixOperatorKind.Or],
+        1: [InfixOperatorKind.And],
+        2: [InfixOperatorKind.Equal, InfixOperatorKind.NotEqual],
+        3: [InfixOperatorKind.Greater, InfixOperatorKind.GreaterEqual, InfixOperatorKind.Less, InfixOperatorKind.LessEqual],
+        4: [InfixOperatorKind.Add, InfixOperatorKind.Minus],
+        5: [InfixOperatorKind.Multiply, InfixOperatorKind.Divide, InfixOperatorKind.Remain],
+    };
+    const operatorFuncs: Record<InfixOperatorKind, (p0: IValueRef, p1: IValueRef) => IValueRef> = {
+        '*': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 * v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support * operator`);
+        },
+        '/': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 / v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support / operator`);
+        },
+        '%': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 % v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support % operator`);
+        },
+        '+': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 + v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support + operator`);
+        },
+        '-': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 - v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support - operator`);
+        },
+        '>=': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 >= v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support >= operator`);
+        },
+        '<=': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 <= v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support <= operator`);
+        },
+        '>': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 > v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support > operator`);
+        },
+        '<': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 < v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support < operator`);
+        },
+        '==': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 == v1);
+            }
+            if (typeof p0.Value == 'boolean' && typeof p1.Value == 'boolean') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 == v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support == operator`);
+        },
+        '!=': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'number' && typeof p1.Value == 'number') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 != v1);
+            }
+            if (typeof p0.Value == 'boolean' && typeof p1.Value == 'boolean') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 != v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support != operator`);
+        },
+        '||': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'boolean' && typeof p1.Value == 'boolean') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 || v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support || operator`);
+        },
+        '&&': function (p0: IValueRef, p1: IValueRef): IValueRef {
+            if (typeof p0.Value == 'boolean' && typeof p1.Value == 'boolean') {
+                const v0 = p0.Value;
+                const v1 = p1.Value;
+                return RValueRef.New(v0 && v1);
+            }
+            throw new Error(`${p0.Value} or ${p1.Value} not support && operator`);
+        }
+    };
+    IterateOperationIn(exp, env, {
+        return(operations) {
+            Calculate(operations[0], operations[1], priorityMap, operatorFuncs);
+        },
+    });
+};
+
+const EvalExp_5 = function (exp: Exp_5, env: Env, returnCont: OnlyReturnCont) {
+    EvalExp(exp.exp_0, env, {
+        return(valueRef) {
+            if (typeof valueRef.Value != 'boolean') {
+                throw new Error(typeof valueRef.Value + ' should be boolean in trinocular operator');
+            }
+            const cond = valueRef.Value;
+            if (cond) {
+                EvalExp(exp.exp_1, env, returnCont);
+            } else {
+                EvalExp(exp.exp_2, env, returnCont);
+            }
+        },
+    });
+};
+
+const EvalExp_6 = function (exp: Exp_6, env: Env, returnCont: OnlyReturnCont) {
+    EvalExp(exp.exp, env, {
+        return(valueRef) {
+            if (typeof valueRef.Value == 'object') {
+                if ('Func' in valueRef.Value && 'Env' in valueRef.Value) {
+                    const f = valueRef.Value as EvaledFunc;
+                    // move type guard into EvalInvocation like EvalRefinement TODO
+                    EvalInvocation(exp.invocation, f, env, returnCont);
+                    return;
+                }
+            }
+            throw new Error(valueRef.Value + ' is not a function');
+        },
+    });
+};
+const EvalExp_7 = function (exp: Exp_7, env: Env, returnCont: OnlyReturnCont) {
+    EvalExp(exp.exp, env, {
+        return(valueRef) {
+            EvalRefinement(exp.refinement, valueRef, env, returnCont);
+        },
+    });
+};
+const EvalExp_8 = function (exp: Exp_8, env: Env, returnCont: OnlyReturnCont) {
+};
+const EvalExp_9 = function (exp: Exp_9, env: Env, returnCont: OnlyReturnCont) {
+};
+
 // 语法map 里每一个左边的 node 都要有个对应的 eval，可能之后可能自动生成下面这些函数
 // 简单的 rule 可以生成，复杂的还是要手写
 const EvalForStmt = function (forStmt: ForStmt, env: Env, nextStepCont: OnlyNextStepCont, otherConts: Continuations): void {
@@ -204,7 +446,7 @@ const EvalForStmt = function (forStmt: ForStmt, env: Env, nextStepCont: OnlyNext
     const cond = forStmt.exp;
     const update = forStmt.stmt;
     const block = forStmt.block;
-    Eval(init, env, { nextStep: (envAfterInit: Env): void => {
+    EvalStmt(init, env, { nextStep: (envAfterInit: Env): void => {
         const EvalIter = (): void => {
             // 下面这个 cond 还不对，因为也要变成 CPS 风格，所以 if 也是在回调里做，所以 Eval 应该就没有返回值了
             // 看要不要统一风格了
@@ -288,13 +530,13 @@ const EvalVarStmt_0 = function (stmt: VarStmt_0, env: Env, nextStepCont: OnlyNex
     EvalExp(stmt.exp, env, {
         return: (valueRef) => {
             const value = valueRef.Value;
-            env.Add((stmt.id as Identifier).Text, value);
+            env.Add(stmt.id.Text, value);
             nextStepCont.nextStep(env);
         }
     });
 };
 const EvalVarStmt_1 = function (stmt: VarStmt_1, env: Env, nextStepCont: OnlyNextStepCont, otherConts: Continuations) {
-    env.Add((stmt.id as Identifier).Text, undefined);
+    env.Add(stmt.id.Text, undefined);
     nextStepCont.nextStep(env);
 };
 const EvalVarStmt = function (stmt: VarStmt, env: Env, nextStepCont: OnlyNextStepCont, otherConts: Continuations) {
@@ -320,7 +562,7 @@ const EvalInvocation = function (obj: Invocation, fun: EvaledFunc, env: Env, ret
 };
 
 const EvalRefinement_0 = function (refinement: Refinement_0, valueRef: IValueRef, env: Env, returnCont: OnlyReturnCont) {
-    const propertyName = (refinement.id as Identifier).Text;
+    const propertyName = refinement.id.Text;
     const obj = valueRef.Value;
     if (typeof obj != 'object') {
         throw new Error('obj is not a object');
@@ -454,17 +696,21 @@ const EvalAfterIdInExpStmt = function (obj: AfterIdInExpStmt, leftPartValueRef: 
  */
 const EvalExpStmt = function (stmt: ExpStmt, env: Env, conts: OnlyNextStepCont | OnlyReturnCont) {
     assert('return' in conts || 'nextStep' in conts, 'conts must contain return or nextStep cont');
-    const v = env.LookupValueRefOf((stmt.id as Identifier).Text);
-    
-    EvalAfterIdInExpStmt(stmt.afterIdInExpStmt, v, env, {
-        return: (valueRef) => {
-            if ('return' in conts) {
-                conts.return(valueRef);
-            } else if ('nextStep' in conts) {
-                conts.nextStep(env);
-            }
+    EvalId(stmt.id, env, {
+        return(varValueRef) {
+            EvalAfterIdInExpStmt(stmt.afterIdInExpStmt, varValueRef, env, {
+                return: (valueRef) => {
+                    if ('return' in conts) {
+                        conts.return(valueRef);
+                    } else if ('nextStep' in conts) {
+                        conts.nextStep(env);
+                    }
+                },
+            });
         },
     });
+    
+    
 };
 const EvalStmt_4 = function (stmt: Stmt_4, env: Env, nextStepCont: OnlyNextStepCont, otherConts: Continuations) {
     EvalExpStmt(stmt.expStmt, env, nextStepCont);
@@ -491,7 +737,7 @@ const EvalBlock = function (block: Block, env: Env, blockEndCont: OnlyBlockEndCo
 };
 
 const EvalParas_0 = function (paras: Paras_0, args: Value[], env: Env, conts: OnlyNextStepCont) {
-    const p = (paras.id as Identifier).Text;// TODO NodeDef 里 getter 把这些自定义类型给支持了，加个自定义类型 map
+    const p = paras.id.Text;
     env.Add(p, args[0]);
     EvalParas(paras.paras, args.slice(1), env, conts);
 };
@@ -504,7 +750,7 @@ const EvalParas = function (paras: Paras, args: Value[], env: Env, cont: OnlyNex
 
 const EvalFuncs = function (funcs: Funcs, env: Env, nextStep: OnlyNextStepCont) {
     if (funcs instanceof Funcs_1) {
-        EvalFunc(funcs.fun, env, { nextStep: (env) => {
+        EvalFun(funcs.fun, env, { nextStep: (env) => {
             EvalFuncs(funcs.funcs, env, nextStep);
         }});
     } else if (funcs instanceof Funcs_0) {
@@ -514,7 +760,7 @@ const EvalFuncs = function (funcs: Funcs, env: Env, nextStep: OnlyNextStepCont) 
     }
 };
 const EvalCls = function (cls: Cls, env: Env, nextStep: OnlyNextStepCont) {
-    const t = (cls.id as Identifier).Text; // TODO remove as
+    const t = cls.id.Text;
     env.Add(t, { Cls: cls, Env: env, });
     nextStep.nextStep(env);
     // const clsEnv = env.BornChildEnv();
@@ -539,7 +785,7 @@ const Apply = function (func: Fun, args: Arr, env: Env, cont: OnlyReturnCont) {
 // 两种 dispatch 的情况，一种是 object->{ pairs }，一种是 pairs->pairs_0|pairs_1
 
 const EvalMap = {
-    EvalFunc,
+    EvalFunc: EvalFun,
     
     EvalString,
     EvalBoolean,

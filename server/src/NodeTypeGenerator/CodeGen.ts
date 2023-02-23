@@ -35,11 +35,18 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
     if (existsSync(filename)) {
         unlinkSync(filename);
     }
-    const classes: Record<string, ((print: (node: ts.Node) => void, clsNamePostfix: string, allTypeSet: Set<string>)=> string)[]> = {};
+    const classes: Record<string, ((print: (node: ts.Node) => void, clsNamePostfix: string, allTypeSet: Record<string, string>)=> string)[]> = {};
+    // 下面这个应该是个 Map，这样就能把 id -> Identifier 放进去了
+    const typeMap: Record<string, string> = {
+        id: 'Identifier',
+        prefixOperator: 'PrefixOperator',
+        infixOperator: 'InfixOperator',
+    };
+
     for (const rule of grammar) {
         // const members: ts.ClassElement[] = [];
         // 这个 generator 还要涉及 translator 那边的语法
-        const memberGens: Record<string, ((print: (node: ts.ClassElement) => void, getterNamePostfix: string, allTypeSet: Set<string>) => void)[]> = {};
+        const memberGens: Record<string, ((print: (node: ts.ClassElement) => void, getterNamePostfix: string, allTypeSet: Record<string, string>) => void)[]> = {};
         if ('main' in rule[1]) {
             
         } else {
@@ -52,20 +59,20 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
                 if (!(name in memberGens)) {
                     memberGens[name] = [];
                 }
-                memberGens[name].push((print: (node: ts.ClassElement) => void, postfix: string, allTypeSet: Set<string>) => {
+                memberGens[name].push((print: (node: ts.ClassElement) => void, postfix: string, allTypeMap: Record<string, string>) => {
                     const m = [ts.factory.createModifier(ts.SyntaxKind.PublicKeyword),];
                     const child = ts.factory.createPropertyAccessExpression(ts.factory.createThis(), 'Children');
                     const item = ts.factory.createElementAccessExpression(child, i);
                     // 其实下面可以支持下 or 这个运算符，但好麻烦。。。 TODO
 
-                    let returnType = capitalizeFirstChar(name);
+                    // let returnType = capitalizeFirstChar(name);
                     let expInRetStmt: ts.Expression = item;
-                    if (returnType == 'Object') { // conflict with ES Object type
-                        returnType = 'Object_0';
-                    }
-                    log('return type', returnType, returnType in allTypeSet);
-                    if (allTypeSet.has(returnType)) {
-                        const destType = ts.factory.createTypeReferenceNode(returnType);
+                    // if (returnType == 'Object') { // conflict with ES Object type
+                    //     returnType = 'Object_0';
+                    // }
+                    // log('return type', returnType, returnType in allTypeMap);
+                    if (name in allTypeMap) {
+                        const destType = ts.factory.createTypeReferenceNode(allTypeMap[name]);
                         expInRetStmt = ts.factory.createAsExpression(item, destType);
                     }
                     const ret = ts.factory.createReturnStatement(expInRetStmt);
@@ -84,7 +91,8 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
         if (!(clsName in classes)) {
             classes[clsName] = [];
         }
-        classes[clsName].push((print: (node: ts.Node)=> void, clsNamePostfix: string, allTypeSet: Set<string>) => {
+        typeMap[rule[0]] = clsName;
+        classes[clsName].push((print: (node: ts.Node)=> void, clsNamePostfix: string, allTypeSet: Record<string, string>) => {
             const r = ts.factory.createIdentifier('grammarRule');
             const ruleTag = ts.factory.createJSDocClassTag(r, serializeRule(rule));
             const comment = ts.factory.createJSDocComment('', [ruleTag]);
@@ -119,25 +127,30 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
         appendFileSync(filename, '\n');
     };
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-    const nb = ts.factory.createNamedImports([
-        ts.factory.createImportSpecifier(false, undefined, ts.factory.createIdentifier('UniversalNode')),
-    ]);
-    const imC = ts.factory.createImportClause(false, undefined, nb);
-    const ms = ts.factory.createStringLiteral('./UniversalNodeFactory');
-    const imD = ts.factory.createImportDeclaration(undefined, undefined, imC, ms, undefined);
-    print(imD);
-    const typeSet: Set<string> = new Set<string>(Object.keys(classes));
-    log('type set', typeSet);
+    const CreateImport = function (importType: string, path: string) {
+        const nb = ts.factory.createNamedImports([
+            ts.factory.createImportSpecifier(false, undefined, ts.factory.createIdentifier(importType)),
+        ]);
+        const imC = ts.factory.createImportClause(false, undefined, nb);
+        const ms = ts.factory.createStringLiteral(path);
+        const imD = ts.factory.createImportDeclaration(undefined, undefined, imC, ms, undefined);
+        return imD;
+    };
+    print(CreateImport('UniversalNode', './UniversalNodeFactory'));
+    print(CreateImport('PrefixOperator', './Expression'));
+    print(CreateImport('InfixOperator', './Expression'));
+    print(CreateImport('Identifier', './Identifier'));
+    log('type set', typeMap);
     for (const name in classes) {
         const subClasses = classes[name];
         assert(subClasses.length != 0, 'subclasses has no items');
         if (subClasses.length == 1) {
-            subClasses[0](print, '', typeSet);
+            subClasses[0](print, '', typeMap);
         } else {
             const subTypeNames: string[] = [];
             for (let i = 0; i < subClasses.length; i++) {
                 const clsGen = subClasses[i];
-                const subClsName = clsGen(print, `_${i}`, typeSet);
+                const subClsName = clsGen(print, `_${i}`, typeMap);
                 subTypeNames.push(subClsName);
             }
             // create union type to alias type which has multiple sub types
