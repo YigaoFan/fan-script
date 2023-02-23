@@ -1,5 +1,5 @@
 import { log } from "../util";
-import { Exp } from "./NodeDef";
+import { Exp } from "../LangSpec/NodeDef";
 
 export enum ArithOperator {
     Multiply = '*',

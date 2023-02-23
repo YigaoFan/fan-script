@@ -1,7 +1,7 @@
 import { assert } from 'console';
 import { Text } from '../IParser';
 import { ISyntaxNode } from '../ISyntaxNode';
-import { Calculate } from '../LangSpec/ArithEval';
+import { Calculate } from './ArithEval';
 import { InfixOperatorKind, Keyword, PrefixOperatorKind } from '../LangSpec/Expression';
 import { Identifier } from '../LangSpec/Identifier';
 import { AfterIdInExpStmt, AfterIdInExpStmt_0, AfterIdInExpStmt_1, AfterIdInExpStmt_2, AfterIdInExpStmt_3, AfterIdInExpStmt_4, AfterIdInExpStmt_5, AfterIdInExpStmt_6, Args, Array, Block, Boolean, Cls, Exp, ExpStmt, Exp_0, Exp_2, Exp_3, Exp_4, Exp_5, Exp_6, Exp_7, Exp_8, Exp_9, ForStmt, Fun, Funcs, Funcs_0, Funcs_1, IfStmt, IfStmt_0, IfStmt_1, Invocation, InvocationCircle, InvocationCircle_0, InvocationCircle_1, Items, Items_0, Items_1, Key, Key_0, Key_1, Literal, Object_0, Pair, Pairs, Pairs_0, Pairs_1, Paras, Paras_0, Paras_1, Refinement, Refinement_0, Refinement_1, ReturnStmt, Stmt, Stmts, Stmts_0, Stmts_1, Stmt_0, Stmt_1, Stmt_2, Stmt_3, Stmt_4, Stmt_5, VarStmt, VarStmt_0, VarStmt_1, } from '../LangSpec/NodeDef';
