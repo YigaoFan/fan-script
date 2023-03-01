@@ -2,6 +2,7 @@ import { UniversalNode } from "./UniversalNodeFactory";
 import { PrefixOperator } from "./Expression";
 import { InfixOperator } from "./Expression";
 import { Identifier } from "./Identifier";
+import { String } from "./String";
 /**
  * @grammarRule ["doc",["ow","cls","ow"]]
  */
@@ -125,15 +126,26 @@ export class IfStmt_1 extends UniversalNode {
 }
 export type IfStmt = IfStmt_0 | IfStmt_1;
 /**
- * @grammarRule ["forStmt",["for","ow","(","ow","or(varStmt, expStmt)","ow",";","ow","exp","ow",";","ow","stmt","ow",")","ow","block"]]
+ * @grammarRule ["forStmt",["for","ow","(","ow","varStmt","ow",";","ow","exp","ow",";","ow","stmt","ow",")","ow","block"]]
  */
-export class ForStmt extends UniversalNode {
+export class ForStmt_0 extends UniversalNode {
     public get for() { return this.Children[0]; }
-    public get varStmtOrExpStmt() { return this.Children[4]; }
+    public get varStmt() { return this.Children[4] as VarStmt; }
     public get exp() { return this.Children[8] as Exp; }
     public get stmt() { return this.Children[12] as Stmt; }
     public get block() { return this.Children[16] as Block; }
 }
+/**
+ * @grammarRule ["forStmt",["for","ow","(","ow","expStmt","ow",";","ow","exp","ow",";","ow","stmt","ow",")","ow","block"]]
+ */
+export class ForStmt_1 extends UniversalNode {
+    public get for() { return this.Children[0]; }
+    public get expStmt() { return this.Children[4] as ExpStmt; }
+    public get exp() { return this.Children[8] as Exp; }
+    public get stmt() { return this.Children[12] as Stmt; }
+    public get block() { return this.Children[16] as Block; }
+}
+export type ForStmt = ForStmt_0 | ForStmt_1;
 /**
  * @grammarRule ["deleteStmt",["delete","w","exp","ow","refinement","ow"]]
  */
@@ -303,7 +315,7 @@ export type Exp = Exp_0 | Exp_1 | Exp_2 | Exp_3 | Exp_4 | Exp_5 | Exp_6 | Exp_7 
  * @grammarRule ["literal",["string"]]
  */
 export class Literal_0 extends UniversalNode {
-    public get string() { return this.Children[0]; }
+    public get string() { return this.Children[0] as String; }
 }
 /**
  * @grammarRule ["literal",["boolean"]]
@@ -337,11 +349,18 @@ export class Literal_5 extends UniversalNode {
 }
 export type Literal = Literal_0 | Literal_1 | Literal_2 | Literal_3 | Literal_4 | Literal_5;
 /**
- * @grammarRule ["boolean",["or(true, false)"]]
+ * @grammarRule ["boolean",["true"]]
  */
-export class Boolean extends UniversalNode {
-    public get trueOrFalse() { return this.Children[0]; }
+export class Boolean_0 extends UniversalNode {
+    public get true() { return this.Children[0]; }
 }
+/**
+ * @grammarRule ["boolean",["false"]]
+ */
+export class Boolean_1 extends UniversalNode {
+    public get false() { return this.Children[0]; }
+}
+export type Boolean = Boolean_0 | Boolean_1;
 /**
  * @grammarRule ["object",["{","ow","pairs","ow","}"]]
  */
@@ -372,7 +391,7 @@ export class Pair extends UniversalNode {
  * @grammarRule ["key",["string"]]
  */
 export class Key_0 extends UniversalNode {
-    public get string() { return this.Children[0]; }
+    public get string() { return this.Children[0] as String; }
 }
 /**
  * @grammarRule ["key",["id"]]
@@ -407,24 +426,11 @@ export class Items_1 extends UniversalNode {
 }
 export type Items = Items_0 | Items_1;
 /**
- * @grammarRule ["invocation",["(","ow","args","ow",")"]]
+ * @grammarRule ["invocation",["(","ow","items","ow",")"]]
  */
 export class Invocation extends UniversalNode {
-    public get args() { return this.Children[2] as Args; }
+    public get items() { return this.Children[2] as Items; }
 }
-/**
- * @grammarRule ["args",["exp","ow",",","ow","args"]]
- */
-export class Args_0 extends UniversalNode {
-    public get exp() { return this.Children[0] as Exp; }
-    public get args() { return this.Children[4] as Args; }
-}
-/**
- * @grammarRule ["args",[]]
- */
-export class Args_1 extends UniversalNode {
-}
-export type Args = Args_0 | Args_1;
 /**
  * @grammarRule ["refinement",[".","ow","id"]]
  */

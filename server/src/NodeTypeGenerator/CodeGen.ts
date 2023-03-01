@@ -1,11 +1,11 @@
-import { InternalNonTerminatedRule } from "../LangSpec/GrammarMap";
+import { NonTerminatedRule } from "../LangSpec/GrammarMap";
 import * as ts from 'typescript';
 import { genIdName, toString, } from "../LangSpec/Translator";
 import { capitalizeFirstChar, log, stringify } from "../util";
 import { appendFileSync, exists, existsSync, unlinkSync } from "fs";
 import { assert } from "console";
 
-const filter = function (node: string) {
+const Filter = function (node: string) {
     assert(node.length != 0, 'node length is 0');
     const nos = ['ow', 'w'];
     if (nos.includes(node) || node.length == 1) {
@@ -21,17 +21,50 @@ const filter = function (node: string) {
     return true;
 };
 
-const serializeRule = function (rule: InternalNonTerminatedRule) {
-    if ('main' in rule[1]) {
-        throw new Error('not support serialize rule which include main in grammar rule');
-    } else {
-        return stringify([rule[0], rule[1].map(x => toString(x))]);
+const Rename = function (grammar: NonTerminatedRule[]) {
+    const records: Record<string, NonTerminatedRule[]> = {};
+    for (const r of grammar) {
+        const name = r[0];
+        if (!(name in records)) {
+            records[name] = [];
+        }
+        records[name].push(r);
     }
+
+    const renamedGrammar: typeof grammar = [];
+    for (const name in records) {
+        const rules = records[name];
+        if (rules.length == 1) {
+            renamedGrammar.push(rules[0]);
+        } else {
+            for (let i = 0; i < rules.length; i++) {
+                const r = rules[i];
+                renamedGrammar.push([`${r[0]}_${i}`, r[1]]);
+            }
+        }
+    }
+    return renamedGrammar;
+};
+
+const GetOriginalName = function (renamedName: string) {
+    if (!renamedName.includes('_')) {
+        return renamedName;
+    }
+    return renamedName.substring(0, renamedName.lastIndexOf('_'));
+};
+
+const SerializeRule = function (rule: NonTerminatedRule) {
+    // if ('main' in rule[1]) {
+        // throw new Error('not support serialize rule which include main in grammar rule');
+    // } else {
+        return stringify([rule[0], rule[1].map(x => toString(x))]);
+    // }
 };
 
 // 同名 class 处理 rename工作
 // 有个 Object class 名违反 JS 规定不能用，要换名
-export const GenNodeType = function (filename: string, grammar: InternalNonTerminatedRule[]) {
+// grammar 参数类型应该是 NonTerminatedRule[] TODO 这样就不用处理 Or 那个了
+export const GenNodeType = function (filename: string, grammar: NonTerminatedRule[]) {
     if (existsSync(filename)) {
         unlinkSync(filename);
     }
@@ -41,6 +74,7 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
         id: 'Identifier',
         prefixOperator: 'PrefixOperator',
         infixOperator: 'InfixOperator',
+        string: 'String',
     };
 
     for (const rule of grammar) {
@@ -53,7 +87,7 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
             for (let i = 0; i < rule[1].length; i++) {
                 const u = rule[1][i];
                 const name = genIdName(u);
-                if (!filter(name)) {
+                if (!Filter(name)) {
                     continue;
                 }
                 if (!(name in memberGens)) {
@@ -94,7 +128,7 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
         typeMap[rule[0]] = clsName;
         classes[clsName].push((print: (node: ts.Node)=> void, clsNamePostfix: string, allTypeSet: Record<string, string>) => {
             const r = ts.factory.createIdentifier('grammarRule');
-            const ruleTag = ts.factory.createJSDocClassTag(r, serializeRule(rule));
+            const ruleTag = ts.factory.createJSDocClassTag(r, SerializeRule(rule));
             const comment = ts.factory.createJSDocComment('', [ruleTag]);
             print(comment);
             const name = clsName + clsNamePostfix;
@@ -140,6 +174,7 @@ export const GenNodeType = function (filename: string, grammar: InternalNonTermi
     print(CreateImport('PrefixOperator', './Expression'));
     print(CreateImport('InfixOperator', './Expression'));
     print(CreateImport('Identifier', './Identifier'));
+    print(CreateImport('String', './String'));
     log('type set', typeMap);
     for (const name in classes) {
         const subClasses = classes[name];
@@ -184,10 +219,7 @@ export const GenDispatchFuncs = function (filename: string, funcInfos: [string, 
     }
 };
 
-/**
- * @param paras [name, type]
- */
-export const GenDispatchFunc = function (baseTypeName: string, subTypeCount: number, paras: [string, string][], importsFromNodeDef: Set<string>, importsFromEvalRule: Set<string>) {
+const GenDispatchFunc = function (baseTypeName: string, subTypeCount: number, paras: [string, string][], importsFromNodeDef: Set<string>, importsFromEvalRule: Set<string>) {
     const base = baseTypeName;
     assert(subTypeCount > 1, 'dispatch need two sub types at least');
     const subTypeNames = Array.from(Array(subTypeCount)).map((_, i) => `${baseTypeName}_${i}`);
@@ -214,4 +246,90 @@ export const GenDispatchFunc = function (baseTypeName: string, subTypeCount: num
     }
 };`;
     return def;
+};
+
+export const GenForwardFuncs = function (filename: string, rulesInfo: [string, string, [string, string][]][]) {
+    if (existsSync(filename)) {
+        unlinkSync(filename);
+    }
+    // key is base class name
+    // const forwardRules: Record<string, string[][]> = {};
+    // for (const rule of Rename(grammar)) {
+    //     const unusedUnitRemovedRule = rule[1].filter(Filter);
+    //     const cls = rule[0];
+    //     if (unusedUnitRemovedRule.length == 1) {
+    //         if (!(cls in forwardRules)) {
+    //             forwardRules[cls] = [];
+    //         }
+    //         forwardRules[cls].push(unusedUnitRemovedRule);
+    //     }
+    // }
+
+    const Write = function (funcDef: string) {
+        appendFileSync(filename, funcDef);
+        appendFileSync(filename, '\n');
+    };
+    const Gen = function (clsName: string, paras: [string, string][], property: string) {
+        return `export const Eval${clsName} = function (obj: ${clsName},${paras.map(x => ` ${x[0]}: ${x[1]},`).join('')}) {
+    return Eval${capitalizeFirstChar(property)}(obj.${property},${paras.map(x => ` ${x[0]},`).join('')});
+};`;
+    };
+    for (const r of rulesInfo) {
+        const clsName = r[0];
+        const property = r[1];
+        const paras = r[2];
+        const def = Gen(clsName, paras, property);
+        Write(def);
+    }
+};
+
+const Simplify = function (rule: NonTerminatedRule): NonTerminatedRule {
+    return [rule[0], rule[1].filter(Filter)];
+};
+
+type StatisticsResult = {
+    Dispatch: [string, number][],
+    Forward: [string, string][],
+};
+export const Statistics = function (grammar: NonTerminatedRule[]): StatisticsResult {
+    log('-------------------------');
+    log('non-terminated rule count', grammar.length);
+    const clsCounter: Record<string, number> = {};
+    for (const r of grammar) {
+        const cls = r[0];
+        if (!(r[0] in clsCounter)) {
+            clsCounter[cls] = 0;
+        }
+        ++clsCounter[cls];
+    }
+
+    log('-------------------------');
+    log('dispatch function analyze');
+
+    const dispatchDetails: [string, number][] = [];
+    let dispatchFuncCount = 0;
+    for (const k in clsCounter) {
+        if (clsCounter[k] > 1) {
+            log(`${k} should has dispatch function`);
+            ++dispatchFuncCount;
+            dispatchDetails.push([k, clsCounter[k]]);
+        }
+    }
+    log('dispatch function count', dispatchFuncCount);
+
+    log('-------------------------');
+    log('forward function analyze');
+
+    let forwardFuncCount = 0;
+    const forwardDetails: [string, string][] = [];
+    for (const r of Rename(grammar)) {
+        const sr = Simplify(r);
+        if (sr[1].length == 1) {
+            log(`${SerializeRule(r)} should has forward function`);
+            ++forwardFuncCount;
+            forwardDetails.push([sr[0], sr[1][0]]);
+        }
+    }
+    log('forward function count', forwardFuncCount);
+    return { Dispatch: dispatchDetails, Forward: forwardDetails, };
 };

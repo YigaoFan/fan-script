@@ -18,12 +18,11 @@ export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'va
     | 'invocationCircle' | 'afterIdInExpStmt' | 'deleteStmt' | 'stmts' | 'block'
     | 'funcs' | 'doc' | 'boolean';
 export type NonTerminatedRule = GeneratedRule;
-export type InternalNonTerminatedRule = Rule<Node>;
+type InternalNonTerminatedRule = Rule<Node>;
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
 // add space，只处理内部的空白，不处理两边的空白
 // allow one char parse unit in nonTerminated rule like (, {
-// temp TODO remove below export
-export const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: TerminatedRule[] } = {
+const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
         ['doc', ['ow', 'cls', 'ow']],
 
@@ -101,9 +100,7 @@ export const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: 
         ['items', []],
         ['items', ['exp', 'ow', ',', 'ow', 'items']],
 
-        ['invocation', ['(', 'ow', 'args', 'ow', ')']],
-        ['args', ['exp', 'ow', ',', 'ow', 'args']],
-        ['args', []],
+        ['invocation', ['(', 'ow', 'items', 'ow', ')']],
 
         ['refinement', ['.', 'ow', 'id']],
         ['refinement', ['[', 'ow', 'exp', 'ow', ']']],

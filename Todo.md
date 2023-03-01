@@ -15,3 +15,9 @@
 * 一些内置函数的绑定，比如 console.log
 2023/2/21
 * Continuations 要支持嵌套，因为for循环里可以套for循环
+2023/2/23
+* 补全生成的 Eval dispatch 代码，两种
+  * a-> b, c
+  * a-> d, e
+
+  * e-> f
