@@ -3,6 +3,7 @@ import { PrefixOperator } from "./Expression";
 import { InfixOperator } from "./Expression";
 import { Identifier } from "./Identifier";
 import { String } from "./String";
+import { Number } from "./Number";
 /**
  * @grammarRule ["doc",["ow","cls","ow"]]
  */
@@ -327,7 +328,7 @@ export class Literal_1 extends UniversalNode {
  * @grammarRule ["literal",["number"]]
  */
 export class Literal_2 extends UniversalNode {
-    public get number() { return this.Children[0]; }
+    public get number() { return this.Children[0] as Number; }
 }
 /**
  * @grammarRule ["literal",["object"]]

@@ -22,6 +22,7 @@ type InternalNonTerminatedRule = Rule<Node>;
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
 // add space，只处理内部的空白，不处理两边的空白
 // allow one char parse unit in nonTerminated rule like (, {
+// - not allow in unit
 const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
         ['doc', ['ow', 'cls', 'ow']],
