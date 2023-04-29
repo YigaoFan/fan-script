@@ -8,12 +8,12 @@ const zero = '0';
 const oneToNine = '123456789';
 const zeroToNine = zero + oneToNine;
 
-const integer = or(
-                makeWordParser(zero, id), 
-                from(oneOf(oneToNine, id))
-                    .rightWith(
-                        from(oneOf(zeroToNine, id)).zeroOrMore(combine).raw, combine).raw,
-                selectNotNull);
+// 负号和正号开头 TODO
+const integer = from(optional(or(makeWordParser('+', id), makeWordParser('-', id), selectNotNull)))
+                    .rightWith(or(makeWordParser(zero, id), 
+                        from(oneOf(oneToNine, id))
+                            .rightWith(from(oneOf(zeroToNine, id)).zeroOrMore(combine).raw, combine).raw,
+                        selectNotNull), (l, r) => ([l, r] as const)).raw;
 
 const fraction = from(makeWordParser('.', nullize))
                     .rightWith(from(oneOf(zeroToNine, id)).zeroOrMore(combine).raw, 
@@ -25,23 +25,48 @@ const exponent = from(oneOf('eE', id))
                     .raw;
 
 export class Number implements ISyntaxNode {
+    private mSign: Option<Text>;
     private mInteger: Text;
     private mFraction: Option<Text>;
     private mExponent: Option<readonly [Option<Text>, Text]>;
 
-    public static New(data: readonly [Text, Option<Text>, Option<readonly [Option<Text>, Text]>]): Number {
+    public static New(data: readonly [Option<Text>, Text, Option<Text>, Option<readonly [Option<Text>, Text]>]): Number {
         return new Number(...data);
     }
 
-    public constructor(integer: Text, fraction: Option<Text>, exponent: Option<readonly [Option<Text>, Text]>) {
+    public constructor(sign: Option<Text>, integer: Text, fraction: Option<Text>, exponent: Option<readonly [Option<Text>, Text]>) {
+        this.mSign = sign;
         this.mInteger = integer;
         this.mFraction = fraction;
         this.mExponent = exponent;
     }
 
     public get Value(): number {
-        // TODO
-        throw new Error('not implement');
+        let v = 0;
+        const intStr = this.mInteger.Value;
+        v += parseInt(intStr);
+        
+        if (this.mFraction.hasValue()) {
+            const fracStr = this.mFraction.value.Value;
+            const frac = parseInt(fracStr);
+            v += (frac / (fracStr.length * 10));
+        }
+        const InverseIfMinus = (signText: Option<Text>, value: number) => {
+            if (signText.hasValue()) {
+                if (signText.value.Value == '-') {
+                    return -value;
+                }
+            }
+            return value;
+        };
+        if (this.mExponent.hasValue()) {
+            let expStr = this.mExponent.value[1].Value;
+            let exp = parseInt(expStr);
+            exp = InverseIfMinus(this.mExponent.value[0], exp);
+            v *= Math.pow(10, exp);
+        }
+        v = InverseIfMinus(this.mSign, v);
+        return v;
     }
 
     public get Range(): IRange {
@@ -73,10 +98,10 @@ export class Number implements ISyntaxNode {
         throw new Error("Method not implemented.");
     }
 }
-
+const ExpandLeftIntoArray = <T0 extends readonly any[], T1>(l: T0, r: T1) => ([...l, r] as const);
 export const number: IParser<Number> = from(integer)
-                        .rightWith(optional(fraction), (l, r) => ([l, r] as const))
-                        .rightWith(optional(exponent), (l, r) => ([...l, r] as const))
+                        .rightWith(optional(fraction), ExpandLeftIntoArray)
+                        .rightWith(optional(exponent), ExpandLeftIntoArray)
                         .transform(Number.New)
                         .prefixComment('parse number')
                         .raw;

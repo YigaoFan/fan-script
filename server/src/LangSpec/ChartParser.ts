@@ -31,15 +31,14 @@ export class ChartParser implements IParser<ISyntaxNode> {
         const view = new ChartView(input.Copy());
         view.Snapshot(this.mTerminatedStateChart, this.mNonTerminatedStateChart);
         for (let i = 0; ; i++) {
-            let r = false;
-            log('iter', i);
-            try {
-                r = this.Iter(input);            
-            } catch (e) {
-                view.Close();
-                throw e;
-            }
-            log('iter', i, 'end');
+            // log('iter', i);
+            // try {
+                const r = this.Iter(input);            
+            // } catch (e) {
+            //     view.Close();
+            //     throw e;
+            // }
+            // log('iter', i, 'end');
             if (!r) {
                 view.Snapshot(this.mTerminatedStateChart, this.mNonTerminatedStateChart);
             }
@@ -63,7 +62,7 @@ export class ChartParser implements IParser<ISyntaxNode> {
     /**
      * @returns end or not
      */
-    public Iter(input: ParserInput): boolean {
+    private Iter(input: ParserInput): boolean {
         const c = input.NextChar;
         if (c.Empty) {// 因为现在的 terminated parser在他最后一个位置就应该成功然后结束，而不是下一个空字符
             return true;
@@ -100,7 +99,7 @@ export class ChartParser implements IParser<ISyntaxNode> {
                 }
             }
             // log('reduce items len', reduceItems.length);
-            log('reduce items', reduceItems);
+            // log('reduce items', reduceItems);
             if (reduceItems.length == 0) {
                 // log('reduce items empty');
                 break;
@@ -160,7 +159,7 @@ export class ChartParser implements IParser<ISyntaxNode> {
 
     private static Reduce(reduceItems: ReduceItem[], nonTerminatedStateChart: NonTerminatedParserState[][]) {
         if (reduceItems.length == 0) {
-            log('reduce nothing');
+            // log('reduce nothing');
             return [];
         }
         const chart = nonTerminatedStateChart;
@@ -187,7 +186,7 @@ export class ChartParser implements IParser<ISyntaxNode> {
         }
         // log('new reduce items', newReduceItems);
 
-        log('reduce to new', newAddedItems.map(x => x.toString()), 'due to', reduceItems.map(x => ({ From: x.From, LeftSymbol: x.LeftSymbol, })));
+        // log('reduce to new', newAddedItems.map(x => x.toString()), 'due to', reduceItems.map(x => ({ From: x.From, LeftSymbol: x.LeftSymbol, })));
         const remainNewAddedItems = ChartParser.Reduce(newReduceItems, chart);
         newAddedItems.push(...remainNewAddedItems);
         return newAddedItems;
@@ -195,13 +194,13 @@ export class ChartParser implements IParser<ISyntaxNode> {
     
     private static Closure(searchedSymbols: string[], totalNonTers: NonTerminatedParserState[], closureRange: NonTerminatedParserState[], terminateds: TerminatedStates, from: number, input: ParserInput): [NonTerminatedParserState[], TerminatedStates,]  {
         if (closureRange.length == 0) {
-            log('closure nothing');
+            // log('closure nothing');
             return [[], []];
         }
         var newSyms = ChartParser.GetExpectSymbols(closureRange);
-        log('symbols', newSyms);
+        // log('symbols', newSyms);
         newSyms = ChartParser.Diff(newSyms, searchedSymbols);
-        log('closure with symbols', stringify(newSyms));
+        // log('closure with symbols', stringify(newSyms));
         const newNons: NonTerminatedParserState[] = [];
         const newTers: TerminatedStates = [];
         for (const s of newSyms) {
@@ -224,7 +223,7 @@ export class ChartParser implements IParser<ISyntaxNode> {
         const [remainNonTers, remainTers] = ChartParser.Closure(searchedSymbols, totalNonTers, newNons, terminateds, from, input);
         newNons.push(...remainNonTers);
         newTers.push(...remainTers);
-        log('closure rules', newNons.map(x => x.toString()), newTers.map(x => x.toString()), 'using symbols', searchedSymbols);
+        // log('closure rules', newNons.map(x => x.toString()), newTers.map(x => x.toString()), 'using symbols', searchedSymbols);
         return [newNons, newTers,];
     }
 

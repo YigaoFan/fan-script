@@ -1,55 +1,33 @@
 import { Channel } from './Channel';
 import { ArithOperator, Calculate } from './Interpreter/ArithEval';
-import { ExportsOfEvalRule, ParaTypeOfEvalRule } from './Interpreter/EvalRule';
-import { Grammar, } from './LangSpec/GrammarMap';
-import { test, } from './LangSpec/Test/TestSuite';
+import { EvalDoc, ExportsOfEvalRule, ParaTypeOfEvalRule } from './Interpreter/EvalRule';
+import { Grammar, Node, } from './LangSpec/GrammarMap';
+import { test as testParser, } from './LangSpec/Test/TestSuite';
+import { test as testInterpreter, } from './Interpreter/Test/TestSuite';
 import { or, translate } from './LangSpec/Translator';
 import { GenDispatchFuncs, GenForwardFuncs, GenNodeType, MapFwdDispFuncParaTypesFrom, Statistics } from './NodeTypeGenerator/CodeGen';
 import { File } from './NodeTypeGenerator/File';
-import { capitalizeFirstChar, log } from './util';
+import { assert, capitalizeFirstChar, log, stringify } from './util';
+import { Env } from './Interpreter/Env';
+import { Init } from './Interpreter/Init';
+import { readFileSync } from 'fs';
+import { StringStream } from './StringStream';
+import { ChartParser } from './LangSpec/ChartParser';
+import { Doc } from './LangSpec/NodeDef';
 
 const __main = function() {
+    InterpreterMain();
+    // testParser();
+    // testInterpreter();
+
+    // log('Grammar', stringify(Grammar.nonTerminated));
+    // return;
     // var c = new Channel<number>();
     // var p = c.GetValue();
     // c.PutValue(1);
-    // test();
     // log(Calculate([ArithOperator.Add, ArithOperator.Minus, ArithOperator.Multiply, ArithOperator.Divide], [1, 2, 3, 4, 5]));
-    const exports: Record<string, string> = {
-        // class name -> file path
-        
-    };
-    const nodeDef = File.New('NodeDef.ts'); // ../LangSpec/NodeDef
-    nodeDef.AddDefinition(...GenNodeType(Grammar.nonTerminated));
-    const reuslt = Statistics(Grammar.nonTerminated, [['boolean', ['true']], ['boolean', ['false']]]);
-    // 加入相关 import
-    // var d = [
-    //     ['Items', 2, [['env', 'Env'], ['retCont', 'OnlyReturnCont']]],
-    //     ['Pairs', 2, [['env', 'Env'], ['retCont', 'OnlyReturnCont']]],
-    //     ['Stmt', 6, [['env', 'Env'], ['nextStepCont', 'OnlyNextStepCont'], ['otherConts', 'Continuations']]],
-    //     ['VarStmt', 2, [['env', 'Env'], ['nextStepCont', 'OnlyNextStepCont'], ['otherConts', 'Continuations']]],
-    //     ['Exp', 10, [['env', 'Env'], ['returnCont', 'OnlyReturnCont']]],
-    //     ['Literal', 6, [['env', 'Env'], ['returnCont', 'OnlyReturnCont']]],
-    // ];
-    // const evalDisp = File.New('./EvalDispatch.ts');
-    // evalDisp.AddDefinition(...GenDispatchFuncs(reuslt.Dispatch.map(x => [capitalizeFirstChar(x[0]), x[1], [['env', 'Env'], ['retCont', 'OnlyReturnCont']]])));
-    // var f = {
-    //     cls: [['env', 'Env'], ['nextStepCont', 'OnlyNextStepCont']],
-    //     stmt: [['env', 'Env'], ['nextStepCont', 'OnlyNextStepCont'], ['otherConts', 'Continuations']],
-    //     block: [['env', 'Env'], ['blockConts', 'OnlyBlockEndCont'], ['stmtCtrlFlowConts', 'Continuations']]
-    // };
     
-    // const evalFwd = File.New('./EvalForward.ts');
-    // evalFwd.AddDefinition(...GenForwardFuncs(reuslt.Forward.map(x => [capitalizeFirstChar(x[0]), x[1], [['env', 'Env'], ['retCont', 'OnlyReturnCont']]])));
-    // const env: [string, string[]] = ['./Env', ["Env"]];
-    // const evalRule: [string, string[]] = ['./EvalRule', ExportsOfEvalRule];
-    // evalDisp.CompleteImportsFrom(nodeDef.Exports, evalFwd.Exports, env, evalRule);
-    // evalFwd.CompleteImportsFrom(nodeDef.Exports, evalDisp.Exports, env, evalRule);
-    MapFwdDispFuncParaTypesFrom(ParaTypeOfEvalRule, reuslt.Forward, reuslt.Dispatch);
-    // log('node def exports', nodeDef.Exports);
-    // nodeDef.SaveToDisk(); // ../LangSpec/NodeDef,算下引用路径
-    // evalDisp.SaveToDisk();
-    // evalFwd.SaveToDisk();
-    // TODO import路径和参数类型问题
+    // GenCode();
     // EvalRule 里统计下有哪几种参数类型，以此算出 dispatch 和 forward 函数的参数类型
     
     // {
@@ -63,3 +41,60 @@ const __main = function() {
 };
 
 __main();
+
+function InterpreterMain () {
+    const env = Init(new Env());
+    if (process.argv.length < 3) {
+        console.log('please run with fan-script source file');
+        return;
+    }
+    const readCodeFrom = (path: string) => {
+        return readFileSync(path, 'utf-8');
+    };
+    const AstOf = (root: Node, code: string,) => {
+        const p = new ChartParser(root);
+        const ss = StringStream.New(code, 'func.fs');
+        const ast = p.parse(ss);
+        assert(ast != null, 'parse code failed');
+        return ast;
+    };
+    const filename = process.argv[2];
+    const code = readCodeFrom(filename); // TODO optimize by using file stream
+    const root = 'doc';
+    const ast = AstOf(root, code);
+    EvalDoc(ast!.Result as Doc, env, {
+        return(result) {
+            // log('invoke result', result.Value);
+            // assert(result.Value == 3);
+        },
+    });
+};
+
+function GenCode() {
+    const nodeDef = File.New('./src/LangSpec/NodeDef.ts');
+    nodeDef.AddDefinition(...GenNodeType(Grammar.nonTerminated));
+    const infoOfGen = Statistics(Grammar.nonTerminated, [
+        ['boolean', ['true']],
+        ['boolean', ['false']],
+        ['refinement', ['.', 'ow', 'id']],
+        ['refinement', ['[', 'ow', 'exp', 'ow', ']']],
+        ['invocation', ['(', 'ow', 'items', 'ow', ')']],
+    ]);
+    const funcsParaInfo = MapFwdDispFuncParaTypesFrom(ParaTypeOfEvalRule, infoOfGen.Forward, infoOfGen.Dispatch);
+    const evalDisp = File.New('./src/Interpreter/EvalDispatch.ts');
+    evalDisp.AddDefinition(...GenDispatchFuncs(infoOfGen.Dispatch, funcsParaInfo));
+
+    const evalFwd = File.New('./src/Interpreter/EvalForward.ts');
+    evalFwd.AddDefinition(...GenForwardFuncs(infoOfGen.Forward, funcsParaInfo));
+    const env: [string, string[]] = ['./src/Interpreter/Env', ['Env', 'IValueRef', 'EvaledFun', 'Value']];
+    const evalRule: [string, string[]] = ['./src/Interpreter/EvalRule', ExportsOfEvalRule];
+    // env has a 'Value', nodeDef also has, so make env at first position, then it will be choosen
+    // TODO 不行，也有的地方需要 NodeDef 的 Value，
+    //然后生成过程构建的时候能不能忽略某些问题，这样没有编译错误
+    evalDisp.CompleteImportsFrom(env, nodeDef.Exports, evalFwd.Exports, evalRule);
+    evalFwd.CompleteImportsFrom(env, nodeDef.Exports, evalDisp.Exports, evalRule);
+    // log('node def exports', nodeDef.Exports);
+    nodeDef.SaveToDisk(); // ../LangSpec/NodeDef,算下引用路径
+    evalDisp.SaveToDisk();
+    evalFwd.SaveToDisk();
+}

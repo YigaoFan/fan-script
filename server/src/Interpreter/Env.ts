@@ -82,16 +82,25 @@ export class LObjInnerValueRef implements IValueRef {
         return this.mObj[this.mKey];
     }
 }
-
+export enum ValueType {
+    Class, 
+    Object,
+    EvaledFunc,
+    Array,
+    BuiltInFunc,
+}
+// 把这几种类型都 extends Typebase
+type TypeBase = { Type: ValueType };
 export type Obj = { [key: string]: Value };
 export type Arr = Value[];
 export type EvaledFun = { Func: Fun, Env: Env, };
+export type BuiltInFunc = { Func: (...args: any[]) => any, Type: ValueType.BuiltInFunc, };
 // 下面这个 item 多了后可以换成接口，供外面实现
 // evaluate 的返回值类型, evaled type
 // TODO 下面最后两个类型好像有问题，因为里面的项也能携带当前 Env，所以变量定义就变了
 // 先暂时直接用 js 里的类型，如 string，之后可能会用自定义的类型
 // undefined as default return value
-export type Value = { Cls: Cls, Env: Env, } | CustomType | string | boolean | EvaledFun | number | Obj | Arr | undefined;
+export type Value = { Cls: Cls, Env: Env, } | string | boolean | EvaledFun | BuiltInFunc | number | Obj | Arr | undefined;
 // Eval 过程中最好在当前 Env 的基础上，返回一个新的 Env，这样方便隔离：哪些语句共享一个 Env
 export class Env {
     private mEnv: Record<string, Value>;

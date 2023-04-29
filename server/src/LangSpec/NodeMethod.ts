@@ -24,3 +24,5 @@ const rule = ['if-stmt', 'cond', 'block'] as const;
 type i = IndexOf<typeof rule, 'cond'>;
 type IndexObjectOf<T extends readonly any[]> = { [Key in T[number]]: IndexOf<T, Key> };
 type indexObj = IndexObjectOf<typeof rule>; // use this to help access specific node
+type ObjGetter = { [key in keyof indexObj]: () => string; };
+// const obj: ObjGetter = { [key in keyof IndexObj]: 1,};

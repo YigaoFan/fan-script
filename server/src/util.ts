@@ -88,3 +88,9 @@ export const makeQuerablePromise = function<T>(promise: Promise<T>) {
 export const wait1 = async () => {
     return new Promise<void>(res => { setTimeout(res, 1000); });
 };
+
+export const assert = (value: boolean, msg: string = '') => {
+    if (!value) {
+        console.trace(`Assert failed: ${msg}`);
+    }
+};

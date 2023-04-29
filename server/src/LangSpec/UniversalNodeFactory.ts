@@ -1,8 +1,10 @@
 import { assert } from "console";
 import { Position, Text } from "../IParser";
 import { IRange, ISyntaxNode } from "../ISyntaxNode";
+import { RuleToKey } from "../NodeTypeGenerator/CodeGen";
 import { stringify } from "../util";
 import { Node, NonTerminatedRule } from "./GrammarMap";
+import { NodeFactories } from "./NodeDef";
 
 export class UniversalNode implements ISyntaxNode {
     public Rule: NonTerminatedRule;
@@ -82,18 +84,9 @@ type keys = Ks<typeof rule>;
 
 // 相当于手动实现继承体系
 export const UniversalNodeFactory = function (rule: NonTerminatedRule, nodes: (ISyntaxNode | Text)[]): UniversalNode {
-    // if (rule[1].length == 1) {
-    //     // 这里的 rule 没有处理
-    //     // assert n is UniversalNode type
-    //     const n = nodes[0] as UniversalNode;
-    //     n.Type.unshift(rule[0]);
-    //     // maybe need to overload or add raw method
-    //     return n;
-    // }
-    // const n = {
-    //     Rule: rule,
-    //     Type: [rule[0]],
-    //     Children: nodes,// 这里面可能包含的 null 也不需要在 chartParser 那边剔除了，直接在这里保留
-    // };// 上面这个可能含有 null？ TODO check
+    const k = RuleToKey(rule);
+    if (k in NodeFactories) {
+        return NodeFactories[k](rule, [rule[0]], nodes);
+    }
     return new UniversalNode(rule, [rule[0]], nodes);
 };

@@ -49,13 +49,13 @@ const getGenerator = function*(unit: Unit): Generator<Option<string>> {
     }
 };
 
-export const genIdName = function (unit: Unit): string {
-    if (typeof unit == 'string') {
-        return unit;
-    } else {
-        return unit.genIdName();
-    }
-};
+// export const genIdName = function (unit: Unit): string {
+//     if (typeof unit == 'string') {
+//         return unit;
+//     } else {
+//         return unit.genIdName();
+//     }
+// };
 
 export const toString = function (unit: Unit): string {
     if (typeof unit == 'string') {

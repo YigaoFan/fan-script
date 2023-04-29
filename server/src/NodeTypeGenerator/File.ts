@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, unlinkSync } from "fs";
 import { log } from "../util";
+import { relative, dirname, } from 'path';
 
 export class File {
     private mFilename: string;
@@ -30,7 +31,7 @@ export class File {
 
     public AddDefinition(importsUsedByDef: string[], exports: string[], definition: string) {
         this.mDefinition = definition;
-        this.mNeedImportIds = importsUsedByDef;
+        this.mNeedImportIds = importsUsedByDef.map(x => x.replace('[]', ''));
         this.mExports = exports;
     }
 
@@ -38,8 +39,17 @@ export class File {
         for (const id of this.mNeedImportIds) {
             let found = false;
             for (const exports of otherFilesExports) {
+                const thatFilePath = exports[0];
+                const thatFilename = thatFilePath.substring(thatFilePath.lastIndexOf('/') + 1);
+                const thatDir = dirname(thatFilePath);
+                const thisDir = dirname(this.mFilename);
+                let importDir = relative(thisDir, thatDir);
+                if (importDir == '') {
+                    importDir = '.';
+                }
+                const importPath = importDir + '/' + thatFilename;
                 if (exports[1].includes(id)) {
-                    this.mImportPaths.push([id, exports[0]]);
+                    this.mImportPaths.push([id, importPath]);
                     found = true;
                     break;
                 }

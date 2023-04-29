@@ -16,7 +16,7 @@ export type Node = 'exp' | 'literal' | 'object' | 'pairs' | 'pair' | 'key' | 'va
     | 'array' | 'items' | 'invocation' | 'args' | 'refinement' | 'fun' 
     | 'stmt' | 'paras' | 'cls' | 'ifStmt' | 'returnStmt' | 'expStmt' | 'varStmt' | 'forStmt'
     | 'invocationCircle' | 'afterIdInExpStmt' | 'deleteStmt' | 'stmts' | 'block'
-    | 'funcs' | 'doc' | 'boolean';
+    | 'funcs' | 'doc' | 'boolean' | 'entry';
 export type NonTerminatedRule = GeneratedRule;
 type InternalNonTerminatedRule = Rule<Node>;
 export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<null>];
@@ -25,8 +25,9 @@ export type TerminatedRule = readonly [string, IParser<ISyntaxNode> | IParser<nu
 // - not allow in unit
 const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: TerminatedRule[] } = {
     nonTerminated: [
-        ['doc', ['ow', 'cls', 'ow']],
+        ['doc', ['ow', 'cls', 'ow', 'entry', 'ow']], // entry 应该在 cls 前后都可以
 
+        ['entry', ['func', 'w', 'main', 'ow', '(', 'ow', 'paras', 'ow', ')', 'ow', 'block']],
         // property 默认是 private，method 默认是 public，目前更改不了权限
         ['cls', ['class', 'w', 'id', 'ow', '{', 'ow', 'funcs', 'ow', '}']],
 
@@ -92,10 +93,11 @@ const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: Termina
         ['object', ['{', 'ow', 'pairs', 'ow', '}']],
         ['pairs', []],
         ['pairs', ['pair', 'ow', ',', 'ow', 'pairs']],
-        ['pair', ['key', 'ow', ':', 'ow', 'value']],
-        ['key', ['string']],
-        ['key', ['id']],
-        ['value', ['exp']],
+        ['pair', { 
+            main: ['key', 'ow', ':', 'ow', 'value'], 
+            key: [or('id', 'string')],
+            value: ['exp'],
+        }],
 
         ['array', ['[', 'ow', 'items', 'ow', ']']],
         ['items', []],
@@ -107,6 +109,7 @@ const grammar: { nonTerminated: InternalNonTerminatedRule[], terminated: Termina
         ['refinement', ['[', 'ow', 'exp', 'ow', ']']],
     ],
     terminated: [
+        ['main', makeWordParser('main', Keyword.New)],
         ['true', makeWordParser('true', Keyword.New)],
         ['false', makeWordParser('false', Keyword.New)],
         ['id', identifier],
@@ -140,12 +143,41 @@ class NodeFactory {
     public Get(rule: NonTerminatedRule): Factory {
         const node: Node = rule[0] as Node;
         if (node in NodeFactoryRegistry) {
-            return NodeFactoryRegistry[node] as Factory;
+            return NodeFactoryRegistry[node]!;
         }
-        // 要求 UniversalNode 高于 ISyntaxNode
         return NodeFactoryRegistry.UniversalNodeFactory.bind(NodeFactoryRegistry.UniversalNodeFactory, rule);
     }
 }
 
 export const Grammar: { nonTerminated: NonTerminatedRule[], terminated: TerminatedRule[] } = { terminated: grammar.terminated, nonTerminated: grammar.nonTerminated.map(x => translate(x)).flat() };
 export const nodeFactory = new NodeFactory();
+
+// var o = {
+//     a: function b() {
+
+//     },
+//     c: function d() {
+//         this.a
+//         d()
+//     },
+//     d: 'hello'
+
+// }
+// b // b is undefined, 所以 o 里面其实是个新 env
+// // 写相关的 test case
+
+// var f = function f0() {
+
+// };
+// f();
+
+// var o = {
+//     k0: 1,
+//     k1: 1,
+//     k2: function f1() {
+//         f1
+//     },
+//     k3: function f2() {
+//         f1
+//     }
+// }

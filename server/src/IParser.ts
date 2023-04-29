@@ -118,6 +118,9 @@ export class Text {
         return v == s;
     }
 
+    /**
+     * When text is empty, return ''
+     */
     public get Value() {
         const v = this.mChars.map(x => x.Value).join('');
         return v;

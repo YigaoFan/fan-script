@@ -1,10 +1,10 @@
-import { assert } from 'console';
+// import { assert } from 'console';
 import { readFileSync } from 'fs';
 import path = require('path');
 import { htmlLogger } from '../../IParser';
 import { GenerateParserInputTable } from '../../ParserInputTable';
 import { StringStream } from '../../StringStream';
-import { log } from '../../util';
+import { assert, log } from '../../util';
 import { identifier } from '../Identifier';
 import { ChartParser } from '../ChartParser';
 import { Node } from '../GrammarMap';
@@ -59,7 +59,19 @@ const testIdentifier = () => {
 };
 
 const testNumber = () => {
-    // TODO
+    const literal = 'literal';
+    testUnit(literal, '+0');
+    testUnit(literal, '-0');
+    testUnit(literal, '1');
+    testUnit(literal, '1.23');
+    testUnit(literal, '-1.23');
+    testUnit(literal, '+1.23');
+};
+
+const testString = () => {
+    const literal = 'literal';
+    testUnit(literal, '"hello"');
+    testUnit(literal, "'world'");
 };
 
 const testUnit = (root: Node, code: string) => {
@@ -117,7 +129,7 @@ const testStmt = () => {
     testUnit(stmt, 'a.b();');
     testUnit(stmt, 'a.b().c = d;');
     // delete statement
-    testUnit(stmt, 'delete a.b.c;');
+    // testUnit(stmt, 'delete a.b.c;');// not support now
     // if statement
     testUnit(stmt, 'if (b) { return a; }');
     testUnit(stmt, 'if (a + b > c) { return a; }');
@@ -155,6 +167,8 @@ const testFunc = () => {
 
 export const test = function() {
     // Error.stackTraceLimit = Infinity;
+    testNumber();
+    testString();
     testIdentifier();
     testParas();
     testExp();

@@ -16,8 +16,13 @@
 2023/2/21
 * Continuations 要支持嵌套，因为for循环里可以套for循环
 2023/2/23
-* 补全生成的 Eval dispatch 代码，两种
+* - [x] 补全生成的 Eval dispatch 代码，两种
   * a-> b, c
   * a-> d, e
 
   * e-> f
+2023/3/11
+EvalFun 的参数类型原先是接受 NextStep 的 Cont。类型冲突在于，func 在 literal 情况下想作为返回值返回出去，而作为单独出现的语句时，则想影响环境，经过写一些 JS 代码，发现其实 literal 里也影响环境了，只不过很局部。比如作为obj.value 的 function 可以看到自己，所以可以递归调用自己。
+* 让生成代码的过程只看那些相关的文件，这样就不用处理已有的 EvalDispatch 等文件
+2023/3/19
+把 console.log 绑定到 env 中让 script 中可以调用

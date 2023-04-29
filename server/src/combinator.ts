@@ -1,5 +1,4 @@
-import { ParserInput, ParserResult, IParser, debug, IInputStream, logWith, Indent, IAsyncInputStream, AsyncParserResult, AsyncParserInput, } from './IParser';
-import { ISyntaxNode } from './ISyntaxNode';
+import { ParserInput, ParserResult, IParser, debug, logWith, Indent, } from './IParser';
 import { log, stringify } from './util';
 
 // 一定贯彻一个 input 只能用一次的原则，后面的解析用前面的解析的返回值中的 remain，注意循环会用多次
@@ -345,6 +344,6 @@ export const from: <T>(p: IParser<T>) => from<T> = <T>(p: IParser<T>) => ({
 
 // 因为下面这个，我终于知道 Haskell 里的同样的函数的作用了
 export const id = <T>(t: T) => (t);
-export const nullize = <T>(...ts: T[]) => (null);
+export const nullize = () => (null);
 export const selectLeft = <T1, T2>(t1: T1, t2: T2) => (t1);
 export const selectRight = <T1, T2>(t1: T1, t2: T2) => (t2);
